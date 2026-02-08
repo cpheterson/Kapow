@@ -389,6 +389,15 @@ body {
   cursor: pointer;
 }
 
+#drawn-card-area {
+  cursor: default;
+}
+
+#drawn-card-area .pile-label {
+  color: var(--color-accent);
+  font-weight: bold;
+}
+
 .pile.discard-target {
   animation: pulse 1.2s infinite;
   border-radius: 12px;
@@ -474,11 +483,16 @@ body {
 #power-modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: transparent;
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 150;
+  pointer-events: none;
+}
+
+#power-modal .modal-content {
+  pointer-events: auto;
 }
 
 .modal-content {

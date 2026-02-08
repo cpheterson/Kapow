@@ -423,15 +423,17 @@ function startRound(state) {
   state.drawnCard = null;
   state.drawnFromDiscard = false;
 
-  // For round 1, non-dealer goes first. For subsequent rounds,
-  // the player who went out first in the prior round goes first.
-  var firstPlayer;
+  // Human player (index 0) always reveals first.
+  // For the playing phase, non-dealer goes first in round 1,
+  // or the player who went out first in the prior round.
+  var firstPlayer = 0;
+  var playingFirstPlayer;
   if (state.round === 1) {
-    firstPlayer = (state.dealerIndex + 1) % playerCount;
+    playingFirstPlayer = (state.dealerIndex + 1) % playerCount;
   } else if (state.previousFirstOut != null) {
-    firstPlayer = state.previousFirstOut;
+    playingFirstPlayer = state.previousFirstOut;
   } else {
-    firstPlayer = (state.dealerIndex + 1) % playerCount;
+    playingFirstPlayer = (state.dealerIndex + 1) % playerCount;
   }
 
   state.firstOutPlayer = null;
@@ -439,7 +441,7 @@ function startRound(state) {
   state.phase = 'firstTurn';
   state.firstTurnReveals = 0;
   state.playersRevealed = 0;
-  state.roundFirstPlayer = firstPlayer;
+  state.roundFirstPlayer = playingFirstPlayer;
   state.currentPlayer = firstPlayer;
   state.message = 'Reveal 2 cards to begin.';
 
@@ -1083,13 +1085,8 @@ function renderDrawPile(state) {
   var container = document.getElementById('draw-top');
   if (!container) return;
 
-  if (state.drawnCard && !state.drawnFromDiscard) {
-    // Show the drawn card face-up on top of the draw pile
-    container.innerHTML = renderCardHTML(state.drawnCard, false, false);
-  } else {
-    // Show normal card-back on draw pile
-    container.innerHTML = '<div class="card card-back"><div class="card-back-inner"><span class="card-back-text">KAPOW!</span></div></div>';
-  }
+  // Always show card-back on draw pile
+  container.innerHTML = '<div class="card card-back"><div class="card-back-inner"><span class="card-back-text">KAPOW!</span></div></div>';
 }
 
 // ========================================
@@ -1156,6 +1153,17 @@ function refreshUI() {
   renderDiscardPile(gameState.discardPile);
   renderDrawPile(gameState);
   document.getElementById('draw-count').textContent = '(' + gameState.drawPile.length + ' cards)';
+
+  // Show drawn card in center area when human has a drawn card
+  var drawnCardArea = document.getElementById('drawn-card-area');
+  var drawnCardDisplay = document.getElementById('drawn-card-display');
+  if (isHumanTurn && gameState.drawnCard) {
+    drawnCardDisplay.innerHTML = renderCardHTML(gameState.drawnCard, false, false);
+    drawnCardArea.classList.remove('hidden');
+  } else {
+    drawnCardDisplay.innerHTML = '';
+    drawnCardArea.classList.add('hidden');
+  }
 
   // Highlight discard pile when it's a valid discard target
   var discardPileEl = document.getElementById('discard-pile');
