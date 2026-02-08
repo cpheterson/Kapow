@@ -1001,20 +1001,21 @@ function renderHand(hand, containerId, isOpponent, clickablePositions, onClickAt
   container.innerHTML = html;
 }
 
-function renderDiscardPile(discardPile) {
+function renderDiscardPile(discardPile, drawnCard, drawnFromDiscard) {
   var container = document.getElementById('discard-top');
   if (!container) return;
 
   container.innerHTML = '';
   container.className = 'card';
 
-  if (discardPile.length === 0) {
+  // If the player just drew from discard, show that card still on top
+  var topCard = (drawnCard && drawnFromDiscard) ? drawnCard : discardPile[discardPile.length - 1];
+
+  if (!topCard) {
     container.classList.add('empty-pile');
     container.innerHTML = '<span>Empty</span>';
     return;
   }
-
-  var topCard = discardPile[discardPile.length - 1];
 
   if (topCard.type === 'fixed') {
     container.classList.add('card-fixed');
@@ -1147,7 +1148,7 @@ function refreshUI() {
   renderHand(gameState.players[1].hand, 'ai-hand', true, [], null);
 
   // Render piles
-  renderDiscardPile(gameState.discardPile);
+  renderDiscardPile(gameState.discardPile, gameState.drawnCard, gameState.drawnFromDiscard);
   renderDrawPile(gameState);
   document.getElementById('draw-count').textContent = '(' + gameState.drawPile.length + ' cards)';
 
