@@ -116,7 +116,7 @@ export function handleDrawFromDeck(state) {
     card.isRevealed = true;
     state.drawnCard = card;
     state.drawPile = pile;
-    state.message = `Drew a ${cardDescription(card)}. Place it or discard.`;
+    state.message = `Drew ${cardDescription(card)}. Place or discard.`;
   }
 
   return state;
@@ -130,7 +130,7 @@ export function handleDrawFromDiscard(state) {
   if (card) {
     state.drawnCard = card;
     state.discardPile = pile;
-    state.message = `Took ${cardDescription(card)} from discard. Place it in your hand.`;
+    state.message = `Took ${cardDescription(card)}. Place it in your hand.`;
   }
 
   return state;

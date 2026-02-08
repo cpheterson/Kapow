@@ -494,7 +494,7 @@ function handleDrawFromDeck(state) {
     state.drawnCard = result.card;
     state.drawnFromDiscard = false;
     state.drawPile = result.pile;
-    state.message = 'Drew a ' + cardDescription(result.card) + '. Place it or discard.';
+    state.message = 'Drew ' + cardDescription(result.card) + '. Place or discard.';
   }
   return state;
 }
@@ -507,9 +507,9 @@ function handleDrawFromDiscard(state) {
     state.discardPile = result.pile;
     var desc = cardDescription(result.card);
     if (result.card.type === 'power') {
-      state.message = 'Took ' + desc + ' from discard. Replace a card, or place beneath a face-up card as modifier.';
+      state.message = 'Took ' + desc + '. Place or use as modifier.';
     } else {
-      state.message = 'Took ' + desc + ' from discard. You must place it in your hand.';
+      state.message = 'Took ' + desc + '. Place it in your hand.';
     }
   }
   return state;
