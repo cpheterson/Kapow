@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KAPOW! Card Game</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <!-- Name Entry Screen -->
+  <div id="name-screen">
+    <div class="name-screen-content">
+      <h1>KAPOW!</h1>
+      <p>Enter your name to begin:</p>
+      <input type="text" id="player-name-input" placeholder="Your name" maxlength="20" autofocus>
+      <button id="btn-start-game" class="action-btn">Start Game</button>
+    </div>
+  </div>
+
+  <div id="page-layout" class="hidden">
+  <div id="game-container">
+    <!-- AI Hand Area -->
+    <section id="ai-area">
+      <h2>AI Opponent</h2>
+      <div id="ai-hand" class="hand-grid"></div>
+    </section>
+
+    <!-- Center Area: Draw Pile and Discard Pile only -->
+    <section id="center-area">
+      <div id="draw-pile" class="pile">
+        <div id="draw-top"></div>
+        <div class="pile-label">Draw</div>
+        <div id="draw-count" class="pile-count"></div>
+      </div>
+
+      <div id="discard-pile" class="pile">
+        <div id="discard-top" class="card empty-pile">
+          <span>Empty</span>
+        </div>
+        <div class="pile-label">Discard</div>
+      </div>
+    </section>
+
+    <!-- Player Hand Area -->
+    <section id="player-area">
+      <h2 id="player-area-header">Your Hand</h2>
+      <div id="player-hand" class="hand-grid"></div>
+    </section>
+
+    <!-- Action Controls -->
+    <section id="action-controls">
+      <button id="btn-draw-deck" class="action-btn" disabled>Draw from Deck</button>
+      <button id="btn-draw-discard" class="action-btn" disabled>Draw from Discard</button>
+      <button id="btn-discard" class="action-btn" disabled>Discard Drawn Card</button>
+      <button id="btn-end-turn" class="action-btn" disabled>End Turn</button>
+      <button id="btn-swap-kapow" class="action-btn kapow-btn" disabled>Swap KAPOW!</button>
+    </section>
+
+    <!-- Power Card Choice Modal -->
+    <div id="power-modal" class="hidden">
+      <div class="modal-content">
+        <div id="power-modal-title" class="modal-title"></div>
+        <div id="power-modal-buttons" class="modal-buttons"></div>
+      </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over-screen" class="hidden">
+      <div class="game-over-content">
+        <h1 id="game-over-title">Game Over!</h1>
+        <div id="final-scores"></div>
+        <button id="btn-new-game" class="action-btn">New Game</button>
+      </div>
+    </div>
+
+    <!-- Round End Screen -->
+    <div id="round-end-screen" class="hidden">
+      <div class="round-end-content">
+        <h2 id="round-end-title">Round Complete!</h2>
+        <div id="round-scores"></div>
+        <button id="btn-next-round" class="action-btn">Next Round</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Message + Scorecard Sidebar -->
+  <div id="sidebar">
+    <div id="game-message">Welcome to KAPOW!</div>
+    <div id="scorecard">
+    <h3>Scorecard</h3>
+    <table id="scorecard-table">
+      <thead>
+        <tr>
+          <th>Round</th>
+          <th id="sc-player-name">You</th>
+          <th id="sc-ai-name">AI</th>
+        </tr>
+      </thead>
+      <tbody id="scorecard-body">
+        <tr><td>1</td><td>-</td><td>-</td></tr>
+        <tr><td>2</td><td>-</td><td>-</td></tr>
+        <tr><td>3</td><td>-</td><td>-</td></tr>
+        <tr><td>4</td><td>-</td><td>-</td></tr>
+        <tr><td>5</td><td>-</td><td>-</td></tr>
+        <tr><td>6</td><td>-</td><td>-</td></tr>
+        <tr><td>7</td><td>-</td><td>-</td></tr>
+        <tr><td>8</td><td>-</td><td>-</td></tr>
+        <tr><td>9</td><td>-</td><td>-</td></tr>
+        <tr><td>10</td><td>-</td><td>-</td></tr>
+      </tbody>
+      <tfoot>
+        <tr id="scorecard-totals">
+          <td><strong>Total</strong></td>
+          <td id="sc-player-total"><strong>0</strong></td>
+          <td id="sc-ai-total"><strong>0</strong></td>
+        </tr>
+      </tfoot>
+    </table>
+    </div>
+  </div>
+  </div>
+
+  <script src="js/kapow.js"></script>
+</body>
+</html>
