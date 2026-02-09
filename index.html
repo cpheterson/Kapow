@@ -19,42 +19,55 @@
 
   <div id="page-layout" class="hidden">
   <div id="game-container">
-    <!-- AI Hand Area -->
-    <section id="ai-area">
-      <h2>AI Opponent</h2>
-      <div id="ai-hand" class="hand-grid"></div>
-    </section>
 
-    <!-- Center Area: Draw Pile and Discard Pile -->
-    <section id="center-area">
+    <!-- Main Play Area: Piles flanking hands -->
+    <div id="play-area">
+
+      <!-- Left: Draw Pile -->
       <div id="draw-pile" class="pile">
         <div id="draw-top"></div>
         <div class="pile-label">Draw</div>
         <div id="draw-count" class="pile-count"></div>
       </div>
 
+      <!-- Center: Hands stacked vertically -->
+      <div id="hands-column">
+        <!-- AI Hand Area -->
+        <section id="ai-area">
+          <h2>AI Opponent</h2>
+          <div id="ai-hand" class="hand-grid"></div>
+        </section>
+
+        <!-- Center strip: Message + Buttons -->
+        <div id="center-strip">
+          <div id="game-message">Welcome to KAPOW!</div>
+          <div id="action-controls">
+            <button id="btn-end-turn" class="action-btn" disabled>End Turn</button>
+            <button id="btn-swap-kapow" class="action-btn kapow-btn" disabled>Swap KAPOW!</button>
+          </div>
+        </div>
+
+        <!-- Player Hand Area -->
+        <section id="player-area">
+          <h2 id="player-area-header">Your Hand</h2>
+          <div id="player-hand" class="hand-grid"></div>
+        </section>
+      </div>
+
+      <!-- Right: Discard Pile -->
       <div id="discard-pile" class="pile">
         <div id="discard-top" class="card empty-pile">
           <span>Empty</span>
         </div>
         <div class="pile-label">Discard</div>
       </div>
-    </section>
 
-    <!-- Player Hand Area -->
-    <section id="player-area">
-      <h2 id="player-area-header">Your Hand</h2>
-      <div id="player-hand" class="hand-grid"></div>
-    </section>
+    </div>
 
-    <!-- Action Controls -->
-    <section id="action-controls">
-      <button id="btn-draw-deck" class="action-btn" disabled>Draw from Deck</button>
-      <button id="btn-draw-discard" class="action-btn" disabled>Draw from Discard</button>
-      <button id="btn-discard" class="action-btn" disabled>Discard Drawn Card</button>
-      <button id="btn-end-turn" class="action-btn" disabled>End Turn</button>
-      <button id="btn-swap-kapow" class="action-btn kapow-btn" disabled>Swap KAPOW!</button>
-    </section>
+    <!-- Hidden buttons still needed by JS (Draw/Discard actions via pile clicks) -->
+    <button id="btn-draw-deck" class="hidden" disabled></button>
+    <button id="btn-draw-discard" class="hidden" disabled></button>
+    <button id="btn-discard" class="hidden" disabled></button>
 
     <!-- Power Card Choice Modal -->
     <div id="power-modal" class="hidden">
@@ -83,9 +96,8 @@
     </div>
   </div>
 
-  <!-- Game Message + Scorecard Sidebar -->
+  <!-- Scorecard Sidebar -->
   <div id="sidebar">
-    <div id="game-message">Welcome to KAPOW!</div>
     <div id="scorecard">
     <h3>Scorecard</h3>
     <table id="scorecard-table">
