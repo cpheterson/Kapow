@@ -684,6 +684,7 @@ function handlePlaceCard(state, triadIndex, position) {
   return state;
 }
 
+// Drawn card IS a power card, added as modifier beneath the existing face card
 function handleAddPowerset(state, triadIndex, position, usePositiveModifier) {
   if (!state.drawnCard || state.drawnCard.type !== 'power') return state;
   var player = state.players[state.currentPlayer];
@@ -696,6 +697,31 @@ function handleAddPowerset(state, triadIndex, position, usePositiveModifier) {
   state.drawnCard.activeModifier = usePositiveModifier ? state.drawnCard.modifiers[1] : state.drawnCard.modifiers[0];
   state.drawnCard.isRevealed = true;
   posCards.push(state.drawnCard);
+
+  state.drawnCard = null;
+  state.drawnFromDiscard = false;
+  checkAndDiscardTriads(state, state.currentPlayer);
+  checkForKapowSwapOrEndTurn(state);
+  return state;
+}
+
+// Existing card IS a power card; drawn card goes on top as the new face card,
+// existing power card becomes the modifier underneath
+function handleCreatePowersetOnPower(state, triadIndex, position, usePositiveModifier) {
+  if (!state.drawnCard) return state;
+  var player = state.players[state.currentPlayer];
+  var triad = player.hand.triads[triadIndex];
+  if (!triad || triad.isDiscarded) return state;
+  var posCards = triad[position];
+  if (posCards.length === 0 || posCards[0].type !== 'power' || !posCards[0].isRevealed) return state;
+
+  // The existing power card becomes the modifier
+  var existingPower = posCards[0];
+  existingPower.activeModifier = usePositiveModifier ? existingPower.modifiers[1] : existingPower.modifiers[0];
+
+  // Drawn card goes on top as the face card; power card goes underneath as modifier
+  state.drawnCard.isRevealed = true;
+  triad[position] = [state.drawnCard, existingPower];
 
   state.drawnCard = null;
   state.drawnFromDiscard = false;
@@ -878,6 +904,13 @@ function aiDecideAction(gameState, drawnCard) {
   var completionSpot = findTriadCompletionSpot(aiHand, drawnCard);
   if (completionSpot) return { type: 'replace', triadIndex: completionSpot.triadIndex, position: completionSpot.position };
 
+  // Consider creating a powerset on an existing solo power card
+  // If the drawn card is fixed/power and there's a solo power card that could reduce the score
+  if (drawnCard.type === 'fixed' || drawnCard.type === 'power') {
+    var powersetSpot = aiFindPowersetOpportunity(aiHand, drawnCard);
+    if (powersetSpot) return powersetSpot;
+  }
+
   if (drawnCard.type === 'fixed' && drawnCard.faceValue <= 4) {
     var highPos = findHighestValuePosition(aiHand);
     if (highPos && highPos.value > drawnCard.faceValue + 2) {
@@ -898,6 +931,45 @@ function aiDecideAction(gameState, drawnCard) {
   }
 
   return { type: 'discard' };
+}
+
+// AI: find a solo power card where creating a powerset would be beneficial
+// Returns { type: 'powerset-on-power', triadIndex, position, usePositive } or null
+function aiFindPowersetOpportunity(hand, drawnCard) {
+  var drawnValue = drawnCard.type === 'fixed' ? drawnCard.faceValue :
+                   (drawnCard.type === 'power' ? drawnCard.faceValue : 0);
+  var best = null;
+  var bestScore = Infinity;
+
+  for (var t = 0; t < hand.triads.length; t++) {
+    var triad = hand.triads[t];
+    if (triad.isDiscarded) continue;
+    var positions = ['top', 'middle', 'bottom'];
+    for (var p = 0; p < positions.length; p++) {
+      var posCards = triad[positions[p]];
+      if (posCards.length !== 1 || posCards[0].type !== 'power' || !posCards[0].isRevealed) continue;
+
+      var powerCard = posCards[0];
+      // Try negative modifier (reduces score)
+      var withNegMod = drawnValue + powerCard.modifiers[0];
+      // Try positive modifier
+      var withPosMod = drawnValue + powerCard.modifiers[1];
+
+      // Current value of the power card sitting alone
+      var currentValue = getPositionValue(posCards);
+
+      // Pick whichever modifier gives the lowest result
+      var bestMod = withNegMod < withPosMod ? withNegMod : withPosMod;
+      var usePositive = withPosMod <= withNegMod;
+
+      // Only create powerset if the result is meaningfully better than current and the drawn value
+      if (bestMod < currentValue && bestMod < drawnValue && bestMod < bestScore) {
+        bestScore = bestMod;
+        best = { type: 'powerset-on-power', triadIndex: t, position: positions[p], usePositive: usePositive };
+      }
+    }
+  }
+  return best;
 }
 
 // aiShouldGoOut removed - going out is now automatic when all cards are face up
@@ -1416,21 +1488,77 @@ window._onCardClick = function(triadIndex, position) {
     var targetTriad = gameState.players[0].hand.triads[triadIndex];
     var targetPosCards = targetTriad[position];
     var drawnCard = gameState.drawnCard;
+    var targetIsRevealed = targetPosCards.length > 0 && targetPosCards[0].isRevealed;
+    var drawnIsPower = drawnCard.type === 'power';
+    var targetIsPower = targetIsRevealed && targetPosCards[0].type === 'power' && targetPosCards.length === 1;
 
-    // If drawn card is a power card and target position has a face-up card,
-    // ask whether to replace or add as modifier
-    if (drawnCard.type === 'power' && targetPosCards.length > 0 && targetPosCards[0].isRevealed) {
+    // Case 1: Drawn is Power AND target is Power — three options
+    if (drawnIsPower && targetIsPower) {
+      showModal('Both cards are Power cards — how would you like to play?', [
+        { label: 'Drawn as Modifier', value: 'drawn-mod', style: 'accent' },
+        { label: 'Existing as Modifier', value: 'target-mod', style: 'accent' },
+        { label: 'Replace Card', value: 'replace', style: 'primary' }
+      ]).then(function(choice) {
+        if (choice === 'drawn-mod') {
+          showModal('Drawn Power ' + drawnCard.faceValue + ' modifier value?', [
+            { label: '+' + drawnCard.modifiers[1] + ' (positive)', value: 'positive', style: 'primary' },
+            { label: drawnCard.modifiers[0] + ' (negative)', value: 'negative', style: 'secondary' }
+          ]).then(function(modChoice) {
+            handleAddPowerset(gameState, triadIndex, position, modChoice === 'positive');
+            refreshUI();
+          });
+        } else if (choice === 'target-mod') {
+          var existingPower = targetPosCards[0];
+          showModal('Existing Power ' + existingPower.faceValue + ' modifier value?', [
+            { label: '+' + existingPower.modifiers[1] + ' (positive)', value: 'positive', style: 'primary' },
+            { label: existingPower.modifiers[0] + ' (negative)', value: 'negative', style: 'secondary' }
+          ]).then(function(modChoice) {
+            handleCreatePowersetOnPower(gameState, triadIndex, position, modChoice === 'positive');
+            refreshUI();
+          });
+        } else {
+          handlePlaceCard(gameState, triadIndex, position);
+          refreshUI();
+        }
+      });
+      return;
+    }
+
+    // Case 2: Drawn is Power, target is any revealed card — drawn as modifier or replace
+    if (drawnIsPower && targetIsRevealed) {
       showModal('Power ' + drawnCard.faceValue + ' card — how would you like to play it?', [
         { label: 'Use as Modifier', value: 'modifier', style: 'accent' },
         { label: 'Replace Card', value: 'replace', style: 'primary' }
       ]).then(function(choice) {
         if (choice === 'modifier') {
-          // Ask which modifier value to apply
           showModal('Which modifier value?', [
             { label: '+' + drawnCard.modifiers[1] + ' (positive)', value: 'positive', style: 'primary' },
             { label: drawnCard.modifiers[0] + ' (negative)', value: 'negative', style: 'secondary' }
           ]).then(function(modChoice) {
             handleAddPowerset(gameState, triadIndex, position, modChoice === 'positive');
+            refreshUI();
+          });
+        } else {
+          handlePlaceCard(gameState, triadIndex, position);
+          refreshUI();
+        }
+      });
+      return;
+    }
+
+    // Case 3: Target is a solo Power card, drawn is any non-power card — create powerset or replace
+    if (targetIsPower) {
+      var existingPower = targetPosCards[0];
+      showModal('Target is a Power ' + existingPower.faceValue + ' card — how would you like to play?', [
+        { label: 'Create Powerset', value: 'powerset', style: 'accent' },
+        { label: 'Replace Card', value: 'replace', style: 'primary' }
+      ]).then(function(choice) {
+        if (choice === 'powerset') {
+          showModal('Power ' + existingPower.faceValue + ' modifier value?', [
+            { label: '+' + existingPower.modifiers[1] + ' (positive)', value: 'positive', style: 'primary' },
+            { label: existingPower.modifiers[0] + ' (negative)', value: 'negative', style: 'secondary' }
+          ]).then(function(modChoice) {
+            handleCreatePowersetOnPower(gameState, triadIndex, position, modChoice === 'positive');
             refreshUI();
           });
         } else {
@@ -1648,7 +1776,15 @@ function aiStepDraw() {
 
 // Step 3: Place or discard the drawn card
 function aiStepPlace(action, drewFromDiscard, drawnDesc) {
-  if (action.type === 'replace') {
+  if (action.type === 'powerset-on-power') {
+    var posLabel = action.position.charAt(0).toUpperCase() + action.position.slice(1);
+    var modSign = action.usePositive ? '+' : '';
+    var existingPower = gameState.players[1].hand.triads[action.triadIndex][action.position][0];
+    var modValue = action.usePositive ? existingPower.modifiers[1] : existingPower.modifiers[0];
+    gameState.message = 'AI creates powerset: ' + drawnDesc + ' with Power ' + existingPower.faceValue + ' (' + modSign + modValue + ') in Triad ' + (action.triadIndex + 1) + '.';
+    handleCreatePowersetOnPower(gameState, action.triadIndex, action.position, action.usePositive);
+    gameState.aiHighlight = { type: 'place', triadIndex: action.triadIndex, position: action.position };
+  } else if (action.type === 'replace') {
     var posLabel = action.position.charAt(0).toUpperCase() + action.position.slice(1);
     gameState.message = 'AI places ' + drawnDesc + ' in Triad ' + (action.triadIndex + 1) + ' (' + posLabel + ').';
     handlePlaceCard(gameState, action.triadIndex, action.position);
