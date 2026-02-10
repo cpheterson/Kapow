@@ -585,6 +585,11 @@ function advanceToNextPlayer(state) {
 
 function endRound(state) {
   state.players.forEach(function(p) { revealAllCards(p.hand); });
+  // Safety net: check and discard any completed triads that may have been
+  // missed during turn processing (e.g., KAPOW! placements on final turn)
+  for (var pi = 0; pi < state.players.length; pi++) {
+    checkAndDiscardTriads(state, pi);
+  }
   var roundScores = calculateRoundScores(state.players, state.firstOutPlayer);
   state.players.forEach(function(player, i) {
     player.roundScores.push(roundScores[i]);
@@ -797,22 +802,54 @@ function advanceRound(state) {
 // ========================================
 
 function aiFirstTurnReveals(hand) {
-  var unrevealed = [];
+  // Strategic reveals: spread across different triads, prefer middle positions
+  var triadUnrevealed = {};  // triadIndex -> array of unrevealed positions
   for (var t = 0; t < hand.triads.length; t++) {
     var triad = hand.triads[t];
     if (triad.isDiscarded) continue;
+    triadUnrevealed[t] = [];
     var positions = ['top', 'middle', 'bottom'];
     for (var p = 0; p < positions.length; p++) {
       if (triad[positions[p]].length > 0 && !triad[positions[p]][0].isRevealed) {
-        unrevealed.push({ triadIndex: t, position: positions[p] });
+        triadUnrevealed[t].push(positions[p]);
       }
     }
   }
+
   var picks = [];
-  for (var i = 0; i < 2 && unrevealed.length > 0; i++) {
-    var idx = Math.floor(Math.random() * unrevealed.length);
-    picks.push(unrevealed.splice(idx, 1)[0]);
+  var usedTriads = {};
+  var triadKeys = Object.keys(triadUnrevealed);
+
+  // Pick from two different triads if possible
+  for (var pick = 0; pick < 2; pick++) {
+    var bestTriad = -1;
+    var bestPos = null;
+
+    for (var k = 0; k < triadKeys.length; k++) {
+      var ti = parseInt(triadKeys[k]);
+      if (usedTriads[ti] && triadKeys.length > Object.keys(usedTriads).length) continue;
+      var positions = triadUnrevealed[ti];
+      if (positions.length === 0) continue;
+
+      // Prefer middle (participates in both ascending & descending runs)
+      var pos = positions.indexOf('middle') >= 0 ? 'middle' :
+                positions[Math.floor(Math.random() * positions.length)];
+
+      if (bestTriad === -1) {
+        bestTriad = ti;
+        bestPos = pos;
+      }
+    }
+
+    if (bestTriad >= 0 && bestPos) {
+      picks.push({ triadIndex: bestTriad, position: bestPos });
+      usedTriads[bestTriad] = true;
+      // Remove from available
+      var idx = triadUnrevealed[bestTriad].indexOf(bestPos);
+      if (idx >= 0) triadUnrevealed[bestTriad].splice(idx, 1);
+    }
   }
+
   return picks;
 }
 
@@ -832,22 +869,13 @@ function wouldHelpCompleteTriad(hand, card) {
   return false;
 }
 
+// AI draw decision stores reason for educational messaging
+var lastDrawReason = '';
+
 function aiDecideDraw(gameState) {
-  var aiHand = gameState.players[1].hand;
-  var discardTop = gameState.discardPile.length > 0
-    ? gameState.discardPile[gameState.discardPile.length - 1]
-    : null;
-
-  if (!discardTop) return 'deck';
-
-  if (wouldHelpCompleteTriad(aiHand, discardTop)) return 'discard';
-
-  if (discardTop.type === 'fixed' && discardTop.faceValue <= 3) {
-    var highPos = findHighestValuePosition(aiHand);
-    if (highPos && highPos.value > 5) return 'discard';
-  }
-
-  return 'deck';
+  var drawEval = aiEvaluateDrawFromDiscard(gameState);
+  lastDrawReason = drawEval.reason;
+  return drawEval.shouldDraw ? 'discard' : 'deck';
 }
 
 function findTriadCompletionSpot(hand, card) {
@@ -898,39 +926,106 @@ function findUnrevealedPosition(hand) {
   return null;
 }
 
+// AI action reason for educational messaging
+var lastActionReason = '';
+
 function aiDecideAction(gameState, drawnCard) {
   var aiHand = gameState.players[1].hand;
+  var drewFromDiscard = gameState.drawnFromDiscard;
+  var candidates = [];  // { action, score, reason }
 
-  var completionSpot = findTriadCompletionSpot(aiHand, drawnCard);
-  if (completionSpot) return { type: 'replace', triadIndex: completionSpot.triadIndex, position: completionSpot.position };
+  // Score all possible placements
+  for (var t = 0; t < aiHand.triads.length; t++) {
+    var triad = aiHand.triads[t];
+    if (triad.isDiscarded) continue;
+    var positions = ['top', 'middle', 'bottom'];
+    for (var p = 0; p < positions.length; p++) {
+      var ps = aiScorePlacement(aiHand, drawnCard, t, positions[p]);
 
-  // Consider creating a powerset on an existing solo power card
-  // If the drawn card is fixed/power and there's a solo power card that could reduce the score
+      // Check if this placement would leave the AI fully revealed (going out)
+      var posCards = triad[positions[p]];
+      var isUnrevealed = posCards.length > 0 && !posCards[0].isRevealed;
+      if (isUnrevealed) {
+        // Placing here reveals this card — check if it's the last unrevealed
+        var handEval = aiEvaluateHand(aiHand);
+        if (handEval.unrevealedCount === 1) {
+          // This would trigger going out — simulate the ACTUAL score after placement
+          var simulatedScore = handEval.knownScore + (drawnCard.type === 'kapow' ? 25 : drawnCard.faceValue);
+          var goOutDecision = aiShouldGoOutWithScore(gameState, simulatedScore);
+          if (goOutDecision.shouldGoOut) {
+            ps += 50;  // boost — go out!
+          } else {
+            ps -= 50;  // penalize — don't go out yet
+          }
+        }
+      }
+
+      var reason = 'places in Triad ' + (t + 1);
+      if (ps >= 100) reason = 'completes Triad ' + (t + 1);
+      else if (ps >= 15) reason = 'builds toward completing Triad ' + (t + 1);
+      else if (ps > 0) reason = 'reduces score in Triad ' + (t + 1);
+
+      candidates.push({
+        action: { type: 'replace', triadIndex: t, position: positions[p] },
+        score: ps,
+        reason: reason
+      });
+    }
+  }
+
+  // Score powerset-on-power opportunities
   if (drawnCard.type === 'fixed' || drawnCard.type === 'power') {
     var powersetSpot = aiFindPowersetOpportunity(aiHand, drawnCard);
-    if (powersetSpot) return powersetSpot;
-  }
-
-  if (drawnCard.type === 'fixed' && drawnCard.faceValue <= 4) {
-    var highPos = findHighestValuePosition(aiHand);
-    if (highPos && highPos.value > drawnCard.faceValue + 2) {
-      return { type: 'replace', triadIndex: highPos.triadIndex, position: highPos.position };
+    if (powersetSpot) {
+      // Score it comparably: use the triad score improvement
+      var existingValue = getPositionValue(aiHand.triads[powersetSpot.triadIndex][powersetSpot.position]);
+      var modCard = aiHand.triads[powersetSpot.triadIndex][powersetSpot.position][0];
+      var modValue = powersetSpot.usePositive ? modCard.modifiers[1] : modCard.modifiers[0];
+      var newValue = (drawnCard.type === 'fixed' ? drawnCard.faceValue : drawnCard.faceValue) + modValue;
+      var improvement = existingValue - newValue;
+      candidates.push({
+        action: powersetSpot,
+        score: improvement + 10,  // bonus for creating powerset
+        reason: 'creates powerset in Triad ' + (powersetSpot.triadIndex + 1)
+      });
     }
   }
 
-  if (drawnCard.type === 'kapow') {
-    var highPos = findHighestValuePosition(aiHand);
-    if (highPos && highPos.value >= 8) {
-      return { type: 'replace', triadIndex: highPos.triadIndex, position: highPos.position };
+  // Score modifier opportunity (drawn Power card as modifier)
+  var modOpp = aiFindModifierOpportunity(aiHand, drawnCard);
+  if (modOpp) {
+    candidates.push({
+      action: modOpp,
+      score: modOpp.score,
+      reason: 'uses Power as modifier in Triad ' + (modOpp.triadIndex + 1)
+    });
+  }
+
+  // Score discard option (only if drew from deck, not discard)
+  if (!drewFromDiscard) {
+    var discardSafety = aiEvaluateDiscardSafety(drawnCard, gameState);
+    candidates.push({
+      action: { type: 'discard' },
+      score: discardSafety * 0.05 - 2,  // scale to be comparable; slight penalty to prefer placement
+      reason: 'discards — no good placement'
+    });
+  }
+
+  // Pick the highest-scoring candidate
+  var bestCandidate = null;
+  for (var i = 0; i < candidates.length; i++) {
+    if (!bestCandidate || candidates[i].score > bestCandidate.score) {
+      bestCandidate = candidates[i];
     }
   }
 
-  if (drawnCard.type === 'fixed' && drawnCard.faceValue < 6) {
-    var unrevealedPos = findUnrevealedPosition(aiHand);
-    if (unrevealedPos) return { type: 'replace', triadIndex: unrevealedPos.triadIndex, position: unrevealedPos.position };
+  if (!bestCandidate) {
+    lastActionReason = 'no valid moves';
+    return { type: 'discard' };
   }
 
-  return { type: 'discard' };
+  lastActionReason = bestCandidate.reason;
+  return bestCandidate.action;
 }
 
 // AI: find a solo power card where creating a powerset would be beneficial
@@ -939,7 +1034,7 @@ function aiFindPowersetOpportunity(hand, drawnCard) {
   var drawnValue = drawnCard.type === 'fixed' ? drawnCard.faceValue :
                    (drawnCard.type === 'power' ? drawnCard.faceValue : 0);
   var best = null;
-  var bestScore = Infinity;
+  var bestScore = -Infinity;
 
   for (var t = 0; t < hand.triads.length; t++) {
     var triad = hand.triads[t];
@@ -950,21 +1045,41 @@ function aiFindPowersetOpportunity(hand, drawnCard) {
       if (posCards.length !== 1 || posCards[0].type !== 'power' || !posCards[0].isRevealed) continue;
 
       var powerCard = posCards[0];
-      // Try negative modifier (reduces score)
       var withNegMod = drawnValue + powerCard.modifiers[0];
-      // Try positive modifier
       var withPosMod = drawnValue + powerCard.modifiers[1];
-
-      // Current value of the power card sitting alone
       var currentValue = getPositionValue(posCards);
 
-      // Pick whichever modifier gives the lowest result
       var bestMod = withNegMod < withPosMod ? withNegMod : withPosMod;
       var usePositive = withPosMod <= withNegMod;
 
-      // Only create powerset if the result is meaningfully better than current and the drawn value
-      if (bestMod < currentValue && bestMod < drawnValue && bestMod < bestScore) {
-        bestScore = bestMod;
+      // Score = improvement over current value
+      var improvement = currentValue - bestMod;
+      if (improvement <= 0) continue;
+
+      // Simulate the powerset and check triad-building potential
+      var origCards = triad[positions[p]];
+      var simPower = { id: powerCard.id, type: 'power', faceValue: powerCard.faceValue,
+        modifiers: powerCard.modifiers, isRevealed: true, isFrozen: false,
+        activeModifier: usePositive ? powerCard.modifiers[1] : powerCard.modifiers[0] };
+      var simFace = { id: drawnCard.id, type: drawnCard.type, faceValue: drawnCard.faceValue,
+        modifiers: drawnCard.modifiers, isRevealed: true, isFrozen: false, assignedValue: null };
+      triad[positions[p]] = [simFace, simPower];
+
+      var triadBonus = 0;
+      if (isTriadComplete(triad)) {
+        triadBonus = 80;
+      } else {
+        var analysis = aiAnalyzeTriad(triad);
+        if (analysis.isNearComplete && analysis.completionPaths > 0) {
+          triadBonus = 10 + (analysis.completionPaths * 2);
+        }
+      }
+
+      triad[positions[p]] = origCards; // restore
+
+      var totalScore = improvement + triadBonus;
+      if (totalScore > bestScore) {
+        bestScore = totalScore;
         best = { type: 'powerset-on-power', triadIndex: t, position: positions[p], usePositive: usePositive };
       }
     }
@@ -972,7 +1087,598 @@ function aiFindPowersetOpportunity(hand, drawnCard) {
   return best;
 }
 
-// aiShouldGoOut removed - going out is now automatic when all cards are face up
+// ========================================
+// AI STRATEGIC EVALUATION FUNCTIONS
+// ========================================
+
+// Analyze a single triad: completion proximity, values, paths
+function aiAnalyzeTriad(triad) {
+  var result = {
+    revealedCount: 0,
+    values: [null, null, null],       // null for unrevealed
+    completionPaths: 0,               // count of values 0-12 that could complete
+    completionValues: [],             // which values would complete
+    isNearComplete: false,            // 2 of 3 revealed
+    triadScore: 0,                    // sum of revealed position values
+    hasUnfrozenKapow: false,
+    isDiscarded: triad.isDiscarded
+  };
+
+  if (triad.isDiscarded) return result;
+
+  var positions = ['top', 'middle', 'bottom'];
+  for (var i = 0; i < 3; i++) {
+    var posCards = triad[positions[i]];
+    if (posCards.length > 0 && posCards[0].isRevealed) {
+      result.revealedCount++;
+      result.values[i] = getPositionValue(posCards);
+      result.triadScore += result.values[i];
+      if (posCards[0].type === 'kapow' && !posCards[0].isFrozen) {
+        result.hasUnfrozenKapow = true;
+      }
+    }
+  }
+
+  result.isNearComplete = (result.revealedCount === 2);
+
+  // Count completion paths when 2 of 3 are revealed
+  if (result.revealedCount === 2) {
+    var emptyIdx = -1;
+    for (var i = 0; i < 3; i++) {
+      if (result.values[i] === null) { emptyIdx = i; break; }
+    }
+    if (emptyIdx >= 0) {
+      for (var v = 0; v <= 12; v++) {
+        var testValues = result.values.slice();
+        testValues[emptyIdx] = v;
+        if (isSet(testValues) || isAscendingRun(testValues) || isDescendingRun(testValues)) {
+          result.completionPaths++;
+          result.completionValues.push(v);
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+// Full hand evaluation: aggregate triad analyses
+function aiEvaluateHand(hand) {
+  var AVG_UNREVEALED = 6;  // weighted average card value in the deck
+  var result = {
+    knownScore: 0,
+    estimatedScore: 0,
+    unrevealedCount: 0,
+    kapowPenalty: 0,
+    nearCompleteTriads: 0,
+    triadAnalyses: [],
+    isFullyRevealed: true
+  };
+
+  for (var t = 0; t < hand.triads.length; t++) {
+    var analysis = aiAnalyzeTriad(hand.triads[t]);
+    result.triadAnalyses.push(analysis);
+    if (analysis.isDiscarded) continue;
+
+    result.knownScore += analysis.triadScore;
+    var unrevealed = 3 - analysis.revealedCount;
+    result.unrevealedCount += unrevealed;
+    result.estimatedScore += analysis.triadScore + (unrevealed * AVG_UNREVEALED);
+    if (analysis.isNearComplete) result.nearCompleteTriads++;
+    if (analysis.hasUnfrozenKapow) result.kapowPenalty += 25;
+    if (unrevealed > 0) result.isFullyRevealed = false;
+  }
+
+  return result;
+}
+
+// Estimate opponent's score from visible information
+function aiEstimateOpponentScore(gameState) {
+  var AVG_UNREVEALED = 6;
+  var hand = gameState.players[0].hand;
+  var knownScore = 0;
+  var unrevealedCount = 0;
+
+  for (var t = 0; t < hand.triads.length; t++) {
+    var triad = hand.triads[t];
+    if (triad.isDiscarded) continue;
+    var positions = ['top', 'middle', 'bottom'];
+    for (var p = 0; p < positions.length; p++) {
+      var posCards = triad[positions[p]];
+      if (posCards.length > 0 && posCards[0].isRevealed) {
+        knownScore += getPositionValue(posCards);
+      } else {
+        unrevealedCount++;
+      }
+    }
+  }
+
+  return {
+    knownScore: knownScore,
+    estimatedScore: knownScore + (unrevealedCount * AVG_UNREVEALED),
+    unrevealedCount: unrevealedCount
+  };
+}
+
+// Game context: round, scores, urgency
+function aiGetGameContext(gameState) {
+  var roundNumber = gameState.round;
+  var aiScore = gameState.players[1].totalScore;
+  var humanScore = gameState.players[0].totalScore;
+  return {
+    roundNumber: roundNumber,
+    isLateGame: roundNumber >= 7,
+    isEndGame: roundNumber >= 9,
+    aiCumulativeScore: aiScore,
+    humanCumulativeScore: humanScore,
+    scoreDifferential: humanScore - aiScore,  // positive = AI is winning (lower)
+    urgency: roundNumber >= 9 ? 'high' : (roundNumber >= 7 ? 'medium' : 'low')
+  };
+}
+
+// Count future completion paths for a fully-revealed (3 cards) non-complete triad.
+// For each position, counts how many replacement values (0-12) would complete the triad.
+// Returns { totalPaths, bestPosition (index), bestPositionPaths, pathsByPosition: [n,n,n] }
+function aiCountFutureCompletions(values) {
+  var result = { totalPaths: 0, bestPosition: -1, bestPositionPaths: 0, pathsByPosition: [0, 0, 0] };
+  for (var pos = 0; pos < 3; pos++) {
+    var saved = values[pos];
+    for (var v = 0; v <= 12; v++) {
+      values[pos] = v;
+      if (isSet(values) || isAscendingRun(values) || isDescendingRun(values)) {
+        result.totalPaths++;
+        result.pathsByPosition[pos]++;
+      }
+    }
+    values[pos] = saved; // restore
+    if (result.pathsByPosition[pos] > result.bestPositionPaths) {
+      result.bestPositionPaths = result.pathsByPosition[pos];
+      result.bestPosition = pos;
+    }
+  }
+  return result;
+}
+
+// Score a hypothetical card placement (higher = better)
+// Count how many values (0-12, plus KAPOW/power cards) could complete a triad
+// given two known position values. Considers sets, ascending runs, descending runs.
+function aiCountCompletionPaths(values) {
+  var paths = 0;
+  for (var v = 0; v <= 12; v++) {
+    for (var i = 0; i < 3; i++) {
+      if (values[i] === null) {
+        var test = values.slice();
+        test[i] = v;
+        if (isSet(test) || isAscendingRun(test) || isDescendingRun(test)) {
+          paths++;
+        }
+      }
+    }
+  }
+  return paths;
+}
+
+// Evaluate how well two revealed values in a triad work together toward completion
+// Returns a compatibility score: higher = better synergy
+function aiEvaluateCardSynergy(val1, pos1Idx, val2, pos2Idx) {
+  // Build a test array with nulls for the missing position
+  var testValues = [null, null, null];
+  testValues[pos1Idx] = val1;
+  testValues[pos2Idx] = val2;
+
+  // Count how many values (0-12) in the missing slot complete the triad
+  var paths = 0;
+  var missingIdx = -1;
+  for (var i = 0; i < 3; i++) {
+    if (testValues[i] === null) { missingIdx = i; break; }
+  }
+  if (missingIdx < 0) return 0;
+
+  for (var v = 0; v <= 12; v++) {
+    testValues[missingIdx] = v;
+    if (isSet(testValues) || isAscendingRun(testValues) || isDescendingRun(testValues)) {
+      paths++;
+    }
+  }
+  testValues[missingIdx] = null; // restore
+
+  // Equal values = set potential (1 path: matching value)
+  // Adjacent values = run potential (1-2 paths depending on position)
+  // Close values (diff=2) with gap = run potential via middle card
+  // Far apart = poor synergy
+  return paths;
+}
+
+function aiScorePlacement(hand, card, triadIndex, position) {
+  var triad = hand.triads[triadIndex];
+  if (!triad || triad.isDiscarded) return -999;
+  var posCards = triad[position];
+  var positions = ['top', 'middle', 'bottom'];
+  var posIdx = positions.indexOf(position);
+
+  var score = 0;
+
+  // Value delta: how much does score decrease?
+  var currentValue;
+  var isUnrevealed = false;
+  if (posCards.length > 0 && posCards[0].isRevealed) {
+    currentValue = getPositionValue(posCards);
+  } else if (posCards.length > 0 && !posCards[0].isRevealed) {
+    currentValue = 6; // estimated average for unrevealed
+    isUnrevealed = true;
+  } else {
+    currentValue = 0;
+  }
+
+  var newValue;
+  if (card.type === 'kapow') {
+    newValue = 25; // unfrozen KAPOW penalty
+  } else {
+    newValue = card.faceValue;
+  }
+
+  // Mild score delta — we care more about triad building than raw value swaps
+  score += (currentValue - newValue) * 0.5;
+
+  // KAPOW penalty avoidance: extra bonus for replacing an unfrozen KAPOW
+  if (posCards.length > 0 && posCards[0].isRevealed &&
+      posCards[0].type === 'kapow' && !posCards[0].isFrozen) {
+    score += 20;
+  }
+
+  // BEFORE simulating placement: if replacing a face-down card, check whether
+  // the existing revealed cards in this triad already have good synergy.
+  // If so, only place a card that FITS with them — don't ruin a promising triad.
+  var existingSynergyPenalty = 0;
+  if (isUnrevealed) {
+    // Gather existing revealed values and their positions in this triad
+    var existingRevealed = [];
+    for (var ei = 0; ei < 3; ei++) {
+      if (ei === posIdx) continue;
+      var eCards = triad[positions[ei]];
+      if (eCards.length > 0 && eCards[0].isRevealed) {
+        existingRevealed.push({ value: getPositionValue(eCards), posIdx: ei });
+      }
+    }
+    if (existingRevealed.length === 2) {
+      // Two revealed cards already — check their existing completion paths
+      var existingPaths = aiEvaluateCardSynergy(
+        existingRevealed[0].value, existingRevealed[0].posIdx,
+        existingRevealed[1].value, existingRevealed[1].posIdx
+      );
+      if (existingPaths >= 1) {
+        // This triad already has completion potential with the face-down card.
+        // The face-down card could already be one of the completing values!
+        // Only place here if the new card actually fits (contributes to completion).
+        var newCardFits = false;
+        var testVals = [null, null, null];
+        testVals[existingRevealed[0].posIdx] = existingRevealed[0].value;
+        testVals[existingRevealed[1].posIdx] = existingRevealed[1].value;
+        testVals[posIdx] = newValue;
+        if (isSet(testVals) || isAscendingRun(testVals) || isDescendingRun(testVals)) {
+          // Card completes the triad — great! (will get +100 below)
+          newCardFits = true;
+        } else {
+          // Check if placing this card IMPROVES future paths.
+          // Simply matching existing paths is NOT good enough because:
+          // - The face-down card might already be a completing value
+          // - Placing a high card raises the score for no benefit
+          var futureWithNew = aiCountFutureCompletions(testVals);
+          if (futureWithNew.totalPaths > existingPaths * 2) {
+            newCardFits = true; // significantly improves flexibility
+          } else if (futureWithNew.totalPaths > existingPaths && newValue <= 5) {
+            newCardFits = true; // improves flexibility and card value is low
+          }
+        }
+        if (!newCardFits) {
+          // Placing this card HURTS or doesn't improve a promising triad.
+          // Penalty scales with: existing synergy quality + card value increase.
+          var valuePenalty = Math.max(0, newValue - 6); // penalty for high cards
+          existingSynergyPenalty = -15 - (existingPaths * 5) - (valuePenalty * 2);
+        }
+      }
+    }
+  }
+  score += existingSynergyPenalty;
+
+  // Simulate placement and check triad completion / building
+  var origCards = triad[position];
+  triad[position] = [{ id: card.id, type: card.type, faceValue: card.faceValue,
+    modifiers: card.modifiers, isRevealed: true, isFrozen: false, assignedValue: null }];
+
+  if (isTriadComplete(triad)) {
+    // Completing a triad is extremely valuable
+    score += 100;
+  } else {
+    // Analyze the triad AFTER placement
+    var analysis = aiAnalyzeTriad(triad);
+
+    if (analysis.revealedCount === 3) {
+      // All 3 revealed but not complete — evaluate future flexibility.
+      // How many single-card replacements at any position could complete this triad?
+      var futureVals = analysis.values.slice();
+      var futures = aiCountFutureCompletions(futureVals);
+      if (futures.totalPaths > 0) {
+        // This triad is close to completion — reward based on how many
+        // future replacement paths exist (each path = a card that could finish it)
+        score += 10 + (futures.totalPaths * 3);
+      } else {
+        // 3 revealed cards with zero future paths — very poor combination
+        score -= 20;
+      }
+    } else if (analysis.revealedCount === 2 && analysis.completionPaths > 0) {
+      // Near-complete with good completion paths — very valuable
+      // More paths = more ways to complete = higher score
+      score += 15 + (analysis.completionPaths * 4);
+    } else if (analysis.revealedCount === 2 && analysis.completionPaths === 0) {
+      // Two revealed cards with NO path to completion — BAD placement
+      // Penalize heavily: these cards don't work together
+      score -= 15;
+    }
+
+    // If triad only has 1 revealed card after placement (the one we just placed),
+    // that's fine — it's a seed for future building. Slight bonus for spreading.
+    if (analysis.revealedCount === 1 && isUnrevealed) {
+      // Placing into a fully unrevealed triad = spreading cards out
+      score += 5;
+    }
+
+    // Synergy check: if there's already a revealed card in this triad,
+    // evaluate how well the new card works with it
+    if (analysis.revealedCount === 2) {
+      // Find the other revealed card's value and position
+      for (var i = 0; i < 3; i++) {
+        if (i === posIdx) continue;
+        if (analysis.values[i] !== null) {
+          var synergy = aiEvaluateCardSynergy(newValue, posIdx, analysis.values[i], i);
+          // synergy is the completion path count — weight it heavily
+          score += synergy * 3;
+          break;
+        }
+      }
+    }
+  }
+
+  triad[position] = origCards; // restore
+
+  // Replacing unrevealed cards: slight uncertainty penalty, BUT a bonus for
+  // building into a triad that already has revealed cards. The AI should
+  // aggressively fill face-down slots to create building opportunities rather
+  // than discarding and leaving triads incomplete.
+  if (isUnrevealed) {
+    // Count how many OTHER positions in this triad are already revealed
+    var revealedNeighbors = 0;
+    for (var ri = 0; ri < 3; ri++) {
+      if (ri === posIdx) continue;
+      var rCards = triad[positions[ri]];
+      if (rCards.length > 0 && rCards[0].isRevealed) {
+        revealedNeighbors++;
+      }
+    }
+    if (revealedNeighbors >= 1) {
+      // Building into a triad with existing cards — this creates future
+      // flexibility and should be preferred over discarding.
+      // But only if we didn't already get penalized for hurting synergy.
+      if (existingSynergyPenalty >= 0) {
+        score += 4 + (revealedNeighbors * 3); // +7 with 1 neighbor, +10 with 2
+      }
+    } else {
+      // Placing into a fully unrevealed triad — small uncertainty cost
+      score -= 1;
+    }
+  }
+
+  return score;
+}
+
+// Evaluate how safe a card is to discard (0-100, higher = safer)
+function aiEvaluateDiscardSafety(card, gameState) {
+  var opponentHand = gameState.players[0].hand;
+  var safety = 50; // baseline
+
+  // High-value cards are generally safe to discard (opponent doesn't want them)
+  if (card.type === 'fixed' && card.faceValue >= 10) safety = 80;
+  else if (card.type === 'fixed' && card.faceValue <= 2) safety = 30;
+  else if (card.type === 'fixed') safety = 40 + (card.faceValue * 3);
+
+  // Power cards are moderately safe (opponent might want the modifier)
+  if (card.type === 'power') safety = 45;
+
+  // KAPOW cards are never good to discard (opponent can use them as wild)
+  if (card.type === 'kapow') safety = 15;
+
+  // Check if card would help opponent complete a triad
+  for (var t = 0; t < opponentHand.triads.length; t++) {
+    var triad = opponentHand.triads[t];
+    if (triad.isDiscarded) continue;
+    var analysis = aiAnalyzeTriad(triad);
+    if (analysis.isNearComplete) {
+      // Check if this card's value is one of the completion values
+      var cardVal = card.type === 'fixed' ? card.faceValue : (card.type === 'power' ? card.faceValue : 0);
+      for (var c = 0; c < analysis.completionValues.length; c++) {
+        if (analysis.completionValues[c] === cardVal) {
+          safety -= 25; // very dangerous
+          break;
+        }
+      }
+    }
+  }
+
+  return Math.max(0, Math.min(100, safety));
+}
+
+// Comprehensive draw-from-discard evaluation
+function aiEvaluateDrawFromDiscard(gameState) {
+  var discardTop = gameState.discardPile.length > 0
+    ? gameState.discardPile[gameState.discardPile.length - 1] : null;
+  if (!discardTop) return { shouldDraw: false, reason: 'empty discard pile' };
+
+  var aiHand = gameState.players[1].hand;
+
+  // Check if it completes a triad — always draw
+  if (wouldHelpCompleteTriad(aiHand, discardTop)) {
+    return { shouldDraw: true, reason: 'completes a triad' };
+  }
+
+  // Score the best placement for this specific card
+  var bestPlacementScore = -999;
+  var bestPos = null;
+  for (var t = 0; t < aiHand.triads.length; t++) {
+    var triad = aiHand.triads[t];
+    if (triad.isDiscarded) continue;
+    var positions = ['top', 'middle', 'bottom'];
+    for (var p = 0; p < positions.length; p++) {
+      var ps = aiScorePlacement(aiHand, discardTop, t, positions[p]);
+      if (ps > bestPlacementScore) {
+        bestPlacementScore = ps;
+        bestPos = { triadIndex: t, position: positions[p] };
+      }
+    }
+  }
+
+  // Draw if the best placement gives meaningful improvement (> threshold)
+  if (bestPlacementScore >= 8) {
+    return { shouldDraw: true, reason: 'strong placement available' };
+  }
+
+  // Draw low-value cards that build toward runs/sets
+  if (discardTop.type === 'fixed' && discardTop.faceValue <= 3 && bestPlacementScore >= 3) {
+    return { shouldDraw: true, reason: 'low card improves hand' };
+  }
+
+  return { shouldDraw: false, reason: 'deck offers better odds' };
+}
+
+// Should the AI try to go out this turn?
+function aiShouldGoOut(gameState) {
+  var aiHandEval = aiEvaluateHand(gameState.players[1].hand);
+  return aiShouldGoOutWithScore(gameState, aiHandEval.knownScore);
+}
+
+// Core going-out decision using the actual/simulated AI score after placement.
+// This ensures the AI accounts for the card it's about to place, not just
+// what's currently revealed.
+function aiShouldGoOutWithScore(gameState, aiScore) {
+  var aiHandEval = aiEvaluateHand(gameState.players[1].hand);
+  var opponentEval = aiEstimateOpponentScore(gameState);
+  var context = aiGetGameContext(gameState);
+
+  // Never go out with unfrozen KAPOWs (25 pts each)
+  if (aiHandEval.kapowPenalty > 0) {
+    return { shouldGoOut: false, reason: 'holding KAPOW penalties' };
+  }
+
+  // Always go out if score is 0 or negative
+  if (aiScore <= 0) {
+    return { shouldGoOut: true, reason: 'zero or negative score' };
+  }
+
+  // Estimate opponent's FINAL score. The opponent gets one more turn after
+  // AI goes out, so they may improve. Conservatively estimate they'll reduce
+  // their score slightly (replace an average unrevealed card with a lower one).
+  var opponentFinalEst = opponentEval.estimatedScore;
+  if (opponentEval.unrevealedCount > 0) {
+    // Opponent may reveal face-down cards that are lower than estimated avg of 6
+    // Conservative: assume they improve by ~3 points per unrevealed on last turn
+    // (they get to draw and place optimally, but only 1 turn)
+    opponentFinalEst = Math.max(0, opponentFinalEst - 3);
+  }
+
+  // Would we be doubled? First-out player's score is doubled if it's NOT the lowest.
+  var wouldBeDoubled = aiScore > opponentFinalEst;
+
+  if (wouldBeDoubled) {
+    var doubledScore = aiScore * 2;
+
+    // Check cumulative impact: would doubling put us behind?
+    var cumulativeAfterDoubled = context.aiCumulativeScore + doubledScore;
+    var opponentCumulativeEst = context.humanCumulativeScore + opponentFinalEst;
+
+    // Never go out if doubling puts us more than 10 behind cumulatively
+    if (cumulativeAfterDoubled > opponentCumulativeEst + 10) {
+      return { shouldGoOut: false, reason: 'would be doubled and fall behind' };
+    }
+
+    // Even if cumulative is close, don't go out if round score doubles to a lot
+    if (doubledScore > 30) {
+      return { shouldGoOut: false, reason: 'doubled score too high (' + doubledScore + ')' };
+    }
+  }
+
+  // Safe to go out: AI score is lower than opponent's estimated final score
+  if (aiScore <= opponentFinalEst) {
+    return { shouldGoOut: true, reason: 'score advantage, going out' };
+  }
+
+  // In late/end game, be more aggressive about going out with low scores
+  var threshold = context.isEndGame ? 25 : (context.isLateGame ? 18 : 12);
+  if (aiScore <= threshold && aiScore <= opponentFinalEst + 5) {
+    return { shouldGoOut: true, reason: 'low score, acceptable risk' };
+  }
+
+  // End game desperation — go out if even close
+  if (context.isEndGame && aiScore <= opponentFinalEst + 8) {
+    return { shouldGoOut: true, reason: 'end game urgency' };
+  }
+
+  return { shouldGoOut: false, reason: 'better to keep playing' };
+}
+
+// Evaluate using a drawn Power card as a modifier (not replacement)
+function aiFindModifierOpportunity(hand, drawnCard) {
+  if (drawnCard.type !== 'power') return null;
+
+  var best = null;
+  var bestScore = -999;
+
+  for (var t = 0; t < hand.triads.length; t++) {
+    var triad = hand.triads[t];
+    if (triad.isDiscarded) continue;
+    var positions = ['top', 'middle', 'bottom'];
+    for (var p = 0; p < positions.length; p++) {
+      var posCards = triad[positions[p]];
+      if (posCards.length === 0 || !posCards[0].isRevealed) continue;
+      if (posCards.length > 1) continue; // already has a modifier
+
+      var currentValue = getPositionValue(posCards);
+
+      // Try negative modifier
+      var withNeg = currentValue + drawnCard.modifiers[0];
+      // Try positive modifier
+      var withPos = currentValue + drawnCard.modifiers[1];
+
+      // Pick whichever is lower
+      var bestMod = withNeg < withPos ? withNeg : withPos;
+      var usePositive = withPos <= withNeg;
+      var improvement = currentValue - bestMod;
+
+      // Simulate the powerset and check triad building
+      var origCards = triad[positions[p]];
+      var simCard = { id: drawnCard.id, type: 'power', faceValue: drawnCard.faceValue,
+        modifiers: drawnCard.modifiers, isRevealed: true, isFrozen: false,
+        activeModifier: usePositive ? drawnCard.modifiers[1] : drawnCard.modifiers[0] };
+      triad[positions[p]] = [origCards[0], simCard];
+
+      var analysis = aiAnalyzeTriad(triad);
+      var triadBonus = 0;
+      if (analysis.isNearComplete && analysis.completionPaths > 0) {
+        triadBonus = 10 + (analysis.completionPaths * 2);
+      }
+      if (isTriadComplete(triad)) triadBonus = 80;
+
+      triad[positions[p]] = origCards; // restore
+
+      var totalScore = improvement + triadBonus;
+      if (totalScore > bestScore && totalScore > 0) {
+        bestScore = totalScore;
+        best = { type: 'add-powerset', triadIndex: t, position: positions[p],
+          usePositive: usePositive, score: totalScore };
+      }
+    }
+  }
+
+  return best;
+}
 
 // ========================================
 // UI RENDERING
@@ -1763,7 +2469,11 @@ function aiStepDraw() {
   var drawnDesc = cardDescription(gameState.drawnCard);
   var pileLabel = drewFrom === 'discard' ? 'discard pile' : 'draw pile';
   gameState.aiHighlight = { type: 'draw', pile: drewFrom };
-  gameState.message = 'AI draws ' + drawnDesc + ' from the ' + pileLabel + '.';
+  var drawMsg = 'AI draws ' + drawnDesc + ' from the ' + pileLabel + '.';
+  if (lastDrawReason && drewFrom === 'discard') {
+    drawMsg += ' (' + lastDrawReason + ')';
+  }
+  gameState.message = drawMsg;
   refreshUI();
 
   // Pre-compute the action while showing the draw
@@ -1776,39 +2486,49 @@ function aiStepDraw() {
 
 // Step 3: Place or discard the drawn card
 function aiStepPlace(action, drewFromDiscard, drawnDesc) {
+  var reasonSuffix = lastActionReason ? ' (' + lastActionReason + ')' : '';
+
   if (action.type === 'powerset-on-power') {
     var posLabel = action.position.charAt(0).toUpperCase() + action.position.slice(1);
     var modSign = action.usePositive ? '+' : '';
     var existingPower = gameState.players[1].hand.triads[action.triadIndex][action.position][0];
     var modValue = action.usePositive ? existingPower.modifiers[1] : existingPower.modifiers[0];
-    gameState.message = 'AI creates powerset: ' + drawnDesc + ' with Power ' + existingPower.faceValue + ' (' + modSign + modValue + ') in Triad ' + (action.triadIndex + 1) + '.';
+    gameState.message = 'AI creates powerset: ' + drawnDesc + ' with Power ' + existingPower.faceValue + ' (' + modSign + modValue + ') in Triad ' + (action.triadIndex + 1) + '.' + reasonSuffix;
     handleCreatePowersetOnPower(gameState, action.triadIndex, action.position, action.usePositive);
+    gameState.aiHighlight = { type: 'place', triadIndex: action.triadIndex, position: action.position };
+  } else if (action.type === 'add-powerset') {
+    var posLabel = action.position.charAt(0).toUpperCase() + action.position.slice(1);
+    gameState.message = 'AI uses ' + drawnDesc + ' as modifier in Triad ' + (action.triadIndex + 1) + ' (' + posLabel + ').' + reasonSuffix;
+    handleAddPowerset(gameState, action.triadIndex, action.position, action.usePositive);
     gameState.aiHighlight = { type: 'place', triadIndex: action.triadIndex, position: action.position };
   } else if (action.type === 'replace') {
     var posLabel = action.position.charAt(0).toUpperCase() + action.position.slice(1);
-    gameState.message = 'AI places ' + drawnDesc + ' in Triad ' + (action.triadIndex + 1) + ' (' + posLabel + ').';
+    gameState.message = 'AI places ' + drawnDesc + ' in Triad ' + (action.triadIndex + 1) + ' (' + posLabel + ').' + reasonSuffix;
     handlePlaceCard(gameState, action.triadIndex, action.position);
     gameState.aiHighlight = { type: 'place', triadIndex: action.triadIndex, position: action.position };
   } else if (drewFromDiscard) {
-    // Must place somewhere — find a position
+    // Must place somewhere — find best position using scoring
     var aiHand = gameState.players[1].hand;
-    var placed = false;
-    for (var t = 0; t < aiHand.triads.length && !placed; t++) {
+    var bestT = -1, bestP = '', bestS = -Infinity;
+    for (var t = 0; t < aiHand.triads.length; t++) {
       var triad = aiHand.triads[t];
       if (triad.isDiscarded) continue;
       var positions = ['top', 'middle', 'bottom'];
-      for (var p = 0; p < positions.length && !placed; p++) {
-        var posLabel = positions[p].charAt(0).toUpperCase() + positions[p].slice(1);
-        gameState.message = 'AI places ' + drawnDesc + ' in Triad ' + (t + 1) + ' (' + posLabel + ').';
-        handlePlaceCard(gameState, t, positions[p]);
-        gameState.aiHighlight = { type: 'place', triadIndex: t, position: positions[p] };
-        placed = true;
+      for (var p = 0; p < positions.length; p++) {
+        var ps = aiScorePlacement(aiHand, gameState.drawnCard || { type: 'fixed', faceValue: 6, id: 'temp' }, t, positions[p]);
+        if (ps > bestS) { bestS = ps; bestT = t; bestP = positions[p]; }
       }
+    }
+    if (bestT >= 0) {
+      var posLabel = bestP.charAt(0).toUpperCase() + bestP.slice(1);
+      gameState.message = 'AI places ' + drawnDesc + ' in Triad ' + (bestT + 1) + ' (' + posLabel + ').' + reasonSuffix;
+      handlePlaceCard(gameState, bestT, bestP);
+      gameState.aiHighlight = { type: 'place', triadIndex: bestT, position: bestP };
     }
   } else {
     handleDiscard(gameState);
     gameState.aiHighlight = { type: 'discard' };
-    gameState.message = 'AI discards ' + drawnDesc + '.';
+    gameState.message = 'AI discards ' + drawnDesc + '.' + reasonSuffix;
   }
   refreshUI();
 
@@ -1819,29 +2539,65 @@ function aiStepPlace(action, drewFromDiscard, drawnDesc) {
 // AI KAPOW swap: find beneficial swaps (ones that complete a triad)
 function aiFindBeneficialSwap(hand) {
   var swappable = findSwappableKapowCards(hand);
+  var bestSwap = null;
+  var bestImprovement = 0;
+
   for (var s = 0; s < swappable.length; s++) {
     var kapow = swappable[s];
     var targets = findSwapTargets(hand, kapow.triadIndex, kapow.position);
     for (var t = 0; t < targets.length; t++) {
       var target = targets[t];
-      // Simulate the swap to see if it completes a triad
       var sourceCards = hand.triads[kapow.triadIndex][kapow.position];
       var targetCards = hand.triads[target.triadIndex][target.position];
+
       // Swap temporarily
       hand.triads[kapow.triadIndex][kapow.position] = targetCards;
       hand.triads[target.triadIndex][target.position] = sourceCards;
+
+      // Check triad completion — highest priority
       var completesTriad = isTriadComplete(hand.triads[kapow.triadIndex]) ||
                            isTriadComplete(hand.triads[target.triadIndex]);
+
+      if (completesTriad) {
+        // Swap back and return immediately — triad completion always wins
+        hand.triads[kapow.triadIndex][kapow.position] = sourceCards;
+        hand.triads[target.triadIndex][target.position] = targetCards;
+        return { from: kapow, to: target };
+      }
+
+      // Check score improvement and triad-building potential
+      var scoreBefore = scoreHand(hand); // already swapped state... need to compare
+      // Actually swap back to get before score
+      hand.triads[kapow.triadIndex][kapow.position] = sourceCards;
+      hand.triads[target.triadIndex][target.position] = targetCards;
+      var scoreBeforeSwap = scoreHand(hand);
+
+      // Re-swap to get after score
+      hand.triads[kapow.triadIndex][kapow.position] = targetCards;
+      hand.triads[target.triadIndex][target.position] = sourceCards;
+      var scoreAfterSwap = scoreHand(hand);
+
+      // Also check triad-building: does the swap improve completion paths?
+      var analysisBefore1 = aiAnalyzeTriad(hand.triads[kapow.triadIndex]);
+      var analysisBefore2 = aiAnalyzeTriad(hand.triads[target.triadIndex]);
+
       // Swap back
       hand.triads[kapow.triadIndex][kapow.position] = sourceCards;
       hand.triads[target.triadIndex][target.position] = targetCards;
 
-      if (completesTriad) {
-        return { from: kapow, to: target };
+      var scoreImprovement = scoreBeforeSwap - scoreAfterSwap;
+      var pathImprovement = (analysisBefore1.completionPaths + analysisBefore2.completionPaths);
+
+      // Accept if score improves by ≥5 or completion paths significantly increase
+      var totalImprovement = scoreImprovement + (pathImprovement * 2);
+      if (totalImprovement >= 5 && totalImprovement > bestImprovement) {
+        bestImprovement = totalImprovement;
+        bestSwap = { from: kapow, to: target };
       }
     }
   }
-  return null;
+
+  return bestSwap;
 }
 
 // Step 4: AI checks for KAPOW swaps
@@ -1854,7 +2610,7 @@ function aiStepCheckSwap() {
     swapKapowCard(aiHand, swap.from.triadIndex, swap.from.position, swap.to.triadIndex, swap.to.position);
     var fromLabel = 'Triad ' + (swap.from.triadIndex + 1);
     var toLabel = 'Triad ' + (swap.to.triadIndex + 1) + ' (' + swap.to.position.charAt(0).toUpperCase() + swap.to.position.slice(1) + ')';
-    gameState.message = 'AI swaps KAPOW! from ' + fromLabel + ' to ' + toLabel + '.';
+    gameState.message = 'AI swaps KAPOW! from ' + fromLabel + ' to ' + toLabel + ' (improves position).';
     gameState.aiHighlight = { type: 'place', triadIndex: swap.to.triadIndex, position: swap.to.position };
     checkAndDiscardTriads(gameState, 1);
     refreshUI();
