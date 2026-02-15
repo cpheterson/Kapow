@@ -2612,9 +2612,11 @@ window._onCardClick = function(triadIndex, position) {
 
     // Case 2: Drawn is Power, target is any revealed card — drawn as modifier or replace
     if (drawnIsPower && targetIsRevealed) {
+      var targetIsPowerset = targetPosCards.length > 1;
+      var replaceLabel = targetIsPowerset ? 'Replace Powerset' : 'Replace Card';
       showModal('Power ' + drawnCard.faceValue + ' card — how would you like to play it?', [
         { label: 'Use as Modifier', value: 'modifier', style: 'accent' },
-        { label: 'Replace Card', value: 'replace', style: 'primary' }
+        { label: replaceLabel, value: 'replace', style: 'primary' }
       ]).then(function(choice) {
         if (choice === 'modifier') {
           showModal('Which modifier value?', [
