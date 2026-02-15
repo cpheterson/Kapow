@@ -1560,6 +1560,40 @@ function aiScorePlacement(hand, card, triadIndex, position) {
     newValue = card.faceValue;
   }
 
+  // FINAL TURN: pure score-shedding mode. No triad-building, no synergy, no path analysis.
+  // The only goal is to minimize total hand score. Check for triad completion (removes all
+  // those points) and otherwise just maximize the score reduction at each position.
+  var isFinalTurn = gameState && gameState.phase === 'finalTurns';
+  if (isFinalTurn) {
+    // Check if placement completes a triad
+    var origCardsFT = triad[position];
+    triad[position] = [{ id: card.id, type: card.type, faceValue: card.faceValue,
+      modifiers: card.modifiers, isRevealed: true, isFrozen: false, assignedValue: null }];
+    var completesFT = isTriadComplete(triad);
+    triad[position] = origCardsFT; // restore
+
+    if (completesFT) {
+      // Completing a triad on final turn = removing all those points permanently
+      var triadPointsFT = 0;
+      for (var fti = 0; fti < 3; fti++) {
+        if (fti === posIdx) continue;
+        var ftCards = triad[positions[fti]];
+        if (ftCards.length > 0) triadPointsFT += getPositionValue(ftCards);
+      }
+      triadPointsFT += newValue; // include the card being placed
+      return 200 + triadPointsFT; // huge bonus + scale by points removed
+    }
+
+    // No completion: pure score delta — replace the highest-value card possible
+    var scoreDelta = currentValue - newValue;
+    // Replace KAPOW cards (25 pts) even if new card is high
+    if (posCards.length > 0 && posCards[0].isRevealed &&
+        posCards[0].type === 'kapow' && !posCards[0].isFrozen) {
+      scoreDelta += 200; // critical: shed 25 pts with no more chances
+    }
+    return scoreDelta;
+  }
+
   // Powerset destruction penalty: if replacing a position that has a Power card modifier,
   // the AI loses the modifier's strategic value. Heavily penalize unless the new card
   // completes the triad or the score improvement is dramatic.
@@ -1575,11 +1609,10 @@ function aiScorePlacement(hand, card, triadIndex, position) {
   score += (currentValue - newValue) * scoreDeltaWeight;
 
   // KAPOW penalty avoidance: extra bonus for replacing an unfrozen KAPOW
+  // (Final turn case already handled by early return above)
   if (posCards.length > 0 && posCards[0].isRevealed &&
       posCards[0].type === 'kapow' && !posCards[0].isFrozen) {
-    // On final turns, replacing KAPOW is critical — 25 pts at stake with no more chances
-    var isFinalTurn = gameState && gameState.phase === 'finalTurns';
-    score += isFinalTurn ? 200 : 20;
+    score += 20;
   }
 
   // BEFORE simulating placement: if replacing a face-down card, check whether
