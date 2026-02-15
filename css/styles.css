@@ -820,3 +820,30 @@ body {
     font-size: 28px;
   }
 }
+
+/* ---- Turn Counter ---- */
+#turn-counter {
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--color-accent);
+  text-align: center;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+
+/* ---- Save Log Button ---- */
+.save-log-btn {
+  width: 100%;
+  margin-top: 12px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.save-log-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.25);
+}
