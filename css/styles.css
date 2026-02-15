@@ -360,6 +360,19 @@ body {
   min-width: var(--card-width);
 }
 
+.pos-label {
+  position: absolute;
+  left: -28px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 .powerset-info {
   display: flex;
   justify-content: center;

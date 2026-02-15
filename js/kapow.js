@@ -1132,8 +1132,15 @@ function buildAiExplanation(gameState, drawnCard, drawChoice, action) {
       triad[action.position] = [newCard];
       var analysis = aiAnalyzeTriad(triad);
       triad[action.position] = origCards;
-      if (analysis.revealedCount >= 2 && analysis.completionPaths > 0) {
-        lines.push(' This builds toward completing the triad — there are ' + analysis.completionPaths + ' card value(s) that could finish it.</p>');
+      if (analysis.revealedCount >= 2 && (analysis.completionPaths > 0 || analysis.powerModifierPaths > 0)) {
+        var pathDesc = analysis.completionPaths + ' card value(s) that could finish it';
+        if (analysis.powerModifierPaths > 0) {
+          pathDesc += ', plus ' + analysis.powerModifierPaths + ' additional way(s) via Power card modifiers';
+        }
+        if (analysis.kapowBoost) {
+          pathDesc += '. KAPOW! wild cards could also complete it';
+        }
+        lines.push(' This builds toward completing the triad — there are ' + pathDesc + '.</p>');
       } else if (posCards.length > 0 && !posCards[0].isRevealed) {
         lines.push(' AI replaced a face-down card to reveal information and build this triad.</p>');
       } else if (posCards.length > 0 && posCards[0].isRevealed) {
@@ -1374,8 +1381,9 @@ function aiFindPowersetOpportunity(hand, drawnCard) {
         triadBonus = 80;
       } else {
         var analysis = aiAnalyzeTriad(triad);
-        if (analysis.isNearComplete && analysis.completionPaths > 0) {
-          triadBonus = 10 + (analysis.completionPaths * 2);
+        if (analysis.isNearComplete && (analysis.completionPaths > 0 || analysis.powerModifierPaths > 0)) {
+          triadBonus = 10 + (analysis.completionPaths * 2) + analysis.powerModifierPaths;
+          if (analysis.kapowBoost) triadBonus += 1;
         }
       }
 
@@ -1402,6 +1410,8 @@ function aiAnalyzeTriad(triad) {
     values: [null, null, null],       // null for unrevealed
     completionPaths: 0,               // count of values 0-12 that could complete
     completionValues: [],             // which values would complete
+    powerModifierPaths: 0,            // additional paths from Power card modifiers
+    kapowBoost: false,                // true if KAPOW! could complete (any path exists)
     isNearComplete: false,            // 2 of 3 revealed
     triadScore: 0,                    // sum of revealed position values
     hasUnfrozenKapow: false,
@@ -1442,6 +1452,15 @@ function aiAnalyzeTriad(triad) {
       }
     }
   }
+
+  // Power modifier paths: additional completions from Power card modifiers on revealed cards
+  if (result.revealedCount >= 2) {
+    result.powerModifierPaths = aiCountPowerModifierPaths(result.values, result.completionValues);
+  }
+
+  // KAPOW boost: any triad with at least 1 completion path can also be completed by KAPOW!
+  // (KAPOW can take any value 0-12, so it satisfies any existing path)
+  result.kapowBoost = (result.completionPaths >= 1 || result.powerModifierPaths >= 1);
 
   return result;
 }
@@ -1550,7 +1569,7 @@ function aiAssessOpponentThreat(gameState) {
     var ntTriad = opponentHand.triads[nt];
     if (ntTriad.isDiscarded) continue;
     var ntAnalysis = aiAnalyzeTriad(ntTriad);
-    if (ntAnalysis.revealedCount >= 2 && ntAnalysis.completionPaths > 0) {
+    if (ntAnalysis.revealedCount >= 2 && (ntAnalysis.completionPaths > 0 || ntAnalysis.powerModifierPaths > 0)) {
       nearCompleteTriads++;
     }
   }
@@ -1584,6 +1603,7 @@ function aiAssessOpponentThreat(gameState) {
 // Returns { totalPaths, bestPosition (index), bestPositionPaths, pathsByPosition: [n,n,n] }
 function aiCountFutureCompletions(values) {
   var result = { totalPaths: 0, bestPosition: -1, bestPositionPaths: 0, pathsByPosition: [0, 0, 0] };
+  // Standard: test replacing each position with values 0-12
   for (var pos = 0; pos < 3; pos++) {
     var saved = values[pos];
     for (var v = 0; v <= 12; v++) {
@@ -1599,26 +1619,74 @@ function aiCountFutureCompletions(values) {
       result.bestPosition = pos;
     }
   }
+  // Power modifier bonus: check if Power cards applied to existing cards create completions
+  // without replacing any card (modifier shifts a value to complete the triad as-is)
+  var powerModPaths = aiCountPowerModifierPaths(values, []);
+  // Add at half weight since it requires drawing a Power card AND choosing modifier
+  result.totalPaths += Math.floor(powerModPaths / 2);
   return result;
 }
 
-// Score a hypothetical card placement (higher = better)
-// Count how many values (0-12, plus KAPOW/power cards) could complete a triad
-// given two known position values. Considers sets, ascending runs, descending runs.
-function aiCountCompletionPaths(values) {
-  var paths = 0;
-  for (var v = 0; v <= 12; v++) {
-    for (var i = 0; i < 3; i++) {
-      if (values[i] === null) {
-        var test = values.slice();
-        test[i] = v;
-        if (isSet(test) || isAscendingRun(test) || isDescendingRun(test)) {
-          paths++;
+// Count additional completion opportunities created by Power card modifiers (+1,-1,+2,-2).
+// Power cards don't fill empty slots — they shift an existing revealed card's value, potentially
+// creating new completion paths that fixed-value cards alone can't achieve.
+// Returns count of unique new completion values not already in baseCompletionValues.
+function aiCountPowerModifierPaths(values, baseCompletionValues) {
+  var POWER_MODS = [1, -1, 2, -2];
+  var newPaths = {};
+
+  // Find revealed positions and the empty slot
+  var revealedIdxs = [];
+  var emptyIdx = -1;
+  for (var i = 0; i < 3; i++) {
+    if (values[i] === null) { emptyIdx = i; }
+    else { revealedIdxs.push(i); }
+  }
+
+  if (revealedIdxs.length === 2 && emptyIdx >= 0) {
+    // 2-revealed triad: shift each revealed card's value, recount what fills the empty slot
+    for (var r = 0; r < revealedIdxs.length; r++) {
+      var ri = revealedIdxs[r];
+      var origVal = values[ri];
+      for (var m = 0; m < POWER_MODS.length; m++) {
+        var shifted = origVal + POWER_MODS[m];
+        if (shifted < 0 || shifted > 12) continue; // value out of range
+        var testVals = values.slice();
+        testVals[ri] = shifted;
+        // Check which values in the empty slot now complete the triad
+        for (var v = 0; v <= 12; v++) {
+          testVals[emptyIdx] = v;
+          if (isSet(testVals) || isAscendingRun(testVals) || isDescendingRun(testVals)) {
+            // Only count if this value is NOT already a base completion value
+            if (baseCompletionValues.indexOf(v) === -1) {
+              newPaths[v] = true;
+            }
+          }
+        }
+      }
+    }
+  } else if (revealedIdxs.length === 3) {
+    // 3-revealed triad: shift any card's value and check if the triad now completes
+    for (var ri2 = 0; ri2 < 3; ri2++) {
+      var origVal2 = values[ri2];
+      for (var m2 = 0; m2 < POWER_MODS.length; m2++) {
+        var shifted2 = origVal2 + POWER_MODS[m2];
+        if (shifted2 < 0 || shifted2 > 12) continue;
+        var testVals2 = values.slice();
+        testVals2[ri2] = shifted2;
+        if (isSet(testVals2) || isAscendingRun(testVals2) || isDescendingRun(testVals2)) {
+          // Unique key: which card shifted by which modifier
+          newPaths[ri2 + '_' + POWER_MODS[m2]] = true;
         }
       }
     }
   }
-  return paths;
+
+  var count = 0;
+  for (var key in newPaths) {
+    if (newPaths.hasOwnProperty(key)) count++;
+  }
+  return count;
 }
 
 // Evaluate how well two revealed values in a triad work together toward completion
@@ -1631,6 +1699,7 @@ function aiEvaluateCardSynergy(val1, pos1Idx, val2, pos2Idx) {
 
   // Count how many values (0-12) in the missing slot complete the triad
   var paths = 0;
+  var baseCompletionVals = [];
   var missingIdx = -1;
   for (var i = 0; i < 3; i++) {
     if (testValues[i] === null) { missingIdx = i; break; }
@@ -1641,15 +1710,15 @@ function aiEvaluateCardSynergy(val1, pos1Idx, val2, pos2Idx) {
     testValues[missingIdx] = v;
     if (isSet(testValues) || isAscendingRun(testValues) || isDescendingRun(testValues)) {
       paths++;
+      baseCompletionVals.push(v);
     }
   }
   testValues[missingIdx] = null; // restore
 
-  // Equal values = set potential (1 path: matching value)
-  // Adjacent values = run potential (1-2 paths depending on position)
-  // Close values (diff=2) with gap = run potential via middle card
-  // Far apart = poor synergy
-  return paths;
+  // Add Power modifier paths at half weight: Power cards can shift either revealed card's
+  // value by +/-1 or +/-2, potentially creating new completion values in the missing slot
+  var powerPaths = aiCountPowerModifierPaths(testValues, baseCompletionVals);
+  return paths + Math.floor(powerPaths / 2);
 }
 
 // Analyze what card values the opponent visibly needs.
@@ -1658,6 +1727,8 @@ function aiEvaluateCardSynergy(val1, pos1Idx, val2, pos2Idx) {
 function aiGetOpponentNeeds(gameState) {
   var needs = {};
   var opponentHand = gameState.players[0].hand;
+  var hasAnyCompletionPaths = false;
+
   for (var t = 0; t < opponentHand.triads.length; t++) {
     var triad = opponentHand.triads[t];
     if (triad.isDiscarded) continue;
@@ -1665,10 +1736,21 @@ function aiGetOpponentNeeds(gameState) {
 
     // 2-revealed triads: completion values are strongly needed
     if (analysis.isNearComplete && analysis.completionValues.length > 0) {
+      hasAnyCompletionPaths = true;
       for (var c = 0; c < analysis.completionValues.length; c++) {
         var val = analysis.completionValues[c];
         needs[val] = (needs[val] || 0) + 3; // high urgency
       }
+    }
+
+    // 2-revealed triads: Power modifier completion values (lower urgency)
+    // If a Power card modifier on one of the opponent's revealed cards would shift values
+    // to create new completion opportunities, track those too
+    if (analysis.isNearComplete && analysis.powerModifierPaths > 0) {
+      hasAnyCompletionPaths = true;
+      // Power modifier paths create new completion values — add with lower urgency
+      // We don't need the specific values, just signal that Power cards are useful
+      needs['power'] = (needs['power'] || 0) + analysis.powerModifierPaths;
     }
 
     // 3-revealed non-complete triads: check what replacement values complete them
@@ -1680,11 +1762,32 @@ function aiGetOpponentNeeds(gameState) {
           testVals[p] = v;
           if (isSet(testVals) || isAscendingRun(testVals) || isDescendingRun(testVals)) {
             needs[v] = (needs[v] || 0) + 2; // moderate urgency
+            hasAnyCompletionPaths = true;
           }
         }
       }
+
+      // Power modifiers on 3-revealed triads: could complete without replacement
+      var powerMod3 = aiCountPowerModifierPaths(analysis.values, []);
+      if (powerMod3 > 0) {
+        hasAnyCompletionPaths = true;
+        needs['power'] = (needs['power'] || 0) + powerMod3;
+      }
     }
   }
+
+  // KAPOW universality: if opponent has ANY completion paths, a KAPOW card satisfies them all.
+  // Track as special urgency — a KAPOW on the discard pile is universally dangerous.
+  if (hasAnyCompletionPaths) {
+    var totalUrgency = 0;
+    for (var key in needs) {
+      if (needs.hasOwnProperty(key) && key !== 'kapow' && key !== 'power') {
+        totalUrgency += needs[key];
+      }
+    }
+    needs['kapow'] = Math.min(totalUrgency, 8); // capped at 8
+  }
+
   return needs;
 }
 
@@ -1925,9 +2028,12 @@ function aiScorePlacement(hand, card, triadIndex, position) {
       if (futures.totalPaths > 0) {
         // This triad is close to completion — reward based on how many
         // future replacement paths exist (each path = a card that could finish it)
+        // totalPaths now includes Power modifier bonus from aiCountFutureCompletions
         score += 10 + (futures.totalPaths * 3);
+        // KAPOW boost: even 1 path means KAPOW! (6 in deck) could complete it
+        score += 2;
       } else {
-        // 3 revealed cards with zero future paths — very poor combination
+        // 3 revealed cards with zero future paths (even with Power modifiers) — very poor combination
         score -= 20;
       }
 
@@ -1951,12 +2057,15 @@ function aiScorePlacement(hand, card, triadIndex, position) {
           : (5 + (valueIncrease3 * 3));   // path regression: moderate penalty
         score -= Math.round(basePenalty3 * threatMultiplier);
       }
-    } else if (analysis.revealedCount === 2 && analysis.completionPaths > 0) {
-      // Near-complete with good completion paths — very valuable
+    } else if (analysis.revealedCount === 2 && (analysis.completionPaths > 0 || analysis.powerModifierPaths > 0)) {
+      // Near-complete with completion paths — very valuable
       // More paths = more ways to complete = higher score
-      score += 15 + (analysis.completionPaths * 4);
+      // Power modifier paths at half weight (require drawing Power + choosing modifier)
+      score += 15 + (analysis.completionPaths * 4) + (analysis.powerModifierPaths * 2);
+      // KAPOW boost: any triad with paths can also be completed by wild cards (6 in deck)
+      if (analysis.kapowBoost) score += 2;
     } else if (analysis.revealedCount === 2 && analysis.completionPaths === 0) {
-      // Two revealed cards with NO path to completion — BAD placement
+      // Two revealed cards with NO path to completion (not even via Power modifiers) — BAD placement
       // Penalize heavily: these cards don't work together
       score -= 15;
     }
@@ -2042,6 +2151,10 @@ function aiScorePlacement(hand, card, triadIndex, position) {
       // KAPOW! at top is always dangerous — opponent can use it as any value 0-12
       isNeededByOpp = true;
       topNeedUrgency = 6; // high urgency — universal wild card
+    } else if (card.type === 'power' && oppNeeds['power'] && oppNeeds['power'] >= 1) {
+      // Power card at top is dangerous if opponent could use it as a modifier to enable completions
+      isNeededByOpp = true;
+      topNeedUrgency = Math.min(oppNeeds['power'], 4); // moderate urgency, capped at 4
     } else if (card.type === 'fixed' && oppNeeds[card.faceValue] && oppNeeds[card.faceValue] >= 2) {
       isNeededByOpp = true;
       topNeedUrgency = oppNeeds[card.faceValue];
@@ -2069,6 +2182,9 @@ function aiScorePlacement(hand, card, triadIndex, position) {
     if (card.type === 'kapow') {
       // Burying a KAPOW! card is always good defense — keeps wild card away from opponent
       score += 5;
+    } else if (card.type === 'power' && oppNeeds2['power'] && oppNeeds2['power'] >= 1) {
+      // Burying a Power card that opponent could use as modifier
+      score += 3;
     } else if (card.type === 'fixed' && oppNeeds2[card.faceValue] && oppNeeds2[card.faceValue] >= 2) {
       score += 3; // small bonus for defensive burial
     }
@@ -2086,7 +2202,7 @@ function aiScorePlacement(hand, card, triadIndex, position) {
       var oppAnalysis = aiAnalyzeTriad(oppTriad);
       // Opponent triad needs just 1 card to complete (2 revealed with paths, or 3 revealed with future paths)
       var isAboutToComplete = false;
-      if (oppAnalysis.isNearComplete && oppAnalysis.completionPaths > 0) {
+      if (oppAnalysis.isNearComplete && (oppAnalysis.completionPaths > 0 || oppAnalysis.powerModifierPaths > 0)) {
         isAboutToComplete = true;
       }
       if (oppAnalysis.revealedCount === 3 && !isTriadComplete(oppTriad)) {
@@ -2129,17 +2245,24 @@ function aiEvaluateDiscardSafety(card, gameState) {
   else if (card.type === 'fixed' && card.faceValue <= 2) safety = 30;
   else if (card.type === 'fixed') safety = 40 + (card.faceValue * 3);
 
-  // Power cards are moderately safe (opponent might want the modifier)
+  // Power cards: moderately safe baseline, but check if opponent could use as modifier
   if (card.type === 'power') safety = 45;
 
   // KAPOW cards are never good to discard (opponent can use them as wild)
   if (card.type === 'kapow') safety = 15;
+
+  var opponentHasCompletionPaths = false;
 
   // Check if card would help opponent complete a triad
   for (var t = 0; t < opponentHand.triads.length; t++) {
     var triad = opponentHand.triads[t];
     if (triad.isDiscarded) continue;
     var analysis = aiAnalyzeTriad(triad);
+
+    // Track if opponent has any completion opportunities (for KAPOW danger)
+    if (analysis.completionPaths > 0 || analysis.powerModifierPaths > 0) {
+      opponentHasCompletionPaths = true;
+    }
 
     // Check 2-revealed triads: does this card fill the missing slot?
     if (analysis.isNearComplete) {
@@ -2150,10 +2273,16 @@ function aiEvaluateDiscardSafety(card, gameState) {
           break;
         }
       }
+
+      // Power card as modifier: could it shift opponent's revealed values into a completion?
+      if (card.type === 'power' && analysis.powerModifierPaths > 0) {
+        // Opponent could use this Power card's modifiers on their existing cards
+        // to create new completion opportunities. Penalize based on how many paths.
+        safety -= Math.min(15, analysis.powerModifierPaths * 5);
+      }
     }
 
     // Check 3-revealed non-complete triads: does this card complete via replacement?
-    // Opponent could draw this card and swap it into any position to complete.
     if (analysis.revealedCount === 3 && !isTriadComplete(triad)) {
       var cardVal2 = card.type === 'fixed' ? card.faceValue : (card.type === 'power' ? card.faceValue : 0);
       var positions3 = ['top', 'middle', 'bottom'];
@@ -2165,7 +2294,20 @@ function aiEvaluateDiscardSafety(card, gameState) {
           break;
         }
       }
+
+      // Power modifier on 3-revealed: could shift values into completion without replacement
+      if (card.type === 'power') {
+        var powerMod3 = aiCountPowerModifierPaths(analysis.values, []);
+        if (powerMod3 > 0) {
+          safety -= Math.min(15, powerMod3 * 5);
+        }
+      }
     }
+  }
+
+  // Extra KAPOW penalty: if opponent has ANY near-complete triads, KAPOW is extremely dangerous
+  if (card.type === 'kapow' && opponentHasCompletionPaths) {
+    safety -= 5; // stacks with base safety=15, resulting in safety=10
   }
 
   return Math.max(0, Math.min(100, safety));
@@ -2325,8 +2467,9 @@ function aiFindModifierOpportunity(hand, drawnCard) {
 
       var analysis = aiAnalyzeTriad(triad);
       var triadBonus = 0;
-      if (analysis.isNearComplete && analysis.completionPaths > 0) {
-        triadBonus = 10 + (analysis.completionPaths * 2);
+      if (analysis.isNearComplete && (analysis.completionPaths > 0 || analysis.powerModifierPaths > 0)) {
+        triadBonus = 10 + (analysis.completionPaths * 2) + analysis.powerModifierPaths;
+        if (analysis.kapowBoost) triadBonus += 1;
       }
       if (isTriadComplete(triad)) triadBonus = 80;
 
@@ -2417,11 +2560,13 @@ function renderHand(hand, containerId, isOpponent, clickablePositions, onClickAt
 
     // Skip discarded triads - they are visibly removed from the hand
     if (triad.isDiscarded) {
+      var discardedPositions = isOpponent ? ['bottom', 'middle', 'top'] : ['top', 'middle', 'bottom'];
+      var discardLabels = { top: 'Top', middle: 'Mid', bottom: 'Bot' };
       html += '<div class="triad-column discarded-triad">';
       html += '<div class="triad-label">Triad ' + (t + 1) + '</div>';
-      html += '<div class="position-slot empty-slot"></div>';
-      html += '<div class="position-slot empty-slot"></div>';
-      html += '<div class="position-slot empty-slot"></div>';
+      for (var dp = 0; dp < discardedPositions.length; dp++) {
+        html += '<div class="position-slot empty-slot"><span class="pos-label">' + discardLabels[discardedPositions[dp]] + '</span></div>';
+      }
       html += '</div>';
       continue;
     }
@@ -2429,7 +2574,11 @@ function renderHand(hand, containerId, isOpponent, clickablePositions, onClickAt
     html += '<div class="triad-column">';
     html += '<div class="triad-label">Triad ' + (t + 1) + '</div>';
 
-    var positions = ['top', 'middle', 'bottom'];
+    // For the AI hand (opponent), reverse render order so "top" position (closest to
+    // center of table) appears at the bottom of the column, nearest the center strip.
+    // Both players see "top" = closest to center, matching physical card game layout.
+    var positions = isOpponent ? ['bottom', 'middle', 'top'] : ['top', 'middle', 'bottom'];
+    var posLabels = { top: 'Top', middle: 'Mid', bottom: 'Bot' };
     for (var p = 0; p < positions.length; p++) {
       var pos = positions[p];
 
@@ -2441,6 +2590,7 @@ function renderHand(hand, containerId, isOpponent, clickablePositions, onClickAt
         else if (highlight.type === 'kapow-selected') hlClass = ' kapow-selected-highlight';
       }
       html += '<div class="position-slot' + hlClass + '">';
+      html += '<span class="pos-label">' + posLabels[pos] + '</span>';
 
       if (triad[pos].length > 0) {
         var isClickable = false;
@@ -3125,6 +3275,20 @@ function playAITurn() {
   var phase = gameState.phase;
   if (phase !== 'playing' && phase !== 'finalTurns') return;
 
+  // Safety: if all AI triads are already discarded, skip the turn entirely
+  var aiHand = gameState.players[1].hand;
+  var hasActiveTriad = false;
+  for (var ct = 0; ct < aiHand.triads.length; ct++) {
+    if (!aiHand.triads[ct].isDiscarded) { hasActiveTriad = true; break; }
+  }
+  if (!hasActiveTriad) {
+    logAction(gameState, 1, 'All triads already discarded — skipping turn.');
+    endTurn(gameState);
+    aiTurnInProgress = false;
+    refreshUI();
+    return;
+  }
+
   // Step 1: Announce AI's turn
   gameState.aiHighlight = null;
   aiMoveExplanation = ''; // clear previous explanation
@@ -3328,7 +3492,9 @@ function aiFindBeneficialSwap(hand) {
       hand.triads[target.triadIndex][target.position] = targetCards;
 
       var scoreImprovement = scoreBeforeSwap - scoreAfterSwap;
-      var pathImprovement = (analysisBefore1.completionPaths + analysisBefore2.completionPaths);
+      // Include both direct completion paths and Power modifier paths (at half weight)
+      var pathImprovement = (analysisBefore1.completionPaths + analysisBefore2.completionPaths)
+        + Math.floor((analysisBefore1.powerModifierPaths + analysisBefore2.powerModifierPaths) / 2);
 
       // Defensive positioning bonus: if KAPOW! is currently at top position,
       // swapping it to middle or bottom buries it in the discard pile.
