@@ -1843,12 +1843,28 @@ function aiEvaluateDiscardSafety(card, gameState) {
     var triad = opponentHand.triads[t];
     if (triad.isDiscarded) continue;
     var analysis = aiAnalyzeTriad(triad);
+
+    // Check 2-revealed triads: does this card fill the missing slot?
     if (analysis.isNearComplete) {
-      // Check if this card's value is one of the completion values
       var cardVal = card.type === 'fixed' ? card.faceValue : (card.type === 'power' ? card.faceValue : 0);
       for (var c = 0; c < analysis.completionValues.length; c++) {
         if (analysis.completionValues[c] === cardVal) {
           safety -= 25; // very dangerous
+          break;
+        }
+      }
+    }
+
+    // Check 3-revealed non-complete triads: does this card complete via replacement?
+    // Opponent could draw this card and swap it into any position to complete.
+    if (analysis.revealedCount === 3 && !isTriadComplete(triad)) {
+      var cardVal2 = card.type === 'fixed' ? card.faceValue : (card.type === 'power' ? card.faceValue : 0);
+      var positions3 = ['top', 'middle', 'bottom'];
+      for (var p = 0; p < 3; p++) {
+        var testVals = analysis.values.slice();
+        testVals[p] = cardVal2;
+        if (isSet(testVals) || isAscendingRun(testVals) || isDescendingRun(testVals)) {
+          safety -= 25; // dangerous: opponent can replace one card to complete
           break;
         }
       }
