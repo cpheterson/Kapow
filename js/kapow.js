@@ -2501,6 +2501,7 @@ function showModal(title, buttons) {
 // Global click handler for cards
 window._onCardClick = function(triadIndex, position) {
   if (!gameState.players[gameState.currentPlayer].isHuman) return;
+  gameState.aiHighlight = null;  // Clear AI placement highlight on player action
 
   var needsReveal = gameState.needsFirstReveal && gameState.needsFirstReveal[gameState.currentPlayer];
 
@@ -2666,6 +2667,7 @@ function onDrawFromDeck() {
   if (gameState.awaitingKapowSwap) return;  // Can't draw during swap phase
   var needsReveal = gameState.needsFirstReveal && gameState.needsFirstReveal[gameState.currentPlayer];
   if (needsReveal) return;
+  gameState.aiHighlight = null;  // Clear AI placement highlight on player action
   handleDrawFromDeck(gameState);
   refreshUI();
 }
@@ -2675,6 +2677,7 @@ function onDrawFromDiscard() {
   if (gameState.awaitingKapowSwap) return;  // Can't draw during swap phase
   var needsReveal = gameState.needsFirstReveal && gameState.needsFirstReveal[gameState.currentPlayer];
   if (needsReveal) return;
+  gameState.aiHighlight = null;  // Clear AI placement highlight on player action
 
   // If holding a drawn card from the DECK, clicking discard pile discards it
   if (gameState.drawnCard && !gameState.drawnFromDiscard) {
@@ -3031,7 +3034,7 @@ function aiStepCheckSwap() {
     setTimeout(function() { aiStepCheckSwap(); }, AI_DELAY);
   } else {
     // No beneficial swaps — end AI turn
-    gameState.aiHighlight = null;
+    // Keep aiHighlight visible so player can see where AI placed; cleared on player's first action
     endTurn(gameState);
     aiTurnInProgress = false;
     refreshUI();
