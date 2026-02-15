@@ -1621,6 +1621,13 @@ function aiScorePlacement(hand, card, triadIndex, position) {
   var scoreDeltaWeight = 0.5 + (opponentThreat * 1.5);  // ranges from 0.5 (safe) to 2.0 (urgent)
   score += (currentValue - newValue) * scoreDeltaWeight;
 
+  // Zero-delta penalty: replacing a revealed card with the same value is pointless —
+  // wastes a turn with no score improvement. Heavily penalize so the AI prefers
+  // placing in a face-down slot or discarding instead.
+  if (!isUnrevealed && currentValue === newValue) {
+    score -= 20;
+  }
+
   // KAPOW penalty avoidance: extra bonus for replacing an unfrozen KAPOW
   // (Final turn case already handled by early return above)
   if (posCards.length > 0 && posCards[0].isRevealed &&
