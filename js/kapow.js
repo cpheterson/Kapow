@@ -1637,15 +1637,33 @@ function aiScorePlacement(hand, card, triadIndex, position) {
   }
   score += existingSynergyPenalty;
 
-  // Before simulating placement, capture current future paths if triad is already 3-revealed.
+  // Before simulating placement, capture current completion paths.
   // This lets us detect when replacing a revealed card REDUCES completion potential.
   var pathsBefore = 0;
+  var synergyBefore = 0;
   if (!isUnrevealed) {
     var beforeAnalysis = aiAnalyzeTriad(triad);
     if (beforeAnalysis.revealedCount === 3 && !isTriadComplete(triad)) {
       var beforeVals = beforeAnalysis.values.slice();
       var beforeFutures = aiCountFutureCompletions(beforeVals);
       pathsBefore = beforeFutures.totalPaths;
+    }
+    // Also capture synergy between the 2 revealed cards when replacing one in a 2-revealed triad.
+    // This prevents the AI from breaking a good pair (e.g., [8,8] for a set) with a worse card.
+    if (beforeAnalysis.revealedCount === 2) {
+      var revealedPair = [];
+      for (var ri = 0; ri < 3; ri++) {
+        var rCards = triad[positions[ri]];
+        if (rCards.length > 0 && rCards[0].isRevealed) {
+          revealedPair.push({ value: getPositionValue(rCards), posIdx: ri });
+        }
+      }
+      if (revealedPair.length === 2) {
+        synergyBefore = aiEvaluateCardSynergy(
+          revealedPair[0].value, revealedPair[0].posIdx,
+          revealedPair[1].value, revealedPair[1].posIdx
+        );
+      }
     }
   }
 
@@ -1702,14 +1720,26 @@ function aiScorePlacement(hand, card, triadIndex, position) {
     // evaluate how well the new card works with it
     if (analysis.revealedCount === 2) {
       // Find the other revealed card's value and position
+      var synergyAfter = 0;
       for (var i = 0; i < 3; i++) {
         if (i === posIdx) continue;
         if (analysis.values[i] !== null) {
-          var synergy = aiEvaluateCardSynergy(newValue, posIdx, analysis.values[i], i);
+          synergyAfter = aiEvaluateCardSynergy(newValue, posIdx, analysis.values[i], i);
           // synergy is the completion path count — weight it heavily
-          score += synergy * 3;
+          score += synergyAfter * 3;
           break;
         }
+      }
+
+      // Synergy-loss penalty: if replacing a revealed card in a 2-revealed triad
+      // and the new card doesn't improve completion paths, penalize — especially
+      // if point value increases. Prevents breaking good pairs (e.g., [8,8] set
+      // potential) for a lateral or worse move like [9,8].
+      if (synergyBefore > 0 && !isUnrevealed && synergyAfter <= synergyBefore) {
+        var synergyLoss = synergyBefore - synergyAfter;
+        var valueIncrease = Math.max(0, newValue - currentValue);
+        // Penalty: base for breaking synergy + scaled by how much worse it got + value increase
+        score -= 10 + (synergyLoss * 6) + (valueIncrease * 3);
       }
     }
   }
