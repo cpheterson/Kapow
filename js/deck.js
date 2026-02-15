@@ -27,26 +27,10 @@ function createCard(type, faceValue, modifiers = null) {
  *  - Fixed value 1:  4 copies
  *  - Fixed value 2:  4 copies
  *  - Fixed values 3-12: 8 copies each (80 cards)
- *  - Power card (face 1, mods +/-1): 4 copies
- *  - Power card (face 2, mods +/-2): 4 copies
+ *  - Power card (face 1, mods +/-1): 8 copies
+ *  - Power card (face 2, mods +/-2): 8 copies
  *  - KAPOW! wild cards: 6 copies
- *  Total: 8 + 4 + 4 + 80 + 4 + 4 + 6 = 110... wait
- *
- * Per scope doc: 88 fixed (8 each of 0, 3-12) + 8 fixed (4 each of 1, 2)
- *   = 8*11 + 4*2 = 88 + 8 = 96 fixed
- * + 8 power (4 each of power-1, power-2)
- * + 6 KAPOW!
- * = 96 + 8 + 6 = 110
- *
- * But scope says 118 total. Let's recount from the scope:
- *   88 fixed: 8 each of 0, 3-12 → that's 11 values × 8 = 88 ✓
- *   8 fixed: 4 each of 1, 2 → 4+4 = 8 ✓
- *   8 power: face value 1 with +/-1 (4 copies) + face value 2 with +/-2 (4 copies) = 8 ✓
- *   6 KAPOW! = 6 ✓
- *   Total = 88 + 8 + 8 + 6 = 110
- *
- * The scope document states 118 but the breakdown sums to 110.
- * We'll follow the explicit breakdown (110 cards) since the itemized list is more specific.
+ *  Total: 8 + 4 + 4 + 80 + 8 + 8 + 6 = 118
  */
 export function createDeck() {
   nextCardId = 0;
@@ -74,13 +58,13 @@ export function createDeck() {
     }
   }
 
-  // Power cards: face value 1, modifiers -1/+1 (×4)
-  for (let i = 0; i < 4; i++) {
+  // Power cards: face value 1, modifiers -1/+1 (×8)
+  for (let i = 0; i < 8; i++) {
     cards.push(createCard('power', 1, [-1, 1]));
   }
 
-  // Power cards: face value 2, modifiers -2/+2 (×4)
-  for (let i = 0; i < 4; i++) {
+  // Power cards: face value 2, modifiers -2/+2 (×8)
+  for (let i = 0; i < 8; i++) {
     cards.push(createCard('power', 2, [-2, 2]));
   }
 
