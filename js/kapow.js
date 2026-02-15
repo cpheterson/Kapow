@@ -1765,6 +1765,14 @@ function aiScorePlacement(hand, card, triadIndex, position) {
         var pathLoss = pathsBefore - futures.totalPaths;
         score -= pathLoss * 8;
       }
+
+      // If replacing a revealed card with equal or fewer paths AND going UP in
+      // points, penalize. No reason to increase triad score without gaining paths.
+      // E.g., [2,1,4] → [2,4,4]: same 3 paths but +3 points = bad trade.
+      if (!isUnrevealed && pathsBefore > 0 && futures.totalPaths <= pathsBefore && newValue > currentValue) {
+        var valueIncrease3 = newValue - currentValue;
+        score -= 5 + (valueIncrease3 * 3);
+      }
     } else if (analysis.revealedCount === 2 && analysis.completionPaths > 0) {
       // Near-complete with good completion paths — very valuable
       // More paths = more ways to complete = higher score
