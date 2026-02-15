@@ -1943,15 +1943,29 @@ function aiScorePlacement(hand, card, triadIndex, position) {
       }
     }
     if (existingRevealed.length === 1) {
-      // One revealed card already — check if the new card has any synergy with it.
-      // Without this check, the AI blindly places cards next to incompatible neighbors
-      // (e.g., 7 next to 4 — no set or run possible) and still gets the neighbor bonus.
-      var synWith1 = aiEvaluateCardSynergy(
-        newValue, posIdx,
-        existingRevealed[0].value, existingRevealed[0].posIdx
-      );
-      if (synWith1 === 0) {
-        // Zero completion paths — this card doesn't work with the existing one.
+      // One revealed card already — check if the new card has any DIRECT synergy with it.
+      // Only count standard completion paths (values 0-12 that form a set or run).
+      // Power modifier paths are NOT sufficient — they require drawing a specific Power card
+      // AND choosing the correct modifier, making them too speculative to justify pairing
+      // incompatible cards (e.g., 5 next to 3 has Power modifier paths but zero direct paths).
+      var synTestVals = [null, null, null];
+      synTestVals[posIdx] = newValue;
+      synTestVals[existingRevealed[0].posIdx] = existingRevealed[0].value;
+      var synMissingIdx = -1;
+      for (var si = 0; si < 3; si++) {
+        if (synTestVals[si] === null) { synMissingIdx = si; break; }
+      }
+      var directPaths = 0;
+      if (synMissingIdx >= 0) {
+        for (var sv = 0; sv <= 12; sv++) {
+          synTestVals[synMissingIdx] = sv;
+          if (isSet(synTestVals) || isAscendingRun(synTestVals) || isDescendingRun(synTestVals)) {
+            directPaths++;
+          }
+        }
+      }
+      if (directPaths === 0) {
+        // Zero direct completion paths — this card doesn't work with the existing one.
         // Penalty scales with card value (placing a high misfit card is worse).
         var valuePenalty1 = Math.max(0, newValue - 5);
         existingSynergyPenalty = -8 - (valuePenalty1 * 2);
