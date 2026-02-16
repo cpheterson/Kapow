@@ -6,6 +6,147 @@
 'use strict';
 
 // ========================================
+// AI BANTER SYSTEM
+// ========================================
+
+var AI_BANTER = {
+  discard_helps_ai: [
+    'Thanks, I needed that!',
+    'Thanks for the card. Keep them coming!',
+    'I owe you one\u2026 Just kidding!',
+    'Much appreciated!',
+    'Watch what you discard!',
+    'Did you really mean to give me that?',
+    '\ud83d\ude0f\ud83d\ude0f\ud83d\ude0f',
+    'I appreciate the charity work.',
+    "You didn't have to do that, but I'm glad you did.",
+    'Are you trying to make this too easy for me?',
+    'Thanks for the assist!',
+    "Well, that's one way to play it\u2026",
+    "I didn't need that much help, but I'll take it.",
+    'Are you playing for me, or against me?',
+    "I'm planning to win anyway, but thanks for speeding it up.",
+    'If you keep this up, I might actually have to start trying.',
+    'Are you sure you read the rules?'
+  ],
+  ai_completes_triad: [
+    'One down!',
+    "That's how it's done.",
+    'Boom! Triad complete.',
+    "Triads don't complete themselves\u2026 oh wait, mine do.",
+    'Another one bites the dust.',
+    'Piece by piece, I build my empire.',
+    "That's called strategy.",
+    'Check that off the list.',
+    'Like clockwork.',
+    "And that's how the pros do it."
+  ],
+  ai_goes_out: [
+    "And that's a wrap!",
+    'Game, set, match\u2026 well, round.',
+    'Read it and weep!',
+    "I'm out! Your turn to sweat.",
+    'All done here. No pressure.',
+    "Hope you've got a good last move in you.",
+    'Dropping the mic.',
+    "That's all, folks!",
+    'Out! Good luck on your final turn.'
+  ],
+  player_goes_out: [
+    "Not bad\u2026 Let's see if it pays off.",
+    'Bold move. I respect it.',
+    'I hope you did the math on that one.',
+    'Going out already? Brave.',
+    "Interesting choice. Let's see how this plays out.",
+    "You sure about that? No take-backs!",
+    "Okay, my turn to clean up.",
+    "Confident! I like it."
+  ],
+  ai_wins_round: [
+    'Better luck next round!',
+    "I'll try to go easy on you\u2026 nah.",
+    'My round! Want some tips?',
+    "That's how you close out a round.",
+    'Another round in the books.',
+    "Don't worry, there are more rounds to go.",
+    "I'd say sorry, but I'm not."
+  ],
+  player_wins_round: [
+    'Enjoy it while it lasts.',
+    "Lucky round. Won't happen again.",
+    "Okay, you got me. This time.",
+    "Not bad! But I'm just warming up.",
+    "Well played\u2026 this round.",
+    "I let you have that one.",
+    "Savor it. It won't last."
+  ],
+  player_doubled: [
+    "Ouch! That's gotta sting.",
+    "The doubling rule is brutal, isn't it?",
+    'Double trouble!',
+    "That's a costly way to go out.",
+    'Going out first is a gamble, and you lost it.',
+    "Doubled! That'll leave a mark.",
+    "Maybe next time, check the scoreboard first?"
+  ],
+  ai_doubled: [
+    "Well\u2026 that didn't go as planned.",
+    'I meant to do that. Character building.',
+    "Okay, I deserved that one.",
+    "We don't talk about this round.",
+    "Let's pretend that didn't happen.",
+    "Even geniuses have off days.",
+    "That was\u2026 a learning experience."
+  ],
+  ai_grabs_kapow: [
+    "Don't mind if I do!",
+    'A wild card? Yes please!',
+    'KAPOW! Mine now.',
+    "I'll take that KAPOW, thank you very much.",
+    'You left a KAPOW on the discard pile?!',
+    "Christmas came early!",
+    'A KAPOW! This changes everything.'
+  ],
+  ai_takes_discard: [
+    "I'll take that off your hands.",
+    "One person's trash\u2026",
+    'Thanks, this is exactly what I needed.',
+    "Didn't need that, did you?",
+    "I see you don't want this. I do.",
+    'Your loss, my gain.'
+  ],
+  ai_wins_game: [
+    'GG! Better luck next time!',
+    'I was programmed to win. No hard feelings!',
+    'Victory! Want to go again?',
+    "That was fun! Well, for me anyway.",
+    'Another win for the AI. Humanity: 0.',
+    "Great game! You made me work for it.",
+    "I'd say it was close, but\u2026 was it?"
+  ],
+  player_wins_game: [
+    'Well played! You earned that one.',
+    "Rematch? I promise I'll try harder.",
+    "Congratulations! Don't let it go to your head.",
+    "You win this time. I'll remember this.",
+    "Impressive! Truly. I'm not even mad.",
+    "Okay, you're actually good at this.",
+    "Winner winner! Respect."
+  ]
+};
+
+function generateAIBanter(state, scenario) {
+  var pool = AI_BANTER[scenario];
+  if (!pool || pool.length === 0) return;
+  var msg = pool[Math.floor(Math.random() * pool.length)];
+  state.aiCommentary = msg;
+}
+
+function clearAIBanter(state) {
+  if (state) state.aiCommentary = '';
+}
+
+// ========================================
 // DECK SYSTEM
 // ========================================
 
@@ -416,7 +557,8 @@ function createGameState(playerNames) {
     awaitingKapowSwap: false,  // true after place/discard when swappable KAPOWs exist
     selectedKapow: null,  // { triadIndex, position } of selected KAPOW card during swap
     turnNumber: 0,
-    actionLog: []
+    actionLog: [],
+    aiCommentary: ''
   };
 }
 
@@ -753,6 +895,20 @@ function endRound(state) {
   }
   logHandState(state, 0);
   logHandState(state, 1);
+
+  // AI Banter: react to round results
+  // Check for doubling first (more dramatic), then round winner
+  var playerDoubled = (rawScoresForLog[0] !== roundScores[0] && roundScores[0] > rawScoresForLog[0]);
+  var aiDoubled = (rawScoresForLog[1] !== roundScores[1] && roundScores[1] > rawScoresForLog[1]);
+  if (playerDoubled) {
+    generateAIBanter(state, 'player_doubled');
+  } else if (aiDoubled) {
+    generateAIBanter(state, 'ai_doubled');
+  } else if (roundScores[1] < roundScores[0]) {
+    generateAIBanter(state, 'ai_wins_round');
+  } else if (roundScores[0] < roundScores[1]) {
+    generateAIBanter(state, 'player_wins_round');
+  }
 }
 
 function isHandFullyRevealed(hand) {
@@ -789,6 +945,12 @@ function endTurn(state) {
     logAction(state, state.currentPlayer, 'GOES OUT! All cards revealed.');
     logHandState(state, state.currentPlayer);
     state.message = currentPlayer.name + ' goes out! Others get one final turn.';
+    // AI Banter: react to going out
+    if (state.currentPlayer === 1) {
+      generateAIBanter(state, 'ai_goes_out');
+    } else {
+      generateAIBanter(state, 'player_goes_out');
+    }
     advanceToNextPlayer(state);
     return;
   }
@@ -971,6 +1133,12 @@ function advanceRound(state) {
     logSystem(state, 'Winner: ' + state.players[winnerIndex].name);
     logSystem(state, state.players[0].name + ' final score: ' + state.players[0].totalScore);
     logSystem(state, 'AI final score: ' + state.players[1].totalScore);
+    // AI Banter: react to game result
+    if (winnerIndex === 1) {
+      generateAIBanter(state, 'ai_wins_game');
+    } else {
+      generateAIBanter(state, 'player_wins_game');
+    }
     // Auto-save the complete game log
     exportLog(true);
     return state;
@@ -3256,6 +3424,18 @@ function refreshUI() {
   // Scorecard sidebar
   renderScorecard(gameState);
 
+  // AI Commentary
+  var commentaryEl = document.getElementById('ai-commentary');
+  if (commentaryEl) {
+    if (gameState.aiCommentary) {
+      commentaryEl.textContent = gameState.aiCommentary;
+      commentaryEl.classList.add('visible');
+    } else {
+      commentaryEl.textContent = '';
+      commentaryEl.classList.remove('visible');
+    }
+  }
+
   // Buttons
   var needsReveal = gameState.needsFirstReveal && gameState.needsFirstReveal[gameState.currentPlayer];
   var canDraw = isHumanTurn && !gameState.drawnCard && !needsReveal;
@@ -3369,6 +3549,7 @@ function showModal(title, buttons) {
 window._onCardClick = function(triadIndex, position) {
   if (!gameState.players[gameState.currentPlayer].isHuman) return;
   gameState.aiHighlight = null;  // Clear AI placement highlight on player action
+  clearAIBanter(gameState);
 
   var needsReveal = gameState.needsFirstReveal && gameState.needsFirstReveal[gameState.currentPlayer];
 
@@ -3537,6 +3718,7 @@ function onDrawFromDeck() {
   var needsReveal = gameState.needsFirstReveal && gameState.needsFirstReveal[gameState.currentPlayer];
   if (needsReveal) return;
   gameState.aiHighlight = null;  // Clear AI placement highlight on player action
+  clearAIBanter(gameState);
   handleDrawFromDeck(gameState);
   refreshUI();
 }
@@ -3547,6 +3729,7 @@ function onDrawFromDiscard() {
   var needsReveal = gameState.needsFirstReveal && gameState.needsFirstReveal[gameState.currentPlayer];
   if (needsReveal) return;
   gameState.aiHighlight = null;  // Clear AI placement highlight on player action
+  clearAIBanter(gameState);
 
   // If holding a drawn card from the DECK, clicking discard pile discards it
   if (gameState.drawnCard && !gameState.drawnFromDiscard) {
@@ -3749,6 +3932,16 @@ function aiStepDraw() {
   if (lastDrawReason) {
     logAction(gameState, 1, 'Reason: ' + lastDrawReason);
   }
+
+  // AI Banter: comment on drawing from discard pile
+  if (drewFrom === 'discard' && gameState.drawnCard) {
+    if (gameState.drawnCard.type === 'kapow') {
+      generateAIBanter(gameState, 'ai_grabs_kapow');
+    } else if (Math.random() < 0.3) {
+      generateAIBanter(gameState, 'ai_takes_discard');
+    }
+  }
+
   refreshUI();
 
   // Pre-compute the action while showing the draw
@@ -3765,6 +3958,13 @@ function aiStepDraw() {
 
 // Step 3: Place or discard the drawn card
 function aiStepPlace(action, drewFromDiscard, drawnDesc) {
+  // Capture triad count before action for banter detection
+  var aiTriadsBeforePlace = 0;
+  var aiHandPre = gameState.players[1].hand;
+  for (var bt0 = 0; bt0 < aiHandPre.triads.length; bt0++) {
+    if (aiHandPre.triads[bt0].isDiscarded) aiTriadsBeforePlace++;
+  }
+
   if (action.type === 'powerset-on-power') {
     var posLabel = action.position.charAt(0).toUpperCase() + action.position.slice(1);
     var modSign = action.usePositive ? '+' : '';
@@ -3810,6 +4010,22 @@ function aiStepPlace(action, drewFromDiscard, drawnDesc) {
   if (lastActionReason) {
     logAction(gameState, 1, 'Reason: ' + lastActionReason);
   }
+
+  // AI Banter: check if a triad was just completed this action
+  var aiTriadsDiscardedNow = 0;
+  var aiHand2 = gameState.players[1].hand;
+  for (var bt = 0; bt < aiHand2.triads.length; bt++) {
+    if (aiHand2.triads[bt].isDiscarded) aiTriadsDiscardedNow++;
+  }
+  if (aiTriadsDiscardedNow > aiTriadsBeforePlace) {
+    // A triad was completed! Was the card from the discard pile (opponent's discard)?
+    if (drewFromDiscard) {
+      generateAIBanter(gameState, 'discard_helps_ai');
+    } else {
+      generateAIBanter(gameState, 'ai_completes_triad');
+    }
+  }
+
   refreshUI();
 
   // Step 4: Check for AI KAPOW swaps, then clear and end

@@ -973,6 +973,31 @@ body {
   white-space: nowrap;
 }
 
+/* ---- AI Commentary ---- */
+#ai-commentary {
+  width: 200px;
+  min-width: 200px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 13px;
+  font-style: italic;
+  color: #e8d44d;
+  text-align: center;
+  line-height: 1.4;
+  display: none;
+  animation: banterFadeIn 0.4s ease-out;
+}
+
+#ai-commentary.visible {
+  display: block;
+}
+
+@keyframes banterFadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* ---- Save Log Button ---- */
 .save-log-btn {
   width: 100%;
