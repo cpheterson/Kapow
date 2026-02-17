@@ -1,0 +1,173 @@
+AI BANTER MESSAGES - KAPOW! Card Game
+======================================
+
+Messages appear in the sidebar below the scorecard in yellow italic text.
+They persist until the player takes their next action (draw or card click).
+
+
+1. OPPONENT DISCARD HELPS AI COMPLETE A TRIAD (discard_helps_ai)
+   Trigger: AI completes a triad using a card drawn from the discard pile,
+            BUT only when the opponent knowingly provided that card
+            (replaced a revealed card, discarded a drawn card, or completed a triad).
+            Face-down cards that happen to help the AI do NOT trigger this.
+   -----------------------------------------------------------------------
+   - Thanks, I needed that!
+   - Thanks for the card. Keep them coming!
+   - I owe you one... Just kidding!
+   - Much appreciated!
+   - Watch what you discard!
+   - Did you really mean to give me that?
+   - (smirk emojis)
+   - I appreciate the charity work.
+   - You didn't have to do that, but I'm glad you did.
+   - Are you trying to make this too easy for me?
+   - Thanks for the assist!
+   - Well, that's one way to play it...
+   - I didn't need that much help, but I'll take it.
+   - Are you playing for me, or against me?
+   - I'm planning to win anyway, but thanks for speeding it up.
+   - If you keep this up, I might actually have to start trying.
+   - Are you sure you read the rules?
+
+
+2. AI COMPLETES A TRIAD (ai_completes_triad)
+   Trigger: AI completes a triad (card was NOT from the discard pile,
+            or opponent didn't knowingly provide it).
+   -----------------------------------------------------------------------
+   - One down!
+   - That's how it's done.
+   - Boom! Triad complete.
+   - Triads don't complete themselves... oh wait, mine do.
+   - Another one bites the dust.
+   - Piece by piece, I build my empire.
+   - That's called strategy.
+   - Check that off the list.
+   - Like clockwork.
+   - And that's how the pros do it.
+
+
+3. AI GOES OUT (ai_goes_out)
+   Trigger: AI reveals all cards and goes out, ending the round.
+   -----------------------------------------------------------------------
+   - And that's a wrap!
+   - Game, set, match... well, round.
+   - Read it and weep!
+   - I'm out! Your turn to sweat.
+   - All done here. No pressure.
+   - Hope you've got a good last move in you.
+   - Dropping the mic.
+   - That's all, folks!
+   - Out! Good luck on your final turn.
+
+
+4. PLAYER GOES OUT (player_goes_out)
+   Trigger: Human player goes out.
+   -----------------------------------------------------------------------
+   - Not bad... Let's see if it pays off.
+   - Bold move. I respect it.
+   - I hope you did the math on that one.
+   - Going out already? Brave.
+   - Interesting choice. Let's see how this plays out.
+   - You sure about that? No take-backs!
+   - Okay, my turn to clean up.
+   - Confident! I like it.
+
+
+5. AI WINS THE ROUND (ai_wins_round)
+   Trigger: AI has the lower score at the end of a round
+            (and no doubling occurred for either player).
+   -----------------------------------------------------------------------
+   - Better luck next round!
+   - I'll try to go easy on you... nah.
+   - My round! Want some tips?
+   - That's how you close out a round.
+   - Another round in the books.
+   - Don't worry, there are more rounds to go.
+   - I'd say sorry, but I'm not.
+
+
+6. PLAYER WINS THE ROUND (player_wins_round)
+   Trigger: Player has the lower score at the end of a round
+            (and no doubling occurred for either player).
+   -----------------------------------------------------------------------
+   - Enjoy it while it lasts.
+   - Lucky round. Won't happen again.
+   - Okay, you got me. This time.
+   - Not bad! But I'm just warming up.
+   - Well played... this round.
+   - I let you have that one.
+   - Savor it. It won't last.
+
+
+7. PLAYER GETS DOUBLED (player_doubled)
+   Trigger: Player goes out first but doesn't have the strictly lowest
+            score, so their score is doubled.
+   -----------------------------------------------------------------------
+   - Ouch! That's gotta sting.
+   - The doubling rule is brutal, isn't it?
+   - Double trouble!
+   - That's a costly way to go out.
+   - Going out first is a gamble, and you lost it.
+   - Doubled! That'll leave a mark.
+   - Maybe next time, check the scoreboard first?
+
+
+8. AI GETS DOUBLED (ai_doubled)
+   Trigger: AI goes out first but doesn't have the strictly lowest
+            score, so its score is doubled.
+   -----------------------------------------------------------------------
+   - Well... that didn't go as planned.
+   - I meant to do that. Character building.
+   - Okay, I deserved that one.
+   - We don't talk about this round.
+   - Let's pretend that didn't happen.
+   - Even geniuses have off days.
+   - That was... a learning experience.
+
+
+9. AI GRABS KAPOW FROM DISCARD (ai_grabs_kapow)
+   Trigger: AI draws a KAPOW! wild card from the discard pile (always fires).
+   -----------------------------------------------------------------------
+   - Don't mind if I do!
+   - A wild card? Yes please!
+   - KAPOW! Mine now.
+   - I'll take that KAPOW, thank you very much.
+   - You left a KAPOW on the discard pile?!
+   - Christmas came early!
+   - A KAPOW! This changes everything.
+
+
+10. AI TAKES FROM DISCARD (ai_takes_discard)
+    Trigger: AI draws any non-KAPOW card from the discard pile
+             (fires 30% of the time to avoid being annoying).
+    -----------------------------------------------------------------------
+    - I'll take that off your hands.
+    - One person's trash...
+    - Thanks, this is exactly what I needed.
+    - Didn't need that, did you?
+    - I see you don't want this. I do.
+    - Your loss, my gain.
+
+
+11. AI WINS THE GAME (ai_wins_game)
+    Trigger: After 10 rounds, AI has the lower total score.
+    -----------------------------------------------------------------------
+    - GG! Better luck next time!
+    - I was programmed to win. No hard feelings!
+    - Victory! Want to go again?
+    - That was fun! Well, for me anyway.
+    - Another win for the AI. Humanity: 0.
+    - Great game! You made me work for it.
+    - I'd say it was close, but... was it?
+
+
+12. PLAYER WINS THE GAME (player_wins_game)
+    Trigger: After 10 rounds, player has the lower total score.
+    -----------------------------------------------------------------------
+    - Well played! You earned that one.
+    - Rematch? I promise I'll try harder.
+    - Congratulations! Don't let it go to your head.
+    - You win this time. I'll remember this.
+    - Impressive! Truly. I'm not even mad.
+    - Okay, you're actually good at this.
+    - Winner winner! Respect.

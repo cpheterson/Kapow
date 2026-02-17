@@ -98,6 +98,7 @@ body {
   align-self: flex-start;
   position: sticky;
   top: 10px;
+  padding-top: 24px;
   gap: 16px;
   min-width: 200px;
 }
@@ -497,7 +498,8 @@ body {
   background: rgba(0, 0, 0, 0.4);
   padding: 8px 16px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: bold;
   text-align: center;
   height: 50px;
   line-height: 1.4;
@@ -511,8 +513,6 @@ body {
 #game-message.swap-phase-message {
   background: rgba(230, 126, 34, 0.25);
   border: 2px solid #f39c12;
-  font-size: 15px;
-  font-weight: bold;
   color: #ffd700;
 }
 
@@ -578,6 +578,24 @@ body {
 @keyframes end-turn-pulse {
   0%, 100% { box-shadow: 0 0 8px rgba(243, 156, 18, 0.5); }
   50% { box-shadow: 0 0 24px rgba(243, 156, 18, 1.0), 0 0 48px rgba(243, 156, 18, 0.4); }
+}
+
+.action-btn.release-card-glow {
+  background: #2980b9;
+  color: white;
+  font-size: 15px;
+  padding: 10px 22px;
+  animation: release-card-pulse 1.2s infinite;
+  border: 2px solid #3498db;
+}
+
+.action-btn.release-card-glow:hover {
+  background: #1a6da0;
+}
+
+@keyframes release-card-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(52, 152, 219, 0.5); }
+  50% { box-shadow: 0 0 24px rgba(52, 152, 219, 1.0), 0 0 48px rgba(52, 152, 219, 0.4); }
 }
 
 /* ---- Power Card Modal ---- */
@@ -980,7 +998,7 @@ body {
   background: rgba(0, 0, 0, 0.4);
   border-radius: 12px;
   padding: 14px 16px;
-  font-size: 13px;
+  font-size: 16px;
   font-style: italic;
   color: #e8d44d;
   text-align: center;

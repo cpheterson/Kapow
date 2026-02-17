@@ -3349,6 +3349,20 @@ function bindGameEvents() {
 
 function onEndTurn() {
   if (!gameState.players[gameState.currentPlayer].isHuman) return;
+
+  // Release Card mode: put discard-drawn card back on the discard pile
+  if (gameState.drawnCard && gameState.drawnFromDiscard && !gameState.awaitingKapowSwap) {
+    gameState.drawnCard.isRevealed = true;
+    gameState.discardPile.push(gameState.drawnCard);
+    logAction(gameState, gameState.currentPlayer, 'Releases ' + cardDescription(gameState.drawnCard) + ' back to discard pile');
+    gameState.drawnCard = null;
+    gameState.drawnFromDiscard = false;
+    gameState.message = 'Card released. Draw again from either pile.';
+    refreshUI();
+    return;
+  }
+
+  // End Turn mode: during KAPOW swap phase
   if (!gameState.awaitingKapowSwap) return;
   gameState.awaitingKapowSwap = false;
   gameState.selectedKapow = null;
@@ -3457,14 +3471,23 @@ function refreshUI() {
   document.getElementById('btn-draw-deck').disabled = !(canDraw && (phase === 'playing' || phase === 'finalTurns'));
   document.getElementById('btn-draw-discard').disabled = !(canDraw && (phase === 'playing' || phase === 'finalTurns') && gameState.discardPile.length > 0);
   document.getElementById('btn-discard').disabled = !(isHumanTurn && gameState.drawnCard !== null && !gameState.drawnFromDiscard);
-  // End Turn button: enabled only during KAPOW swap phase on human turn
+  // End Turn / Release Card button
   var endTurnBtn = document.getElementById('btn-end-turn');
   var isSwapPhase = isHumanTurn && gameState.awaitingKapowSwap;
-  endTurnBtn.disabled = !isSwapPhase;
-  if (isSwapPhase) {
-    endTurnBtn.classList.add('end-turn-glow');
-  } else {
+  var isReleaseMode = isHumanTurn && gameState.drawnCard && gameState.drawnFromDiscard && !isSwapPhase;
+  endTurnBtn.disabled = !(isSwapPhase || isReleaseMode);
+  if (isReleaseMode) {
+    endTurnBtn.textContent = 'Release Card';
     endTurnBtn.classList.remove('end-turn-glow');
+    endTurnBtn.classList.add('release-card-glow');
+  } else if (isSwapPhase) {
+    endTurnBtn.textContent = 'End Turn';
+    endTurnBtn.classList.add('end-turn-glow');
+    endTurnBtn.classList.remove('release-card-glow');
+  } else {
+    endTurnBtn.textContent = 'End Turn';
+    endTurnBtn.classList.remove('end-turn-glow');
+    endTurnBtn.classList.remove('release-card-glow');
   }
 
   // Understand AI's Move button: enabled when it's human's turn and explanation exists
@@ -3699,9 +3722,37 @@ window._onCardClick = function(triadIndex, position) {
       return;
     }
 
+    // Case 2b: Drawn is Power, target is KAPOW — cannot use as modifier, offer replace or cancel
+    if (drawnIsPower && targetIsKapow) {
+      showModal('Power cards cannot modify a KAPOW card.', [
+        { label: 'Replace KAPOW', value: 'replace', style: 'primary' },
+        { label: 'Choose Different Spot', value: 'cancel', style: 'secondary' }
+      ]).then(function(choice) {
+        if (choice === 'replace') {
+          handlePlaceCard(gameState, triadIndex, position);
+          refreshUI();
+        }
+        // 'cancel' — do nothing, player picks a different spot
+      });
+      return;
+    }
+
+    // Case 3a: Drawn is KAPOW, target is solo Power card — cannot create powerset, offer replace or cancel
+    if (targetIsPower && drawnCard.type === 'kapow') {
+      showModal('KAPOW cards cannot form a powerset with Power cards.', [
+        { label: 'Replace Power Card', value: 'replace', style: 'primary' },
+        { label: 'Choose Different Spot', value: 'cancel', style: 'secondary' }
+      ]).then(function(choice) {
+        if (choice === 'replace') {
+          handlePlaceCard(gameState, triadIndex, position);
+          refreshUI();
+        }
+      });
+      return;
+    }
+
     // Case 3: Target is a solo Power card, drawn is any non-power card — create powerset or replace
-    // (cannot create powerset with KAPOW on top — its value is undefined until triad completes)
-    if (targetIsPower && drawnCard.type !== 'kapow') {
+    if (targetIsPower) {
       var existingPower = targetPosCards[0];
       showModal('Target is a Power ' + existingPower.faceValue + ' card — how would you like to play?', [
         { label: 'Create Powerset', value: 'powerset', style: 'accent' },
