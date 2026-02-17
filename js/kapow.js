@@ -732,6 +732,9 @@ function handleDrawFromDeck(state) {
     var replenished = replenishFromDiscard(state.discardPile);
     state.drawPile = replenished.drawPile;
     state.discardPile = replenished.discardPile;
+    if (replenished.drawPile.length > 0) {
+      logSystem(state, 'Draw pile empty — discard pile reshuffled into draw pile (' + replenished.drawPile.length + ' cards), 1 card remains on discard');
+    }
   }
   var result = drawFromPile(state.drawPile);
   if (result.card) {
