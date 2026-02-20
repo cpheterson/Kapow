@@ -1522,11 +1522,59 @@ function aiDecideAction(gameState, drawnCard) {
     for (var p = 0; p < positions.length; p++) {
       var ps = aiScorePlacement(aiHand, drawnCard, t, positions[p]);
 
-      // Check if this placement would leave the AI fully revealed (going out)
+      // Check if this placement would leave the AI fully revealed (going out).
+      // Two paths to going out:
+      // (A) Placing into a face-down slot — reveals the last unrevealed card.
+      // (B) Placing a card that completes a triad — the triad gets discarded, and
+      //     if the remaining triads are all revealed/discarded, the AI goes out.
+      //     This path was previously undetected, causing the AI to go out with a
+      //     high-value triad still in hand (e.g., completing [3,2,1] while holding
+      //     [12,12,11], resulting in a doubled score of 70+).
       var posCards = triad[positions[p]];
       var isUnrevealed = posCards.length > 0 && !posCards[0].isRevealed;
-      if (isUnrevealed) {
-        // Placing here reveals this card — check if it's the last unrevealed
+
+      // Simulate placement to detect triad completion
+      var origSimCards = triad[positions[p]];
+      triad[positions[p]] = [{ id: drawnCard.id, type: drawnCard.type,
+        faceValue: drawnCard.faceValue, modifiers: drawnCard.modifiers,
+        isRevealed: true, isFrozen: false, assignedValue: null }];
+      var wouldComplete = isTriadComplete(triad);
+      triad[positions[p]] = origSimCards; // restore
+
+      if (wouldComplete) {
+        // Placement completes this triad — it would be discarded.
+        // Check if remaining triads are all revealed/discarded → AI goes out.
+        var remainingFullyRevealed = true;
+        var remainingScore = 0;
+        for (var rt = 0; rt < aiHand.triads.length; rt++) {
+          if (rt === t) continue; // this triad will be discarded
+          var rTriad = aiHand.triads[rt];
+          if (rTriad.isDiscarded) continue;
+          var rPositions = ['top', 'middle', 'bottom'];
+          for (var rp = 0; rp < 3; rp++) {
+            var rCards = rTriad[rPositions[rp]];
+            if (rCards.length === 0 || !rCards[0].isRevealed) {
+              remainingFullyRevealed = false;
+              break;
+            }
+            remainingScore += getPositionValue(rCards);
+          }
+          if (!remainingFullyRevealed) break;
+        }
+        if (remainingFullyRevealed) {
+          // Completing this triad would trigger going out with remainingScore pts
+          var goOutDecisionC = aiShouldGoOutWithScore(gameState, remainingScore);
+          if (goOutDecisionC.shouldGoOut) {
+            ps += 50;  // boost — go out!
+          } else {
+            // Dangerous: completing this triad forces going out with a bad score.
+            // The penalty must overcome the triad completion bonus (+100+existingPts)
+            // so the AI picks a different action (discard or place elsewhere).
+            ps -= 200;
+          }
+        }
+      } else if (isUnrevealed) {
+        // Placing into a face-down slot — check if it's the last unrevealed
         var handEval = aiEvaluateHand(aiHand);
         if (handEval.unrevealedCount === 1) {
           // This would trigger going out — simulate the ACTUAL score after placement
