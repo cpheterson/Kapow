@@ -2514,6 +2514,33 @@ function aiScorePlacement(hand, card, triadIndex, position) {
         score -= pathLoss * 8;
       }
 
+      // Matched-pair destruction penalty: if the card being replaced is part of a matched
+      // pair (two equal revealed values) in a 3-revealed triad, that pair is highly valuable
+      // set-completion potential — drawing either completion value (a third matching card)
+      // or keeping the pair works toward a set. Destroying a matched pair with a low-value
+      // card looks appealing (big raw delta) but leaves a "dead" combination that rarely
+      // completes. Penalize strongly unless the replacement completes the triad outright.
+      // E.g., [7,7,9]: replacing mid-7 with P1=1 gives [7,1,9] — paths go from 2 to 2 but
+      // the matched pair is gone and the discarded 7 helps the opponent.
+      if (!isUnrevealed && pathsBefore > 0) {
+        // Count how many OTHER revealed cards match the card being replaced
+        var matchCount = 0;
+        for (var mp = 0; mp < 3; mp++) {
+          if (mp === posIdx) continue;
+          var mpCards = triad[positions[mp]];
+          if (mpCards.length > 0 && mpCards[0].isRevealed) {
+            if (getPositionValue(mpCards) === currentValue) matchCount++;
+          }
+        }
+        if (matchCount > 0) {
+          // There's a matched pair — destroying it loses concentrated set potential.
+          // Penalty scales with value (higher cards = more urgent to complete) and
+          // threat (opponent may go out soon, can't afford to break good triads).
+          var matchPairPenalty = 15 + (currentValue * 1.5) + (matchCount * 5);
+          score -= Math.round(matchPairPenalty * (1 + opponentThreat));
+        }
+      }
+
       // If replacing a revealed card and going UP in points without gaining paths, penalize.
       // Case 1: Had paths before, didn't gain any → wasteful value increase.
       // Case 2: Had ZERO paths before AND after → dead triad, increasing its cost is pointless.
