@@ -3572,6 +3572,16 @@ function renderScorecard(state) {
   // Update totals
   document.getElementById('sc-player-total').innerHTML = '<strong>' + state.players[0].totalScore + '</strong>';
   document.getElementById('sc-ai-total').innerHTML = '<strong>' + state.players[1].totalScore + '</strong>';
+
+  // Update mobile score bar
+  var mobileRound = document.getElementById('mobile-round');
+  var mobilePlayerScore = document.getElementById('mobile-player-score');
+  var mobileAiScore = document.getElementById('mobile-ai-score');
+  var mobilePlayerLabel = document.getElementById('mobile-player-label');
+  if (mobileRound) mobileRound.textContent = 'R' + state.round;
+  if (mobilePlayerScore) mobilePlayerScore.textContent = state.players[0].totalScore;
+  if (mobileAiScore) mobileAiScore.textContent = state.players[1].totalScore;
+  if (mobilePlayerLabel) mobilePlayerLabel.textContent = escapeHTML(state.players[0].name);
 }
 
 function renderDrawPile(state) {
