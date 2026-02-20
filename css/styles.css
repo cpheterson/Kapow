@@ -32,7 +32,7 @@
   /* Shadows */
   --shadow-card: 0 2px 4px rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.15);
   --shadow-card-hover: 0 8px 20px rgba(0,0,0,0.3), 0 2px 6px rgba(0,0,0,0.2);
-  --shadow-card-selected: 0 0 0 3px var(--color-accent), 0 0 20px var(--color-accent-glow);
+  --shadow-card-selected: 0 0 0 2px var(--color-accent), 0 0 8px var(--color-accent-glow);
   --shadow-ui: 0 2px 8px rgba(0,0,0,0.3);
 }
 
@@ -41,6 +41,16 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+/* ---- iOS Safari viewport lock ---- */
+html {
+  overflow: hidden;
+  overscroll-behavior: none;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
 }
 
 /* ---- Body / Table ---- */
@@ -53,12 +63,18 @@ body {
     /* Radial vignette */
     radial-gradient(ellipse at 50% 40%, var(--color-bg) 0%, var(--color-bg-dark) 100%);
   color: var(--color-text);
-  min-height: 100vh;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
   display: flex;
   justify-content: center;
   align-items: flex-start;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* ---- Layout Shell ---- */
@@ -202,12 +218,14 @@ body {
 }
 
 .card-back-inner {
-  border: 1.5px solid rgba(255, 255, 255, 0.2);
-  border-radius: 5px;
-  padding: 8px 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 6px;
   display: flex;
   justify-content: center;
   align-items: center;
+  flex: 1;
 }
 
 .card-back-text {
@@ -411,16 +429,7 @@ body {
 }
 
 .pos-label {
-  position: absolute;
-  left: -28px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 8px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.3);
-  pointer-events: none;
+  display: none;
   white-space: nowrap;
 }
 
@@ -958,8 +967,11 @@ body {
    ============================================ */
 @media (max-width: 768px) {
   :root {
-    --card-width: 70px;
-    --card-height: 98px;
+    /* Viewport-relative: cards scale to fit screen height.
+       Budget: ~40% of svh for 3 player card rows.
+       svh = smallest viewport (Safari toolbar visible). */
+    --card-width: min(70px, 15svw);
+    --card-height: min(98px, 11svh);
   }
 
   body {
@@ -967,12 +979,26 @@ body {
   }
 
   #page-layout {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
     flex-direction: column;
     align-items: stretch;
-    padding: 6px 8px;
-    padding-top: env(safe-area-inset-top, 6px);
-    padding-bottom: env(safe-area-inset-bottom, 6px);
+    padding: 4px 4px;
+    padding-top: env(safe-area-inset-top, 4px);
+    padding-bottom: env(safe-area-inset-bottom, 4px);
     gap: 0;
+    overflow: hidden;
+  }
+
+  #game-container {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
 
   /* Hide sidebar by default on mobile */
@@ -1063,18 +1089,21 @@ body {
     font-weight: 600;
   }
 
-  /* CSS grid layout for mobile */
+  /* CSS grid layout for mobile — fill available height */
   #play-area {
     display: grid;
     grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto 1fr;
     grid-template-areas:
       "ai       ai"
       "draw     discard"
       "msg      msg"
       "player   player";
-    gap: 4px;
+    gap: 2px;
     justify-items: center;
     align-items: start;
+    flex: 1;
+    min-height: 0;
   }
 
   #hands-column {
@@ -1085,7 +1114,7 @@ body {
   #left-column { grid-area: draw; justify-self: end; }
   #discard-pile { grid-area: discard; justify-self: start; }
   #center-strip { grid-area: msg; }
-  #player-area { grid-area: player; }
+  #player-area { grid-area: player; align-self: end; }
 
   /* AI hand: mini cards — opponent cards are mostly face-down, save vertical space */
   #ai-area h2 {
@@ -1175,28 +1204,26 @@ body {
 
   #left-column {
     flex-direction: row;
-    gap: 8px;
+    gap: 4px;
     align-items: center;
   }
 
   #left-column .understand-btn {
-    max-width: 70px;
-    font-size: 10px;
-    padding: 4px 6px;
+    display: none;
   }
 
   #center-strip {
     flex-direction: column;
-    gap: 4px;
-    padding: 2px 0;
+    gap: 2px;
+    padding: 0;
     width: 100%;
   }
 
   #center-strip #game-message {
-    font-size: 13px;
+    font-size: 12px;
     height: auto;
-    min-height: 32px;
-    padding: 4px 10px;
+    min-height: 24px;
+    padding: 2px 8px;
   }
 
   /* Cards and grid */
@@ -1214,46 +1241,55 @@ body {
     margin-bottom: 0;
   }
 
-  /* Pile cards — slightly smaller than hand cards on mobile */
+  /* Pile cards — compact on mobile to save vertical space */
   .pile .card,
   .pile .empty-pile {
-    width: 60px;
-    height: 84px;
+    width: 50px;
+    height: 70px;
   }
 
-  /* Section headers */
-  #ai-area h2,
-  #player-area h2 {
-    font-size: 11px;
-    margin-bottom: 2px;
+  .pile {
+    gap: 1px;
   }
 
-  /* Turn counter */
   #turn-counter {
-    font-size: 11px;
-    padding: 2px 6px;
-    margin-bottom: 2px;
+    font-size: 9px;
+    padding: 1px 4px;
+    margin-bottom: 1px;
+  }
+
+  /* Section headers — hide on mobile, info is in score bar */
+  #ai-area h2 {
+    font-size: 9px;
+    margin-bottom: 1px;
+  }
+
+  #player-area h2 {
+    display: none;
+  }
+
+  /* Hide triad labels on player hand to save vertical space */
+  #player-area .triad-label {
+    display: none;
   }
 
   /* Action buttons */
   .action-btn {
-    padding: 6px 12px;
-    font-size: 12px;
+    padding: 4px 10px;
+    font-size: 11px;
   }
 
   /* Pile labels */
   .pile-label {
-    font-size: 10px;
+    font-size: 9px;
+    margin-top: 0;
   }
 
   .pile-count {
-    font-size: 9px;
+    font-size: 8px;
   }
 
-  /* Position labels — hide on mobile */
-  .pos-label {
-    display: none;
-  }
+  /* Position labels already hidden globally */
 
   /* AI commentary */
   #ai-commentary {
@@ -1277,66 +1313,70 @@ body {
 }
 
 @media (max-width: 480px) {
+  /* Viewport-relative card sizing: player hand needs 3 rows to fit.
+     Total budget: ~45% of svh for player cards (3 rows + gaps + padding).
+     Remaining 55%: score bar(25px) + AI(~100px) + piles(~70px) + msg(~50px).
+     Each card ≈ 45svh / 3 ≈ 15svh, but cap at 78px for big phones. */
   :root {
-    --card-width: 56px;
-    --card-height: 78px;
+    --card-width: min(56px, 14svw);
+    --card-height: min(78px, 8.5svh);
   }
 
   .hand-grid {
-    gap: 4px;
-  }
-
-  .triad-column {
-    padding: 3px;
     gap: 3px;
   }
 
+  .triad-column {
+    padding: 2px;
+    gap: 2px;
+  }
+
   .card-value-center {
-    font-size: 24px;
+    font-size: clamp(16px, 3svh, 24px);
   }
 
   .card-value-top {
-    font-size: 10px;
-    top: 3px;
-    left: 4px;
+    font-size: 9px;
+    top: 2px;
+    left: 3px;
   }
 
   .card-value-bottom {
-    font-size: 10px;
-    bottom: 3px;
-    left: 4px;
+    font-size: 9px;
+    bottom: 2px;
+    left: 3px;
   }
 
   .card-type-label {
     font-size: 7px;
-    bottom: 3px;
-    right: 4px;
+    bottom: 2px;
+    right: 3px;
   }
 
   .card-back-text {
-    font-size: 10px;
-    letter-spacing: 1px;
+    font-size: clamp(8px, 1.5svh, 10px);
+    letter-spacing: 0.5px;
   }
 
   .card-back-inner {
-    padding: 4px 6px;
+    padding: 3px 4px;
   }
 
   .kapow-text {
-    font-size: 13px;
-    letter-spacing: 1px;
+    font-size: clamp(10px, 2svh, 13px);
+    letter-spacing: 0.5px;
   }
 
   .kapow-value {
-    font-size: 9px;
+    font-size: 8px;
   }
 
   .card-power-face-value {
-    font-size: 24px;
+    font-size: clamp(16px, 3svh, 24px);
   }
 
   .card-power-modifiers {
-    font-size: 12px;
+    font-size: clamp(9px, 1.8svh, 12px);
   }
 
   .card-power .card-type-label {
@@ -1344,33 +1384,20 @@ body {
   }
 
   .powerset-info {
-    font-size: 10px;
-    padding: 1px 4px;
+    font-size: 9px;
+    padding: 1px 3px;
   }
 
   #mobile-score-bar {
     gap: 10px;
     padding: 3px 6px;
   }
-}
 
-/* iPhone SE */
-@media (max-width: 375px) {
-  :root {
-    --card-width: 50px;
-    --card-height: 70px;
-  }
-
-  .card-value-center {
-    font-size: 20px;
-  }
-
-  .card-back-text {
-    font-size: 9px;
-  }
-
-  .kapow-text {
-    font-size: 11px;
+  /* Pile cards even smaller at this breakpoint */
+  .pile .card,
+  .pile .empty-pile {
+    width: 44px;
+    height: 62px;
   }
 }
 
@@ -1572,8 +1599,8 @@ body {
 #help-toggle {
   display: none;
   position: fixed;
-  top: env(safe-area-inset-top, 8px);
-  left: 8px;
+  top: calc(env(safe-area-inset-top, 8px) + 8px);
+  left: 16px;
   z-index: 190;
   width: 32px;
   height: 32px;
@@ -1630,7 +1657,7 @@ body:has(#page-layout:not(.hidden)) #help-toggle {
   border: 1px solid rgba(255, 255, 255, 0.1);
   max-width: 560px;
   width: 100%;
-  max-height: 85vh;
+  height: min(85vh, 600px);
   display: flex;
   flex-direction: column;
   box-shadow: 0 24px 64px rgba(0,0,0,0.5);

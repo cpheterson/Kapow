@@ -1,6 +1,6 @@
 # KAPOW! Card Game
 
-A card game inspired by [Skyjo](https://www.magilano.com/skyjo/) but with more strategic depth — power card modifiers, KAPOW! wild cards, and triad completion mechanics that reward planning over luck. Built entirely in vanilla HTML/CSS/JavaScript with a surprisingly sophisticated AI opponent. No frameworks, no dependencies — just 4,600 lines of hand-crafted game logic.
+A card game inspired by [Skyjo](https://www.magilano.com/skyjo/) with extra strategic depth — power card modifiers, KAPOW! wild cards, and triad completion mechanics. Built in vanilla HTML/CSS/JavaScript with a solid AI opponent. No frameworks, no dependencies.
 
 **[Play the original](https://cpheterson.github.io/Kapow/)** | **[Play this fork](https://epheterson.github.io/Kapow/)**
 
@@ -8,38 +8,48 @@ A card game inspired by [Skyjo](https://www.magilano.com/skyjo/) but with more s
 
 ## Hi Dad! 👋
 
-I saw this and had to fork it immediately. Here's what I love about what you built, and what I'm adding on top.
+Saw this and had to fork it. Cool to see what you built — here's what stands out and what I've been tinkering with.
 
-### What's awesome in the original
+### What's great about the original
 
-- **It's a real game.** This isn't a tutorial project or a clone — KAPOW! is an original design with genuine strategic depth. The triad completion mechanic, power card modifiers, KAPOW wild risk/reward, and the going-out doubling penalty all create meaningful decisions every turn.
-- **The AI is legitimately good.** Opponent threat modeling, synergy evaluation, discard safety analysis, future completion path counting — this is way beyond what you see in most browser games. It actually thinks about what *I* need and avoids feeding me useful cards.
-- **"Understand AI's Move" is genius.** I've never seen this in a card game. Showing players WHY the AI made each decision turns the game into a learning tool. This alone makes it worth sharing.
-- **The banter system gives the AI personality.** 100+ context-aware messages across 17 categories. "Thanks, this is exactly what I needed" when it grabs my discard, "Much appreciated!" when completing a triad. Makes it feel like playing against someone, not something.
-- **It's complete.** 10 rounds, scorecard, round-by-round breakdown, game over screen, log export. This is a finished product.
+- **It's a legit game.** Not a tutorial project — KAPOW! has real strategic depth. Triad completion, power modifiers, KAPOW risk/reward, the going-out doubling penalty... lots of meaningful decisions every turn.
+- **The AI is solid.** Threat modeling, synergy evaluation, discard safety analysis, future completion paths — it actually thinks about what I need and avoids feeding me useful cards.
+- **"Understand AI's Move" is a great idea.** Showing players WHY the AI made each decision turns the game into a learning tool. Never seen that in a card game.
+- **The banter system.** 100+ context-aware messages across 17 categories. Makes it feel like playing against someone, not something.
+- **It's complete.** 10 rounds, scorecard, round-by-round breakdown, game over screen, log export. Solid foundation.
 
-### What I changed (so far)
+### What I changed
+
+**Design overhaul:**
+- **Comic book aesthetic** — Bangers + DM Sans typography, felt table texture with noise pattern and vignette, richer card designs with layered shadows
+- **Mobile-first responsive layout** — CSS grid restructure, viewport-relative card sizing (`svh` units), `position: fixed` viewport lock for iOS Safari, rubber-band scroll prevention
+- **AI mini cards** — opponent cards shrunk on mobile since they're mostly face-down, saves vertical space
+- **Glassmorphic UI chrome** — score bar, sidebar overlay, buttons all use backdrop-filter blur
+
+**Rules / Help system:**
+- **"How to Play" on the name screen** + **"?" button during gameplay**
+- **5 tabbed sections** — Basics, Cards, Turns, Scoring, Tips — all from your rules PDF
+- **Card type badges** — visual previews for Fixed, Power, and KAPOW! cards
+- **YouTube tutorial link** embedded
 
 **Bug fixes:**
-- **XSS in player name** — names with HTML characters (like `<b>Eric</b>`) would break the round-end and game-over screens. Added `escapeHTML()` helper to sanitize before innerHTML injection.
-- **AI deadlock on empty piles** — if both draw and discard piles ran out, the AI's turn would never end and the game would silently freeze. Now it gracefully ends the turn.
-- **Scoring null guard** — `applyFirstOutPenalty` was called with `null` when nobody went out. It happened to work by accident (`roundScores[null]` is `undefined`), but now has an explicit guard.
+- **XSS in player name** — names with HTML characters broke the round-end screen. Added `escapeHTML()` sanitization.
+- **AI deadlock on empty piles** — if both draw and discard piles ran out, the game silently froze. Now gracefully ends the turn.
+- **Scoring null guard** — `applyFirstOutPenalty` was called with `null` when nobody went out.
 
-**New stuff:**
-- **PWA / iOS web app support** — manifest.json, service worker, Apple meta tags, app icons. You can "Add to Home Screen" on iPhone and it runs as a standalone app with its own icon.
-- **README** — you're reading it!
+**Infrastructure:**
+- **PWA / iOS web app** — manifest.json, service worker, Apple meta tags, app icons. "Add to Home Screen" works as a standalone app.
+- **iOS Safari viewport handling** — `dvh`/`svh` units, `position: fixed` viewport lock, `overscroll-behavior: none`, touch event scroll prevention
 
 ### What I want to add next
 
-Honestly, I need the tutorial stuff before I can really play well. I figured out triads and drawing but the power cards, KAPOW swaps, and when to go out are not obvious at all without reading the code. So that's high on my list.
+The big one is **sound** — the game is completely silent and every card game that feels good has satisfying audio. Card flips, placement thunks, chime on triad completion, something dramatic for KAPOW moments.
 
-The other big one is **sound** — the game is completely silent and every card game that feels good (Solitaire, Balatro, UNO) has satisfying audio. Card flips, placement thunks, a chime on triad completion, something dramatic for KAPOW moments.
-
-See the full [Roadmap](#roadmap) below for everything planned.
+Also thinking about a **hint button** (that costs points) and **card animations** (fly/flip instead of instant swap).
 
 ### A note on the modular files
 
-There are separate `js/*.js` files (deck.js, hand.js, triad.js, etc.) alongside the main `kapow.js` bundle. The HTML only loads `kapow.js` — the modular files aren't used. I noticed they've drifted from the bundle in a few spots (scoring tie rules, KAPOW freeze checks, first-turn phase handling). Might be worth either wiring them up with a build step or removing them to avoid confusion. Happy to help with that if you want!
+There are separate `js/*.js` files alongside the main `kapow.js` bundle. The HTML only loads `kapow.js` — the modular files aren't used and have drifted from the bundle in a few spots. Might be worth either wiring them up with a build step or removing them to avoid confusion. Happy to help with that.
 
 ---
 
@@ -135,30 +145,26 @@ Prioritized by impact-to-effort ratio:
 
 ### Up next
 
-- [ ] **Rules / help button** — a "?" that opens a modal with condensed rules. Right now new players have zero guidance on triads, powersets, KAPOW swaps, or going out. This is the #1 barrier to sharing the game.
-- [ ] **Sound effects** — card draw, place, flip, triad completion, KAPOW moment, round end. The single biggest missing piece for game feel.
-- [ ] **Comic book font** — swap Segoe UI for Bangers/Luckiest Guy on title, KAPOW cards, headings. Instant personality.
+- [ ] **Sound effects** — card draw, place, flip, triad completion, KAPOW moment, round end
+- [ ] **Hint button** — show suggested move, but costs points (2-3 point penalty per hint)
+- [ ] **Card movement animations** — fly cards from pile to hand instead of instant swap
 
 ### Polish
 
-- [ ] **Card movement animations** — fly cards from pile to hand to position instead of instant swap
 - [ ] **Card flip animation** — CSS 3D rotateY for reveals
 - [ ] **Confetti on triad completion** — canvas particle burst
 - [ ] **Screen shake on KAPOW events** — CSS keyframes + class toggle
-- [ ] **AI banter as speech bubbles** — move from sidebar to overlay near AI hand, typewriter effect
-- [ ] **Table felt texture** — CSS noise pattern + vignette overlay
+- [ ] **AI banter as speech bubbles** — move from sidebar to overlay near AI hand
 - [ ] **AI speed toggle** — `AI_DELAY` is hardcoded at 1500ms, add Normal/Fast/Instant
 - [ ] **Score count-up animation** — animate numbers at round end
 
 ### Features
 
-- [ ] **Interactive tutorial** — first-game guidance with tooltip arrows and AI narration
+- [ ] **Interactive tutorial** — first-game guidance with tooltip arrows
 - [ ] **Difficulty levels** — beginner (random/greedy), normal (current), expert (deeper eval)
 - [ ] **Persistent stats** — win/loss, streaks, best round via localStorage
 - [ ] **Undo button** — snapshot state before each action, restore on undo
-- [ ] **Probability hints** — show "outs" count on near-complete triads
 - [ ] **Achievement badges** — "Shutout" (0-point round), "Comeback Kid", "KAPOW Master"
-- [ ] **Share game summary** — score breakdown + play link for texting friends
 - [ ] **Consolidate codebases** — unify modular files with kapow.js, add build step
 - [ ] **Multiplayer** — game state already supports N players
 
@@ -179,7 +185,7 @@ Kapow/
 ├── manifest.json           # PWA manifest
 ├── sw.js                   # Service worker (offline caching)
 ├── css/
-│   └── styles.css          # All styles (~300 lines)
+│   └── styles.css          # All styles
 ├── js/
 │   ├── kapow.js            # Production bundle (4,606 lines)
 │   ├── ai.js               # AI heuristics (modular, NOT loaded)
@@ -203,4 +209,4 @@ Kapow/
 
 Original game by [cpheterson](https://github.com/cpheterson)
 
-Fork by [epheterson](https://github.com/epheterson) — adding polish, PWA support, sound, and tutorials
+Fork by [epheterson](https://github.com/epheterson) — adding design polish, mobile support, rules, and PWA
