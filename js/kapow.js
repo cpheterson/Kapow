@@ -1751,8 +1751,10 @@ function aiAnalyzeTriad(triad) {
           }
         }
       } else {
-        // Standard: test what fixed value in the empty slot completes the triad
-        for (var v = 0; v <= 12; v++) {
+        // Standard: test what value in the empty slot completes the triad.
+        // Powerset effective values can be outside 0-12, so widen the test range.
+        var emptyRange = getTestRange(result.values);
+        for (var v = emptyRange.min; v <= emptyRange.max; v++) {
           var testValues = result.values.slice();
           testValues[emptyIdx] = v;
           if (isSet(testValues) || isAscendingRun(testValues) || isDescendingRun(testValues)) {
@@ -1914,10 +1916,11 @@ function aiAssessOpponentThreat(gameState) {
 // Returns { totalPaths, bestPosition (index), bestPositionPaths, pathsByPosition: [n,n,n] }
 function aiCountFutureCompletions(values) {
   var result = { totalPaths: 0, bestPosition: -1, bestPositionPaths: 0, pathsByPosition: [0, 0, 0] };
-  // Standard: test replacing each position with values 0-12
+  // Widen test range to cover powerset effective values outside 0-12
+  var futureRange = getTestRange(values);
   for (var pos = 0; pos < 3; pos++) {
     var saved = values[pos];
-    for (var v = 0; v <= 12; v++) {
+    for (var v = futureRange.min; v <= futureRange.max; v++) {
       values[pos] = v;
       if (isSet(values) || isAscendingRun(values) || isDescendingRun(values)) {
         result.totalPaths++;
@@ -1961,11 +1964,12 @@ function aiCountPowerModifierPaths(values, baseCompletionValues) {
       var origVal = values[ri];
       for (var m = 0; m < POWER_MODS.length; m++) {
         var shifted = origVal + POWER_MODS[m];
-        if (shifted < 0 || shifted > 12) continue; // value out of range
+        // No range guard — shifted values outside 0-12 are valid for powersets
         var testVals = values.slice();
         testVals[ri] = shifted;
         // Check which values in the empty slot now complete the triad
-        for (var v = 0; v <= 12; v++) {
+        var pmRange = getTestRange(testVals);
+        for (var v = pmRange.min; v <= pmRange.max; v++) {
           testVals[emptyIdx] = v;
           if (isSet(testVals) || isAscendingRun(testVals) || isDescendingRun(testVals)) {
             // Only count if this value is NOT already a base completion value
@@ -1998,6 +2002,22 @@ function aiCountPowerModifierPaths(values, baseCompletionValues) {
     if (newPaths.hasOwnProperty(key)) count++;
   }
   return count;
+}
+
+// Compute the range of values to test when looking for triad completions.
+// Standard cards are 0-12, but powersets can have effective values from -4 to +16.
+// For sets, the missing value must equal all others — must include out-of-range powerset values.
+// For runs, the missing value must be within ±2 of existing values.
+// Returns { min, max } covering 0-12 (always) plus any out-of-range existing values.
+function getTestRange(existingValues) {
+  var lo = 0, hi = 12;
+  for (var i = 0; i < existingValues.length; i++) {
+    var v = existingValues[i];
+    if (v === null || v === undefined || v === 25) continue; // skip unrevealed/KAPOW sentinel
+    if (v - 2 < lo) lo = v - 2;
+    if (v + 2 > hi) hi = v + 2;
+  }
+  return { min: lo, max: hi };
 }
 
 // Evaluate how well two revealed values in a triad work together toward completion
@@ -2047,7 +2067,8 @@ function aiEvaluateCardSynergy(val1, pos1Idx, val2, pos2Idx) {
   }
   if (missingIdx < 0) return 0;
 
-  for (var v = 0; v <= 12; v++) {
+  var range = getTestRange([val1, val2]);
+  for (var v = range.min; v <= range.max; v++) {
     testValues[missingIdx] = v;
     if (isSet(testValues) || isAscendingRun(testValues) || isDescendingRun(testValues)) {
       paths++;
