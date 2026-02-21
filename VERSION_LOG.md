@@ -2,6 +2,12 @@
 
 ## Version History
 
+### 02-20-2026 v3
+**Fixed AI explanation to avoid nonsensical future completion paths when going out.**
+- When placement triggers going out, explanation now focuses on going-out decision
+- Removed mention of "completion paths" that will never be needed post-game
+- Explanation now clarifies why the timing was right to end the round
+
 ### 02-20-2026 v2
 **Strengthened discard safety penalty for opponent-completion cards.**
 - Increased scaling factor for replaced-card discard penalty from 0.4 to 1.0
@@ -39,4 +45,4 @@ When making changes that warrant a version bump:
 
 ---
 
-## Latest Version: 02-20-2026 v2
+## Latest Version: 02-20-2026 v3
