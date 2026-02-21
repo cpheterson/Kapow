@@ -1070,12 +1070,13 @@ body::before {
    ============================================ */
 @media (max-width: 768px) {
   :root {
-    /* Both hands use identical card sizes. 6 card rows must fit in svh.
-       Budget: svh - 25(score) - 55(piles) - 24(msg) - 30(gaps) = svh - 134
-       Per card row: (svh - 134) / 6. At svh=660: ~88px.
-       Width follows ~4:5 aspect ratio for digital cards. */
-    --card-width: min(68px, 10svh);
-    --card-height: min(85px, 12.5svh);
+    /* Both hands + piles use identical card sizes. 3-row layout:
+       AI(3 rows) + center(1 pile row) + player(3 rows) = 7 card rows.
+       Budget: svh - 25(score) - 50(gaps/labels) = svh - 75
+       Per card row: (svh - 75) / 7. At svh=660: ~83px.
+       Width follows ~4:5 ratio for digital cards. */
+    --card-width: min(66px, 9.5svh);
+    --card-height: min(83px, 12svh);
   }
 
   html, body {
@@ -1138,11 +1139,11 @@ body::before {
     width: 280px;
   }
 
-  /* Sidebar toggle button */
+  /* Sidebar toggle button — align with score bar */
   #sidebar-toggle {
     display: block;
     position: fixed;
-    top: env(safe-area-inset-top, 8px);
+    top: calc(max(4px, env(safe-area-inset-top, 4px)) + 3px);
     right: 8px;
     z-index: 190;
     background: rgba(0, 0, 0, 0.5);
@@ -1205,16 +1206,17 @@ body::before {
     font-weight: 600;
   }
 
-  /* CSS grid layout for mobile — all rows auto-sized, centered vertically */
+  /* CSS grid layout for mobile — 3 rows: AI / piles+controls / player
+     Center row uses 3 columns: draw | controls | discard
+     This fills horizontal space and keeps piles at normal card size */
   #play-area {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto auto auto;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto auto;
     grid-template-areas:
-      "ai       ai"
-      "draw     discard"
-      "msg      msg"
-      "player   player";
+      "ai      ai      ai"
+      "draw    msg     discard"
+      "player  player  player";
     gap: 4px;
     justify-items: center;
     align-items: center;
@@ -1229,8 +1231,8 @@ body::before {
   }
 
   #ai-area { grid-area: ai; }
-  #left-column { grid-area: draw; justify-self: end; }
-  #discard-pile { grid-area: discard; justify-self: start; }
+  #left-column { grid-area: draw; justify-self: center; }
+  #discard-pile { grid-area: discard; justify-self: center; }
   #center-strip { grid-area: msg; }
   #player-area { grid-area: player; }
 
@@ -1244,28 +1246,37 @@ body::before {
     display: none;
   }
 
+  /* Draw pile column — stack vertically, understand button below */
   #left-column {
-    flex-direction: row;
+    flex-direction: column;
     gap: 4px;
     align-items: center;
   }
 
+  /* Show Understand AI Move on mobile — compact styling */
   #left-column .understand-btn {
-    display: none;
+    font-size: 9px;
+    padding: 4px 6px;
+    max-width: var(--card-width);
+    line-height: 1.2;
   }
 
+  /* Center strip — message + buttons stacked vertically between piles */
   #center-strip {
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
     padding: 0;
     width: 100%;
+    justify-content: center;
+    align-items: center;
   }
 
   #center-strip #game-message {
-    font-size: 12px;
+    font-size: 11px;
     height: auto;
-    min-height: 24px;
-    padding: 2px 8px;
+    min-height: auto;
+    padding: 2px 6px;
+    text-align: center;
   }
 
   /* Cards and grid — tight spacing, both hands identical */
@@ -1283,11 +1294,11 @@ body::before {
     margin-bottom: 0;
   }
 
-  /* Pile cards — compact, secondary to hands */
+  /* Pile cards — same size as hand cards for consistency */
   .pile .card,
   .pile .empty-pile {
-    width: 44px;
-    height: 62px;
+    width: var(--card-width);
+    height: var(--card-height);
   }
 
   .pile {
@@ -1351,10 +1362,10 @@ body::before {
 }
 
 @media (max-width: 480px) {
-  /* Tighter sizing for narrow phones. Same math, smaller caps. */
+  /* Tighter sizing for narrow phones. Same 7-row budget. */
   :root {
-    --card-width: min(62px, 9.2svh);
-    --card-height: min(78px, 11.5svh);
+    --card-width: min(60px, 8.8svh);
+    --card-height: min(76px, 11svh);
   }
 
   .hand-grid {
@@ -1428,12 +1439,6 @@ body::before {
     padding: 3px 6px;
   }
 
-  /* Pile cards — small, secondary elements */
-  .pile .card,
-  .pile .empty-pile {
-    width: 40px;
-    height: 56px;
-  }
 }
 
 /* ---- Left Column (draw pile + understand button) ---- */
@@ -1928,7 +1933,7 @@ body:has(#page-layout:not(.hidden)) #help-toggle {
 /* Mobile adjustments for help modal */
 @media (max-width: 768px) {
   #help-toggle {
-    top: env(safe-area-inset-top, 8px);
+    top: calc(max(4px, env(safe-area-inset-top, 4px)) + 3px);
     left: 8px;
   }
 
