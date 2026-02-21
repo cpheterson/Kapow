@@ -1070,11 +1070,12 @@ body::before {
    ============================================ */
 @media (max-width: 768px) {
   :root {
-    /* Viewport-relative: cards scale to fit screen height.
-       Budget: ~40% of svh for 3 player card rows.
-       svh = smallest viewport (Safari toolbar visible). */
-    --card-width: min(70px, 15svw);
-    --card-height: min(98px, 11svh);
+    /* Both hands use identical card sizes. 6 card rows must fit in svh.
+       Budget: svh - 25(score) - 55(piles) - 24(msg) - 30(gaps) = svh - 134
+       Per card row: (svh - 134) / 6. At svh=660: ~88px.
+       Width follows ~4:5 aspect ratio for digital cards. */
+    --card-width: min(68px, 10svh);
+    --card-height: min(85px, 12.5svh);
   }
 
   html, body {
@@ -1175,7 +1176,7 @@ body::before {
     -webkit-backdrop-filter: blur(8px);
     border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    margin-bottom: 6px;
+    margin-bottom: 2px;
   }
 
   #mobile-score-bar .version-tag {
@@ -1204,19 +1205,20 @@ body::before {
     font-weight: 600;
   }
 
-  /* CSS grid layout for mobile — pack sections tightly, player hand fills remainder */
+  /* CSS grid layout for mobile — all rows auto-sized, centered vertically */
   #play-area {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto auto 1fr;
+    grid-template-rows: auto auto auto auto;
     grid-template-areas:
       "ai       ai"
       "draw     discard"
       "msg      msg"
       "player   player";
-    gap: 2px;
+    gap: 4px;
     justify-items: center;
-    align-items: start;
+    align-items: center;
+    align-content: center;
     flex: 1;
     min-height: 0;
     overflow: hidden;
@@ -1230,91 +1232,15 @@ body::before {
   #left-column { grid-area: draw; justify-self: end; }
   #discard-pile { grid-area: discard; justify-self: start; }
   #center-strip { grid-area: msg; }
-  #player-area { grid-area: player; align-self: end; }
+  #player-area { grid-area: player; }
 
-  /* AI hand: mini cards — opponent cards are mostly face-down, save vertical space */
+  /* AI hand — same card size as player, just hide labels to save space */
   #ai-area h2 {
-    font-size: 10px;
+    font-size: 9px;
     margin-bottom: 1px;
   }
 
-  #ai-area .hand-grid {
-    gap: 4px;
-  }
-
-  #ai-area .triad-column {
-    padding: 2px;
-    gap: 2px;
-    border: none;
-    background: transparent;
-  }
-
   #ai-area .triad-label {
-    display: none;
-  }
-
-  #ai-area .card {
-    width: 46px;
-    height: 32px;
-    border-radius: 4px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-  }
-
-  #ai-area .card:hover {
-    transform: none;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-  }
-
-  #ai-area .card-back-inner {
-    padding: 0;
-    border: none;
-  }
-
-  #ai-area .card-back-text {
-    font-size: 7px;
-    letter-spacing: 0.5px;
-  }
-
-  #ai-area .card-value-center {
-    font-size: 16px;
-  }
-
-  #ai-area .card-value-top,
-  #ai-area .card-value-bottom {
-    display: none;
-  }
-
-  #ai-area .card-type-label {
-    display: none;
-  }
-
-  #ai-area .kapow-text {
-    font-size: 8px;
-    letter-spacing: 0.5px;
-  }
-
-  #ai-area .kapow-value {
-    display: none;
-  }
-
-  #ai-area .card-power-face-value {
-    font-size: 14px;
-  }
-
-  #ai-area .card-power-modifiers {
-    display: none;
-  }
-
-  #ai-area .card-power .card-type-label {
-    display: none;
-  }
-
-  #ai-area .position-slot {
-    min-height: 32px;
-    min-width: 46px;
-  }
-
-  #ai-area .powerset-info {
     display: none;
   }
 
@@ -1342,14 +1268,14 @@ body::before {
     padding: 2px 8px;
   }
 
-  /* Cards and grid */
+  /* Cards and grid — tight spacing, both hands identical */
   .hand-grid {
-    gap: 6px;
+    gap: 4px;
   }
 
   .triad-column {
-    padding: 4px;
-    gap: 4px;
+    padding: 2px;
+    gap: 2px;
   }
 
   .triad-label {
@@ -1357,11 +1283,11 @@ body::before {
     margin-bottom: 0;
   }
 
-  /* Pile cards — compact on mobile to save vertical space */
+  /* Pile cards — compact, secondary to hands */
   .pile .card,
   .pile .empty-pile {
-    width: 50px;
-    height: 70px;
+    width: 44px;
+    height: 62px;
   }
 
   .pile {
@@ -1374,18 +1300,14 @@ body::before {
     margin-bottom: 1px;
   }
 
-  /* Section headers — hide on mobile, info is in score bar */
-  #ai-area h2 {
-    font-size: 9px;
-    margin-bottom: 1px;
-  }
-
+  /* Section headers — hide to save vertical space */
+  #ai-area h2,
   #player-area h2 {
     display: none;
   }
 
-  /* Hide triad labels on player hand to save vertical space */
-  #player-area .triad-label {
+  /* Hide all triad labels on mobile */
+  .triad-label {
     display: none;
   }
 
@@ -1429,13 +1351,10 @@ body::before {
 }
 
 @media (max-width: 480px) {
-  /* Viewport-relative card sizing: player hand needs 3 rows to fit.
-     Total budget: ~45% of svh for player cards (3 rows + gaps + padding).
-     Remaining 55%: score bar(25px) + AI(~100px) + piles(~70px) + msg(~50px).
-     Each card ≈ 45svh / 3 ≈ 15svh, but cap at 78px for big phones. */
+  /* Tighter sizing for narrow phones. Same math, smaller caps. */
   :root {
-    --card-width: min(56px, 14svw);
-    --card-height: min(78px, 8.5svh);
+    --card-width: min(62px, 9.2svh);
+    --card-height: min(78px, 11.5svh);
   }
 
   .hand-grid {
@@ -1509,11 +1428,11 @@ body::before {
     padding: 3px 6px;
   }
 
-  /* Pile cards even smaller at this breakpoint */
+  /* Pile cards — small, secondary elements */
   .pile .card,
   .pile .empty-pile {
-    width: 44px;
-    height: 62px;
+    width: 40px;
+    height: 56px;
   }
 }
 
