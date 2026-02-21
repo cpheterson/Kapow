@@ -268,6 +268,10 @@ function revealCard(hand, triadIndex, position) {
   if (posCards && posCards.length > 0) {
     posCards[0].isRevealed = true;
   }
+  // Track for flip animation
+  if (gameState) {
+    gameState._justRevealed = { triadIndex: triadIndex, position: position };
+  }
   return hand;
 }
 
@@ -710,6 +714,7 @@ function handleFirstTurnReveal(state, triadIndex, position) {
   var player = state.players[state.currentPlayer];
   revealCard(player.hand, triadIndex, position);
   var revealedCard = player.hand.triads[triadIndex][position][0];
+  KapowSounds.cardFlip(state.currentPlayer === 0 ? 1 : 0.5);
   logAction(state, state.currentPlayer, 'Reveals ' + cardDescription(revealedCard) + ' in Triad ' + (triadIndex + 1) + ' (' + position + ')');
   state.firstTurnReveals++;
 
@@ -753,6 +758,7 @@ function handleDrawFromDeck(state) {
     state.drawPile = result.pile;
     state.message = 'Drew ' + cardDescription(result.card) + '. Place or discard.';
     logAction(state, state.currentPlayer, 'Draws ' + cardDescription(result.card) + ' from draw pile');
+    KapowSounds.drawCard(state.currentPlayer === 0 ? 1 : 0.5);
   }
   return state;
 }
@@ -772,6 +778,7 @@ function handleDrawFromDiscard(state) {
     }
     var desc = cardDescription(result.card);
     logAction(state, state.currentPlayer, 'Draws ' + desc + ' from discard pile');
+    KapowSounds.drawCard(state.currentPlayer === 0 ? 1 : 0.5);
     if (result.card.type === 'power') {
       state.message = 'Took ' + desc + '. Place or use as modifier.';
     } else {
@@ -1035,6 +1042,16 @@ function handlePlaceCard(state, triadIndex, position) {
 
   logAction(state, state.currentPlayer, 'Places ' + drawnDesc + ' in Triad ' + (triadIndex + 1) + ' (' + position + '), replacing ' + replacedDesc);
 
+  // Sound + animation
+  var vol = state.currentPlayer === 0 ? 1 : 0.5;
+  if (result.hand.triads[triadIndex][position][0] && result.hand.triads[triadIndex][position][0].type === 'kapow') {
+    KapowSounds.kapowHit(vol);
+    state._justPlacedKapow = { triadIndex: triadIndex, position: position };
+  } else {
+    KapowSounds.cardPlace(vol);
+  }
+  state._justPlaced = { triadIndex: triadIndex, position: position };
+
   state.drawnCard = null;
   state.drawnFromDiscard = false;
   checkAndDiscardTriads(state, state.currentPlayer);
@@ -1063,6 +1080,9 @@ function handleAddPowerset(state, triadIndex, position, usePositiveModifier) {
   posCards.push(state.drawnCard);
 
   logAction(state, state.currentPlayer, 'Creates powerset: ' + powerDesc + ' as modifier (' + modSign + modValue + ') under card in Triad ' + (triadIndex + 1) + ' (' + position + ')');
+
+  KapowSounds.cardPlace(state.currentPlayer === 0 ? 1 : 0.5);
+  state._justPlaced = { triadIndex: triadIndex, position: position };
 
   state.drawnCard = null;
   state.drawnFromDiscard = false;
@@ -1096,6 +1116,9 @@ function handleCreatePowersetOnPower(state, triadIndex, position, usePositiveMod
 
   logAction(state, state.currentPlayer, 'Creates powerset: ' + drawnDesc + ' on top, Power ' + existingPower.faceValue + ' (' + modSign + modValue + ') as modifier in Triad ' + (triadIndex + 1) + ' (' + position + ')');
 
+  KapowSounds.cardPlace(state.currentPlayer === 0 ? 1 : 0.5);
+  state._justPlaced = { triadIndex: triadIndex, position: position };
+
   state.drawnCard = null;
   state.drawnFromDiscard = false;
   logHandState(state, state.currentPlayer);
@@ -1111,6 +1134,7 @@ function handleDiscard(state) {
   state.discardPile.push(state.drawnCard);
   // Track whether human knowingly provided this discard (always true for explicit discard)
   if (state.currentPlayer === 0) state.lastDiscardKnown = true;
+  KapowSounds.cardPlace(state.currentPlayer === 0 ? 1 : 0.5);
   logAction(state, state.currentPlayer, 'Discards ' + discardDesc);
   state.drawnCard = null;
   state.drawnFromDiscard = false;
@@ -3303,6 +3327,14 @@ function animateTriadDiscard(containerId, triadIndex, isOpponent, savedCards, ca
   // Highlight the triad column as completing
   triadEl.classList.add('triad-completing');
 
+  // Sound and screen shake
+  KapowSounds.triadComplete(isOpponent ? 0.5 : 1);
+  var gameContainer = document.getElementById('game-container');
+  if (gameContainer) {
+    gameContainer.classList.add('screen-shake');
+    setTimeout(function() { gameContainer.classList.remove('screen-shake'); }, 300);
+  }
+
   // Add the discarding class to all position slots that have cards
   for (var i = 0; i < posSlots.length; i++) {
     var cardEl = posSlots[i].querySelector('.card');
@@ -3422,9 +3454,10 @@ function runWithTriadAnimation(playerIndex, handlerFn) {
   }
 }
 
-function renderCardHTML(card, faceDown, clickable) {
+function renderCardHTML(card, faceDown, clickable, extraClass) {
   var classes = 'card';
   if (clickable) classes += ' clickable';
+  if (extraClass) classes += ' ' + extraClass;
 
   if (faceDown || !card.isRevealed) {
     classes += ' card-back';
@@ -3538,16 +3571,31 @@ function renderHand(hand, containerId, isOpponent, clickablePositions, onClickAt
         var faceDown = isOpponent && !card.isRevealed;
         var hasPowerset = triad[pos].length > 1 && card.isRevealed;
 
+        // Determine animation class from state flags
+        var animClass = '';
+        if (gameState) {
+          var jr = gameState._justRevealed;
+          var jp = gameState._justPlaced;
+          var jpk = gameState._justPlacedKapow;
+          if (jr && jr.triadIndex === t && jr.position === pos) {
+            animClass = 'card-flip-in';
+          } else if (jpk && jpk.triadIndex === t && jpk.position === pos) {
+            animClass = 'card-slide-in card-kapow-placed';
+          } else if (jp && jp.triadIndex === t && jp.position === pos) {
+            animClass = 'card-slide-in';
+          }
+        }
+
         // Wrap in clickable div if needed
         if (isClickable && onClickAttr) {
           html += '<div onclick="' + onClickAttr + '(' + t + ',\'' + pos + '\')">';
-          html += renderCardHTML(card, faceDown, true);
+          html += renderCardHTML(card, faceDown, true, animClass);
           if (hasPowerset) {
             html += renderPowersetInfo(triad[pos]);
           }
           html += '</div>';
         } else {
-          html += renderCardHTML(card, faceDown, false);
+          html += renderCardHTML(card, faceDown, false, animClass);
           if (hasPowerset) {
             html += renderPowersetInfo(triad[pos]);
           }
@@ -3673,11 +3721,18 @@ function init() {
   document.getElementById('name-screen').classList.remove('hidden');
   document.getElementById('page-layout').classList.add('hidden');
 
-  // Restore cached name
+  // Restore cached name and show welcome-back message
   try {
     var cached = localStorage.getItem('kapow-player-name');
-    if (cached) document.getElementById('player-name-input').value = cached;
+    if (cached) {
+      document.getElementById('player-name-input').value = cached;
+      var subtitle = document.querySelector('.name-screen-content p');
+      if (subtitle) subtitle.textContent = 'Welcome back!';
+    }
   } catch(e) {}
+
+  // Init mute button state
+  KapowSounds.updateMuteButton();
 
   document.getElementById('btn-start-game').addEventListener('click', startGameWithName);
   document.getElementById('player-name-input').addEventListener('keydown', function(e) {
@@ -3686,6 +3741,9 @@ function init() {
 }
 
 function startGameWithName() {
+  // Init AudioContext on first user gesture (browser requirement)
+  KapowSounds.init();
+
   var input = document.getElementById('player-name-input');
   var name = input.value.trim();
   if (!name) name = 'Player';
@@ -3858,6 +3916,11 @@ function refreshUI() {
   }
   renderHand(gameState.players[0].hand, 'player-hand', false, clickablePositions, 'window._onCardClick', playerHL);
   renderHand(gameState.players[1].hand, 'ai-hand', true, [], null, aiHL);
+
+  // Clear animation flags after render (one-shot)
+  gameState._justRevealed = null;
+  gameState._justPlaced = null;
+  gameState._justPlacedKapow = null;
 
   // Render piles
   renderDiscardPile(gameState.discardPile, gameState.drawnCard, gameState.drawnFromDiscard);
@@ -4348,6 +4411,7 @@ function showRoundEnd() {
 
   scores.innerHTML = html;
   screen.classList.remove('hidden');
+  KapowSounds.roundEnd();
 }
 
 function showGameOver() {
@@ -4388,6 +4452,7 @@ function showGameOver() {
 
   scores.innerHTML = html;
   screen.classList.remove('hidden');
+  KapowSounds.gameOver(winnerIndex === 0);
 }
 
 // AI Turn — multi-step sequence with educational visibility
@@ -4434,6 +4499,7 @@ function aiStepReveal() {
 
   // Reveal first card
   revealCard(gameState.players[1].hand, reveals[0].triadIndex, reveals[0].position);
+  KapowSounds.cardFlip(0.5);
   var card1 = gameState.players[1].hand.triads[reveals[0].triadIndex][reveals[0].position][0];
   gameState.aiHighlight = { type: 'reveal', triadIndex: reveals[0].triadIndex, position: reveals[0].position };
   gameState.message = 'AI reveals ' + cardDescription(card1) + ' in Triad ' + (reveals[0].triadIndex + 1) + '.';
@@ -4443,6 +4509,7 @@ function aiStepReveal() {
   // Reveal second card after delay
   setTimeout(function() {
     revealCard(gameState.players[1].hand, reveals[1].triadIndex, reveals[1].position);
+    KapowSounds.cardFlip(0.5);
     var card2 = gameState.players[1].hand.triads[reveals[1].triadIndex][reveals[1].position][0];
     gameState.aiHighlight = { type: 'reveal', triadIndex: reveals[1].triadIndex, position: reveals[1].position };
     gameState.message = 'AI reveals ' + cardDescription(card2) + ' in Triad ' + (reveals[1].triadIndex + 1) + '.';

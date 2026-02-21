@@ -43,9 +43,7 @@ Saw this and had to fork it. Cool to see what you built — here's what stands o
 
 ### What I want to add next
 
-The big one is **sound** — the game is completely silent and every card game that feels good has satisfying audio. Card flips, placement thunks, chime on triad completion, something dramatic for KAPOW moments.
-
-Also thinking about a **hint button** (that costs points) and **card animations** (fly/flip instead of instant swap).
+Thinking about a **hint button** (that costs points) and **confetti/particles** for triad completion.
 
 ### A note on the modular files
 
@@ -116,22 +114,12 @@ The AI opponent is the most sophisticated part of the codebase:
 - **Go-out timing** considers hand value, unrevealed count, and whether it would get doubled
 - **Pedagogical explanations** — click "Understand AI's Move" after any AI turn to see a full breakdown of its reasoning
 
-## Known Issues
+## Known Bugs
 
-### Remaining bugs
-
-| Severity | Issue | Location |
-|----------|-------|----------|
-| Medium | **AI `reveals` array not bounds-checked** — if AI hand somehow has <2 unrevealed cards, `reveals[1]` crashes | `kapow.js` L4256 |
-| Low | **Round-end screen re-shown on every `refreshUI()` during scoring phase** — unnecessary DOM rebuilds | `kapow.js` L3789 |
-
-### Code quality
-
-| Issue | Detail |
-|-------|--------|
-| **Divergent codebases** | The modular `js/*.js` files and `kapow.js` have different behavior. The modular files are never loaded. |
-| **No build system** | 192KB served unminified. With esbuild/rollup, this would be ~30KB gzipped. |
-| **Inline onclick handlers** | Cards use `onclick="window._onCardClick(...)"` instead of `addEventListener` |
+| Severity | Issue |
+|----------|-------|
+| Medium | AI `reveals` array not bounds-checked — edge case crash if <2 unrevealed cards |
+| Low | Round-end screen re-rendered on every `refreshUI()` during scoring phase |
 
 ### Accessibility
 
@@ -145,15 +133,16 @@ Prioritized by impact-to-effort ratio:
 
 ### Up next
 
-- [ ] **Sound effects** — card draw, place, flip, triad completion, KAPOW moment, round end
 - [ ] **Hint button** — show suggested move, but costs points (2-3 point penalty per hint)
-- [ ] **Card movement animations** — fly cards from pile to hand instead of instant swap
+- [ ] **Confetti on triad completion** — canvas particle burst
 
 ### Polish
 
-- [ ] **Card flip animation** — CSS 3D rotateY for reveals
-- [ ] **Confetti on triad completion** — canvas particle burst
-- [ ] **Screen shake on KAPOW events** — CSS keyframes + class toggle
+- [x] **Sound effects** — card draw, place, flip, triad completion, KAPOW moment, round end (Web Audio API, v0.3.0)
+- [x] **Card flip animation** — CSS 3D rotateY for reveals (v0.3.0)
+- [x] **Card slide-in animation** — slide-in on placement (v0.3.0)
+- [x] **Screen shake on triad completion** — CSS keyframes (v0.3.0)
+- [x] **KAPOW glow effect** — red glow burst on KAPOW placement (v0.3.0)
 - [ ] **AI banter as speech bubbles** — move from sidebar to overlay near AI hand
 - [ ] **AI speed toggle** — `AI_DELAY` is hardcoded at 1500ms, add Normal/Fast/Instant
 - [ ] **Score count-up animation** — animate numbers at round end
@@ -165,7 +154,7 @@ Prioritized by impact-to-effort ratio:
 - [ ] **Persistent stats** — win/loss, streaks, best round via localStorage
 - [ ] **Undo button** — snapshot state before each action, restore on undo
 - [ ] **Achievement badges** — "Shutout" (0-point round), "Comeback Kid", "KAPOW Master"
-- [ ] **Consolidate codebases** — unify modular files with kapow.js, add build step
+- [ ] **Consolidate codebases** — unify modular `js/*.js` files with `kapow.js`, add build step (esbuild/rollup for ~30KB gzipped)
 - [ ] **Multiplayer** — game state already supports N players
 
 ## Development
