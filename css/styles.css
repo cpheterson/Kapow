@@ -1102,13 +1102,13 @@ body::before {
     align-items: center;
   }
 
-  /* Grid locks draw pile and discard pile in place — hands-column gets
-     all remaining space in the middle. Piles never shift regardless of
-     how wide the center strip message is. */
+  /* Flex row: piles sit directly next to the hands, centered together.
+     justify-content:center packs the three items (pile/hands/pile) without
+     stretching — piles are never pushed to viewport edges. */
   #play-area {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
+    display: flex;
     align-items: center;
+    justify-content: center;
     gap: 20px;
     width: 100%;
   }
@@ -1118,13 +1118,12 @@ body::before {
     flex-direction: column;
     align-items: center;
     gap: 12px;
-    min-width: 0;
+    flex-shrink: 0;
     /* Natural height: content stacks tightly, no forced spreading.
        padding-bottom clears the fixed revision footer. */
     padding-bottom: 32px;
   }
 
-  /* Card sections never shrink — their height is always 3 card rows */
   #ai-area,
   #player-area {
     flex-shrink: 0;
@@ -1141,19 +1140,20 @@ body::before {
     display: none !important;
   }
 
-  /* Center strip: natural height — no growth, no spreading. Content stacks
-     tightly in 3 rows (message / action buttons / understand button). */
+  /* Center strip: align-self:stretch locks its width to the hands-column width
+     (which is determined by the fixed-width hand-grid, not by text content).
+     This prevents horizontal layout shifts when message text changes length. */
   #center-strip {
+    align-self: stretch;
     flex-shrink: 0;
     flex-wrap: wrap;
     justify-content: center;
     gap: 8px;
-    width: auto;
   }
 
   #center-strip #game-message {
     flex: 0 0 100%;
-    max-width: 420px;
+    max-width: 100%;
     text-align: center;
     white-space: normal;
   }

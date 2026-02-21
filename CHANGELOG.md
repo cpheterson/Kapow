@@ -2,6 +2,13 @@
 
 ## Version History
 
+### 02-21-2026 v7
+**Fix desktop piles tucked in: replaced CSS grid with flex+center on play-area.**
+- Root cause: `grid-template-columns: auto 1fr auto` made the center column claim full viewport width, pushing piles to screen edges
+- New: `display: flex; justify-content: center` — piles sit directly adjacent to cards
+- `#center-strip` uses `align-self: stretch` to lock its width to the hand-grid (not text content), preventing horizontal layout shifts
+- Game message `max-width: 100%` fills the available hand-grid width
+
 ### 02-21-2026 v6
 **Fix desktop vertical spacing: remove artificial spreading between hands and center strip.**
 - Card formula overhead increased 165px → 280px to account for center strip + headers
@@ -104,4 +111,4 @@ When making changes that warrant a version bump:
 
 ---
 
-## Latest Version: 02-21-2026 v6
+## Latest Version: 02-21-2026 v7
