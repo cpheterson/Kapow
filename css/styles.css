@@ -1127,6 +1127,18 @@ body::before {
   #mobile-banter {
     display: none !important;
   }
+
+  /* Center strip: message on its own row, all buttons together below */
+  #center-strip {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  #center-strip #game-message {
+    flex: 0 0 100%;
+    max-width: none;
+    text-align: center;
+  }
 }
 
 /* Mid-range desktop: tighten gaps so 4 triads fit side by side comfortably.
