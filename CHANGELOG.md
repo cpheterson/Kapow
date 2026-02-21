@@ -2,6 +2,14 @@
 
 ## Version History
 
+### 02-21-2026 v2
+**Fix desktop card overflow: viewport-height-based card sizing.**
+- Cards now scale to fit both hands in one viewport height without scrolling
+- Formula: clamp(68px, (100vh - 165px) / 6, 130px) — 6 card rows fill available height
+- Card width derives from height at fixed 100:140 aspect ratio
+- Removed hardcoded mid-range card sizes — formula handles all desktop screen sizes
+- Renamed VERSION_LOG.md → CHANGELOG.md (standard convention)
+
 ### 02-21-2026 v1
 **Merged Eric's fork: mobile UI, sounds, animations, tutorial, PWA, bug fixes.**
 - Mobile-first responsive layout (CSS grid, svh/dvh units, iOS Safari viewport lock)

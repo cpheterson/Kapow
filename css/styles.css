@@ -1078,6 +1078,14 @@ body::before {
    any cascade issues. Mobile overrides below.
    ============================================ */
 @media (min-width: 769px) {
+  /* Cards scale to viewport height so both hands always fit without scrolling.
+     6 card rows + ~165px of headers/strip/gaps/padding = full viewport.
+     Clamped: min 68px (very small screens), max 130px (large monitors). */
+  :root {
+    --card-height: clamp(68px, calc((100vh - 165px) / 6), 130px);
+    --card-width: calc(var(--card-height) * 0.714);
+  }
+
   #page-layout {
     display: flex;
     flex-direction: row;
@@ -1121,13 +1129,9 @@ body::before {
   }
 }
 
-/* Mid-range desktop: scale cards down slightly so 4 triads fit comfortably */
+/* Mid-range desktop: tighten gaps so 4 triads fit side by side comfortably.
+   Card sizes are handled dynamically by the formula above. */
 @media (min-width: 769px) and (max-width: 1100px) {
-  :root {
-    --card-width: 82px;
-    --card-height: 114px;
-  }
-
   #play-area {
     gap: 12px;
   }
