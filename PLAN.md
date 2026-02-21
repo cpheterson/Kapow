@@ -63,7 +63,7 @@ One rule: pull before pushing, heads-up before big CSS/JS refactors.
 
 **Adopting Chuck's format:** `MM-DD-YYYY vN` (resets daily, increments within day)
 
-Both repos now use `VERSION_LOG.md` as changelog. Eric's PR will add all his version entries retroactively.
+Both repos now use `CHANGELOG.md` as changelog. Eric's PR will add all his version entries retroactively.
 
 **Current version:** 02-21-2026 v1 (AI merge from Chuck)
 
@@ -103,4 +103,4 @@ Both repos now use `VERSION_LOG.md` as changelog. Eric's PR will add all his ver
 - **Eric owns UI/UX** (CSS, animations, mobile). Chuck can flag issues.
 - **Shared:** HTML structure, kapow.js event handling, version bumps.
 - **Communication:** Quick text/email before big changes. "About to redo X, don't push for an hour."
-- **Version bump every push** — date format, log entry in VERSION_LOG.md.
+- **Version bump every push** — date format, log entry in CHANGELOG.md.

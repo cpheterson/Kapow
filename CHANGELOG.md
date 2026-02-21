@@ -43,7 +43,7 @@
 **Initial revision with software revision footer added.**
 - Added revision footer to lower right corner of page
 - Format: `02-20-2026 v1` (date v{version})
-- Created VERSION_LOG.md for version tracking
+- Created CHANGELOG.md for version tracking
 
 ---
 
@@ -64,7 +64,7 @@ When making changes that warrant a version bump:
    - If new date: use `MM-DD-YYYY v1`
    - If same date: increment to next number (e.g., `02-20-2026 v2`)
 4. Update `id="revision-text"` in `index.html` with the new version string
-5. Add an entry to this VERSION_LOG.md file describing the changes
+5. Add an entry to this CHANGELOG.md file describing the changes
 6. Commit the changes with the version in the commit message
 
 ---

@@ -107,7 +107,7 @@ Kapow/
 ├── manifest.json           # PWA manifest
 ├── sw.js                   # Service worker (offline caching)
 ├── PLAN.md                 # Project roadmap and collaboration plan
-├── VERSION_LOG.md          # Changelog (date-versioned)
+├── CHANGELOG.md          # Changelog (date-versioned)
 ├── css/
 │   └── styles.css          # All styles
 ├── js/
