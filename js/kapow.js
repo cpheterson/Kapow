@@ -1359,42 +1359,59 @@ function buildAiExplanation(gameState, drawnCard, drawChoice, action) {
       }
       lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> This completes the triad! All three cards are discarded, removing ' + triadPointsShed + ' points from AI\'s score. Completing triads is the most powerful move in the game.</p>');
     } else {
-      // Analyze AFTER simulated placement to explain what this builds toward
-      triad[action.position] = [newCard];
-      var analysis = aiAnalyzeTriad(triad);
-      triad[action.position] = origCards;
-
-      // Show the triad state after placement
-      var triadStateDesc = [];
-      var triadPositions2 = ['top', 'middle', 'bottom'];
-      for (var ts = 0; ts < 3; ts++) {
-        var tsCards = triad[triadPositions2[ts]];
-        if (triadPositions2[ts] === action.position) {
-          triadStateDesc.push(drawnDesc);
-        } else if (tsCards.length > 0 && tsCards[0].isRevealed) {
-          triadStateDesc.push(cardDescription(tsCards[0]));
-        } else if (tsCards.length > 0) {
-          triadStateDesc.push('?');
-        } else {
-          triadStateDesc.push('empty');
+      // Check if this placement would trigger going out (hand becomes fully revealed).
+      // If so, skip the "future completion paths" explanation — they're irrelevant after going out.
+      var wouldGoOut = false;
+      if (gameState && gameState.phase === 'playing') {
+        var handEvalForGoOut = aiEvaluateHand(aiHand);
+        var posCards2 = triad[action.position];
+        var isUnrevealedSlot = posCards2.length > 0 && !posCards2[0].isRevealed;
+        if (isUnrevealedSlot && handEvalForGoOut.unrevealedCount === 1) {
+          wouldGoOut = true;
         }
       }
-      var triadVisual = 'Triad ' + (action.triadIndex + 1) + ' is now [' + triadStateDesc.join(', ') + '].';
 
-      if (analysis.revealedCount >= 2 && (analysis.completionPaths > 0 || analysis.powerModifierPaths > 0)) {
-        var pathParts = [];
-        if (analysis.completionPaths > 0) {
-          pathParts.push(analysis.completionPaths + ' standard card value(s)');
+      if (wouldGoOut) {
+        // Placement triggers going out — explain the going-out decision instead
+        var goOutScore = handEvalForGoOut.knownScore + (drawnCard.type === 'kapow' ? 25 : drawnCard.faceValue);
+        lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> This placement reveals the last face-down card, triggering going out. AI\'s score will be ' + goOutScore + ' points. The AI evaluated this was the best time to go out — the score is manageable and likely lower than your estimated final score.</p>');
+      } else {
+        // Analyze AFTER simulated placement to explain what this builds toward
+        triad[action.position] = [newCard];
+        var analysis = aiAnalyzeTriad(triad);
+        triad[action.position] = origCards;
+
+        // Show the triad state after placement
+        var triadStateDesc = [];
+        var triadPositions2 = ['top', 'middle', 'bottom'];
+        for (var ts = 0; ts < 3; ts++) {
+          var tsCards = triad[triadPositions2[ts]];
+          if (triadPositions2[ts] === action.position) {
+            triadStateDesc.push(drawnDesc);
+          } else if (tsCards.length > 0 && tsCards[0].isRevealed) {
+            triadStateDesc.push(cardDescription(tsCards[0]));
+          } else if (tsCards.length > 0) {
+            triadStateDesc.push('?');
+          } else {
+            triadStateDesc.push('empty');
+          }
         }
-        if (analysis.powerModifierPaths > 0) {
-          pathParts.push(analysis.powerModifierPaths + ' Power card modifier combination(s)');
-        }
-        var pathDesc = pathParts.join(' and ');
-        if (analysis.kapowBoost) {
-          pathDesc += ', plus any KAPOW! wild card';
-        }
-        lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> ' + triadVisual + ' This triad can be completed by ' + pathDesc + '. Building toward triad completion is key — it removes all the triad\'s points from your score at once.</p>');
-      } else if (!replacedWasRevealed) {
+        var triadVisual = 'Triad ' + (action.triadIndex + 1) + ' is now [' + triadStateDesc.join(', ') + '].';
+
+        if (analysis.revealedCount >= 2 && (analysis.completionPaths > 0 || analysis.powerModifierPaths > 0)) {
+          var pathParts = [];
+          if (analysis.completionPaths > 0) {
+            pathParts.push(analysis.completionPaths + ' standard card value(s)');
+          }
+          if (analysis.powerModifierPaths > 0) {
+            pathParts.push(analysis.powerModifierPaths + ' Power card modifier combination(s)');
+          }
+          var pathDesc = pathParts.join(' and ');
+          if (analysis.kapowBoost) {
+            pathDesc += ', plus any KAPOW! wild card';
+          }
+          lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> ' + triadVisual + ' This triad can be completed by ' + pathDesc + '. Building toward triad completion is key — it removes all the triad\'s points from your score at once.</p>');
+        } else if (!replacedWasRevealed) {
         // Replaced a face-down card
         var neighborSynergy = false;
         var synergyWith = '';
@@ -1422,6 +1439,7 @@ function buildAiExplanation(gameState, drawnCard, drawChoice, action) {
         lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> ' + triadVisual + ' Reducing the value of cards that aren\'t part of a near-complete triad helps minimize your score if you can\'t complete the triad before the round ends.</p>');
       } else {
         lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> ' + triadVisual + '</p>');
+      }
       }
     }
 
