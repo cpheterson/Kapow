@@ -1072,6 +1072,76 @@ body::before {
   display: none;
 }
 
+/* ============================================
+   DESKTOP EXPLICIT LAYOUT LOCK
+   Forces horizontal flex layout regardless of
+   any cascade issues. Mobile overrides below.
+   ============================================ */
+@media (min-width: 769px) {
+  #page-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  #game-container {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #play-area {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    width: 100%;
+  }
+
+  #hands-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  #sidebar {
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+  }
+
+  #mobile-score-bar,
+  #mobile-banter {
+    display: none !important;
+  }
+}
+
+/* Mid-range desktop: scale cards down slightly so 4 triads fit comfortably */
+@media (min-width: 769px) and (max-width: 1100px) {
+  :root {
+    --card-width: 82px;
+    --card-height: 114px;
+  }
+
+  #play-area {
+    gap: 12px;
+  }
+
+  .hand-grid {
+    gap: 8px;
+  }
+
+  .triad-column {
+    gap: 5px;
+    padding: 6px 4px;
+  }
+}
+
 /* ---- Sidebar Toggle (hidden on desktop) ---- */
 #sidebar-toggle {
   display: none;
