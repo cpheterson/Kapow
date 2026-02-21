@@ -1118,6 +1118,16 @@ body::before {
     align-items: center;
     gap: 6px;
     min-width: 0;
+    /* Fixed height anchors both hands at stable vertical positions.
+       Nothing in this column can shift the layout when text changes. */
+    height: calc(100vh - 20px);
+    justify-content: flex-start;
+  }
+
+  /* Card sections never shrink — their height is always 3 card rows */
+  #ai-area,
+  #player-area {
+    flex-shrink: 0;
   }
 
   #sidebar {
@@ -1131,15 +1141,16 @@ body::before {
     display: none !important;
   }
 
-  /* Center strip: message on its own row, buttons together below.
-     fit-content + margin:auto centers it within the 1fr column
-     without letting it push the piles around. */
+  /* Center strip: flex:1 absorbs all remaining space between the two hands.
+     Its HEIGHT is fixed by the hands-column — only the content inside floats.
+     align-content:center keeps message+buttons vertically centered within it. */
   #center-strip {
+    flex: 1;
     flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
     gap: 8px;
-    width: fit-content;
-    max-width: 100%;
-    margin: 0 auto;
+    width: auto;
   }
 
   #center-strip #game-message {
@@ -1147,6 +1158,22 @@ body::before {
     max-width: 420px;
     text-align: center;
     white-space: normal;
+  }
+
+  /* Each control group gets its own row — layout never shifts regardless of
+     which buttons are visible or how long the message text is. */
+  #center-strip #action-controls {
+    flex: 0 0 100%;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  #center-strip #btn-understand-move {
+    flex: 0 0 100%;
+    max-width: 200px;
+    margin: 0 auto;
+    text-align: center;
   }
 }
 

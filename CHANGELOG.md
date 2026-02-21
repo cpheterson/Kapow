@@ -2,6 +2,25 @@
 
 ## Version History
 
+### 02-21-2026 v5
+**Fix desktop center strip button layout: each element on its own row.**
+- Message, action buttons (Hint + End Turn), and Understand AI's Move each occupy a full-width row
+- Buttons never share a row with the understand button regardless of Hint visibility
+- Layout is now completely stable — no horizontal shifting as game state changes
+- `flex: 0 0 100%` on action-controls and understand-btn enforces single-row-per-element
+
+### 02-21-2026 v4
+**Fix piles shifting horizontally and version to footer center.**
+- Replaced flex layout with CSS grid (`auto 1fr auto`) on play-area — piles locked in fixed columns
+- Center strip uses `width: fit-content; margin: auto` so it expands inward, not outward
+- Revision footer moved from bottom-right to bottom-center (`left: 50%; transform: translateX(-50%)`)
+
+### 02-21-2026 v3
+**Stack center strip vertically: message on its own row, buttons below.**
+- Added `flex-wrap: wrap` to center-strip
+- `flex: 0 0 100%` on game-message forces it to its own row
+- Buttons tuck in below on a separate row
+
 ### 02-21-2026 v2
 **Fix desktop card overflow: viewport-height-based card sizing.**
 - Cards now scale to fit both hands in one viewport height without scrolling
@@ -77,4 +96,4 @@ When making changes that warrant a version bump:
 
 ---
 
-## Latest Version: 02-21-2026 v1
+## Latest Version: 02-21-2026 v5
