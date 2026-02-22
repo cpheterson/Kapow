@@ -766,12 +766,11 @@ function exportLog(silent) {
 // ---- Sidebar / Scorecard helpers ----
 
 function closeSidebar(event) {
-  // On mobile: tap anywhere on the overlay (outside scorecard) closes it.
-  // On desktop: clicking the sidebar area itself closes the mobile overlay.
+  // Close scorecard when tapping anything that isn't a button or interactive element
+  var tag = event.target.tagName;
+  if (tag === 'BUTTON' || tag === 'A' || tag === 'INPUT') return;
   var sidebar = document.getElementById('sidebar');
-  if (event.target === sidebar) {
-    sidebar.classList.remove('mobile-visible');
-  }
+  sidebar.classList.remove('mobile-visible');
 }
 
 function addGameNote() {
