@@ -1999,6 +1999,49 @@ body::before {
   animation: none;
 }
 
+/* Resume game button — warm amber, prominent when save exists */
+#btn-resume-game {
+  display: block;
+  width: 260px;
+  margin: 0 auto 8px;
+  padding: 16px 32px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: 2px solid #b45309;
+  border-radius: 14px;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3), 0 2px 4px rgba(0,0,0,0.2);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  animation: resume-glow 2.5s ease-in-out infinite;
+}
+#btn-resume-game:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4), 0 4px 8px rgba(0,0,0,0.2);
+  animation: none;
+}
+#btn-resume-game:active {
+  transform: translateY(1px);
+}
+#btn-resume-game.hidden { display: none; }
+@keyframes resume-glow {
+  0%, 100% { box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3), 0 2px 4px rgba(0,0,0,0.2); }
+  50% { box-shadow: 0 4px 24px rgba(245, 158, 11, 0.5), 0 2px 4px rgba(0,0,0,0.2); }
+}
+
+/* When resume exists, New Game is secondary */
+#btn-resume-game:not(.hidden) ~ #btn-start-game {
+  background: linear-gradient(135deg, #475569, #334155);
+  border-color: #1e293b;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  animation: none;
+  font-size: 16px;
+  padding: 12px 24px;
+}
+
 /* ---- Dopamine Hits: Celebrations & Streaks ---- */
 
 /* Round win: green flash across the overlay */

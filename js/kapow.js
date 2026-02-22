@@ -222,6 +222,96 @@ function recordGameResult(playerWon, playerScore) {
   return { stats: stats, isPersonalBest: false };
 }
 
+// ========================================
+// GAME SAVE & RESUME
+// ========================================
+var SAVE_KEY = 'kapow-save';
+
+function saveGame() {
+  if (!gameState) return;
+  // Don't save in terminal states — game over clears save
+  if (gameState.phase === 'gameOver') return;
+  try {
+    var save = {
+      version: 1,
+      timestamp: new Date().toISOString(),
+      gameState: gameState,
+      nextCardId: nextCardId,
+      tutorialActive: tutorialActive,
+      tutorialSeen: tutorialSeen,
+      playerName: playerName
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+  } catch(e) {
+    // localStorage full or unavailable — silent fail
+  }
+}
+
+function clearSave() {
+  try { localStorage.removeItem(SAVE_KEY); } catch(e) {}
+}
+
+function loadSave() {
+  try {
+    var raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    var save = JSON.parse(raw);
+    if (!save || !save.gameState || !save.version) return null;
+    return save;
+  } catch(e) {
+    return null;
+  }
+}
+
+function resumeGame(save) {
+  // Restore core state
+  gameState = save.gameState;
+  nextCardId = save.nextCardId || 0;
+  playerName = save.playerName || 'Player';
+  tutorialActive = save.tutorialActive || false;
+  tutorialSeen = save.tutorialSeen || { triad: false, powerDraw: false, powerStacked: false, kapow: false };
+
+  // Reset transient flags — never resume mid-animation
+  aiTurnInProgress = false;
+  triadAnimationInProgress = false;
+  aiSwapHistory = [];
+  aiMoveExplanation = '';
+  lastDrawReason = '';
+  lastActionReason = '';
+  gameState._justRevealed = null;
+  gameState._justPlaced = null;
+  gameState._justPlacedKapow = null;
+  gameState.aiHighlight = null;
+
+  // If it was AI's turn or mid-draw, clean up so human can continue
+  // If AI had drawn but not placed, put the card back
+  if (!gameState.players[gameState.currentPlayer].isHuman && gameState.drawnCard) {
+    gameState.drawPile.push(gameState.drawnCard);
+    gameState.drawnCard = null;
+    gameState.drawnFromDiscard = false;
+  }
+
+  // Show the game, hide name screen
+  document.getElementById('name-screen').classList.add('hidden');
+  document.getElementById('page-layout').classList.remove('hidden');
+  var helpToggle = document.getElementById('help-toggle');
+  if (helpToggle) helpToggle.classList.add('visible');
+
+  // Update headers
+  document.getElementById('player-area-header').textContent = playerName + "'s Hand";
+  document.getElementById('sc-player-name').textContent = playerName;
+
+  // Bind events if not already bound
+  if (!window._kapowEventsBound) {
+    bindGameEvents();
+    window._kapowEventsBound = true;
+  }
+
+  logSystem(gameState, '--- Game resumed ---');
+  gameState.message = 'Game resumed! Round ' + gameState.round + ', Turn ' + gameState.turnNumber + '.';
+  refreshUI();
+}
+
 // Build a buy CTA link/button. Returns HTML string.
 function buildBuyLink(text, cssClass) {
   if (KAPOW_BUY_MODE === 'amazon' && !KAPOW_BUY_URL) {
@@ -4354,6 +4444,20 @@ function init() {
   // Init mute button state
   KapowSounds.updateMuteButton();
 
+  // Check for saved game
+  var save = loadSave();
+  var resumeBtn = document.getElementById('btn-resume-game');
+  if (save && resumeBtn) {
+    var roundInfo = 'Round ' + save.gameState.round + ' of ' + save.gameState.maxRounds;
+    var scoreInfo = save.gameState.players[0].totalScore + ' – ' + save.gameState.players[1].totalScore;
+    resumeBtn.textContent = 'Resume Game (' + roundInfo + ', ' + scoreInfo + ')';
+    resumeBtn.classList.remove('hidden');
+    resumeBtn.addEventListener('click', function() {
+      KapowSounds.init();
+      resumeGame(save);
+    });
+  }
+
   document.getElementById('btn-start-game').addEventListener('click', startGameWithName);
   document.getElementById('player-name-input').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') startGameWithName();
@@ -4363,6 +4467,9 @@ function init() {
 function startGameWithName() {
   // Init AudioContext on first user gesture (browser requirement)
   KapowSounds.init();
+
+  // Starting a new game — clear any existing save
+  clearSave();
 
   var input = document.getElementById('player-name-input');
   var name = input.value.trim();
@@ -4714,6 +4821,13 @@ function refreshUI() {
   if (!isHumanTurn && !aiTurnInProgress && !triadAnimationInProgress && (phase === 'playing' || phase === 'finalTurns')) {
     aiTurnInProgress = true;
     setTimeout(playAITurn, 1000);
+  }
+
+  // Auto-save at stable points: human's turn, scoring screen, or game over
+  if (isHumanTurn || phase === 'scoring') {
+    saveGame();
+  } else if (phase === 'gameOver') {
+    clearSave();
   }
 }
 
@@ -5071,7 +5185,8 @@ function onNewGame() {
   aiMoveExplanation = '';
   document.getElementById('explain-modal').classList.add('hidden');
 
-  // Clear the log for the new game
+  // Clear save and log for the new game
+  clearSave();
   try { localStorage.removeItem('kapow-log'); } catch(e) {}
 
   // Track engagement
