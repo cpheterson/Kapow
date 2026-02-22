@@ -1,6 +1,6 @@
 # KAPOW! Card Game
 
-A strategic card game inspired by [Skyjo](https://www.magilano.com/skyjo/), with power card modifiers, KAPOW! wild cards, and triad completion mechanics. Built in vanilla HTML/CSS/JavaScript with a sophisticated AI opponent. No frameworks, no dependencies, playable in any browser.
+An original rummy-style card game with a novel twist — power card modifiers, KAPOW! wild cards, and triad completion mechanics. Built in vanilla HTML/CSS/JavaScript with a sophisticated AI opponent. No frameworks, no dependencies, playable in any browser.
 
 **[Play now →](https://cpheterson.github.io/Kapow/)**
 
