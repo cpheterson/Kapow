@@ -137,9 +137,6 @@
 
     </div>
 
-    <!-- Mobile version tag (below play area) -->
-    <div id="mobile-version-tag" class="version-tag">02-21-2026 v9</div>
-
     <!-- Hidden buttons still needed by JS (Draw/Discard actions via pile clicks) -->
     <button id="btn-draw-deck" class="hidden" disabled></button>
     <button id="btn-draw-discard" class="hidden" disabled></button>
@@ -182,13 +179,13 @@
   </div>
 
   <!-- Scorecard Sidebar -->
-  <div id="sidebar" onclick="if(event.target===this)this.classList.remove('mobile-visible')">
+  <div id="sidebar" onclick="closeSidebar(event)">
     <div id="scorecard">
     <h3>Scorecard</h3>
     <table id="scorecard-table">
       <thead>
         <tr>
-          <th>Round</th>
+          <th class="sc-round-col">#</th>
           <th id="sc-player-name">You</th>
           <th id="sc-ai-name">Kai</th>
         </tr>
@@ -213,15 +210,21 @@
         </tr>
       </tfoot>
     </table>
+    <div id="scorecard-notes"></div>
+    <div class="scorecard-actions">
+      <button id="btn-add-note" class="action-btn scorecard-action-btn" onclick="event.stopPropagation();addGameNote()">Add Note</button>
+      <button id="btn-share-game" class="action-btn scorecard-action-btn" onclick="event.stopPropagation();shareGameResults()">Share</button>
+      <button id="btn-export-log" class="action-btn scorecard-action-btn" onclick="event.stopPropagation()">Export Log</button>
+    </div>
+    <div class="scorecard-version">02-22-2026 v10</div>
     </div>
     <div id="ai-commentary"></div>
-    <button id="btn-export-log" class="action-btn save-log-btn">Export Log</button>
   </div>
   </div>
 
   <!-- Software Revision Footer (desktop) -->
   <div id="revision-footer">
-    <span id="revision-text">02-21-2026 v9</span>
+    <span id="revision-text">02-22-2026 v10</span>
     <span class="footer-sep">&middot;</span>
     <a id="footer-buy-link" href="#" onclick="event.preventDefault();showBuyModal()" class="footer-buy">Get the Card Game &rarr;</a>
   </div>

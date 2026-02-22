@@ -714,6 +714,89 @@ function exportLog(silent) {
   URL.revokeObjectURL(url);
 }
 
+// ---- Sidebar / Scorecard helpers ----
+
+function closeSidebar(event) {
+  // On mobile: tap anywhere on the overlay (outside scorecard) closes it.
+  // On desktop: clicking the sidebar area itself closes the mobile overlay.
+  var sidebar = document.getElementById('sidebar');
+  if (event.target === sidebar) {
+    sidebar.classList.remove('mobile-visible');
+  }
+}
+
+function addGameNote() {
+  var note = prompt('Add a note:');
+  if (!note || !note.trim()) return;
+  var timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  var roundInfo = gameState ? 'R' + gameState.round : '';
+
+  // Store in gameState for export
+  if (gameState) {
+    if (!gameState.notes) gameState.notes = [];
+    gameState.notes.push({ time: timestamp, round: gameState.round, text: note.trim() });
+    gameState.actionLog.push(roundInfo + ' [NOTE] ' + note.trim());
+  }
+
+  // Show in scorecard
+  var container = document.getElementById('scorecard-notes');
+  var div = document.createElement('div');
+  div.className = 'scorecard-note';
+  div.innerHTML = '<span class="scorecard-note-time">' + timestamp + '</span>' + note.trim();
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function shareGameResults() {
+  if (!gameState) return;
+  var p = gameState.players[0];
+  var k = gameState.players[1];
+  var pTotal = p.scores.reduce(function(a, b) { return a + b; }, 0);
+  var kTotal = k.scores.reduce(function(a, b) { return a + b; }, 0);
+  var roundsPlayed = p.scores.length;
+  var winner = pTotal <= kTotal ? p.name : 'Kai';
+  var gameOver = gameState.round > 10 || roundsPlayed === 10;
+
+  var lines = [];
+  lines.push('KAPOW! ' + (gameOver ? 'Final' : 'Round ' + roundsPlayed) + ' Score');
+  lines.push(p.name + ': ' + pTotal + ' | Kai: ' + kTotal);
+  if (gameOver) {
+    lines.push(winner + ' wins!');
+  }
+  lines.push('');
+
+  // Round-by-round
+  for (var i = 0; i < roundsPlayed; i++) {
+    lines.push('R' + (i + 1) + ': ' + p.scores[i] + ' - ' + k.scores[i]);
+  }
+
+  // Notes if any
+  if (gameState.notes && gameState.notes.length > 0) {
+    lines.push('');
+    lines.push('Notes:');
+    gameState.notes.forEach(function(n) {
+      lines.push('  R' + n.round + ' ' + n.text);
+    });
+  }
+
+  lines.push('');
+  lines.push('Play KAPOW! at cpheterson.github.io/Kapow');
+
+  var text = lines.join('\n');
+
+  // Use Web Share API if available (mobile), fallback to clipboard
+  if (navigator.share) {
+    navigator.share({ text: text }).catch(function() {});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(function() {
+      var btn = document.getElementById('btn-share-game');
+      var orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(function() { btn.textContent = orig; }, 1500);
+    });
+  }
+}
+
 function startRound(state) {
   // Tutorial: use stacked deck for first-ever game's round 1
   if (state.round === 1 && shouldStartTutorial()) {
@@ -5011,8 +5094,9 @@ function showGameOver() {
   }
   html += '</table>';
 
-  // Buy CTA on game over screen
+  // Share + Buy CTA on game over screen
   html += '<div class="kapow-cta-gameover">' +
+    '<button class="action-btn scorecard-action-btn" onclick="shareGameResults()" style="margin-bottom:10px">Share Results</button>' +
     '<p>Want to play with real people?</p>' +
     buildBuyLink('Get KAPOW! \u2192', 'kapow-buy-btn kapow-buy-btn-warm') +
     '</div>';
