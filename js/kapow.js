@@ -158,9 +158,7 @@ function createCard(type, faceValue, modifiers) {
     type: type,
     faceValue: faceValue,
     modifiers: modifiers || null,
-    isRevealed: false,
-    isFrozen: false,
-    assignedValue: null
+    isRevealed: false
   };
 }
 
@@ -223,11 +221,6 @@ function replenishFromDiscard(discardPile) {
   var cardsToShuffle = discardPile.slice(0, -1);
   cardsToShuffle.forEach(function(card) {
     card.isRevealed = false;
-    // Reset KAPOW cards back to wild when reshuffled into draw pile
-    if (card.type === 'kapow') {
-      card.isFrozen = false;
-      card.assignedValue = null;
-    }
   });
   return {
     drawPile: shuffle(cardsToShuffle),
@@ -312,17 +305,7 @@ function getPositionValue(positionCards) {
   if (positionCards.length === 0) return 0;
   var topCard = positionCards[0];
 
-  if (topCard.type === 'kapow' && !topCard.isFrozen) return 25;
-
-  if (topCard.type === 'kapow' && topCard.isFrozen) {
-    var value = topCard.assignedValue != null ? topCard.assignedValue : 0;
-    for (var i = 1; i < positionCards.length; i++) {
-      if (positionCards[i].type === 'power') {
-        value += positionCards[i].activeModifier != null ? positionCards[i].activeModifier : positionCards[i].modifiers[1];
-      }
-    }
-    return value;
-  }
+  if (topCard.type === 'kapow') return 25;
 
   var value = topCard.faceValue;
   for (var i = 1; i < positionCards.length; i++) {
@@ -345,11 +328,11 @@ function isTriadComplete(triad) {
     if (!triad[positions[i]][0].isRevealed) return false;
   }
 
-  // Check if any position has an unfrozen KAPOW! card
+  // Check if any position has a KAPOW! card
   var kapowPositions = [];
   for (var i = 0; i < positions.length; i++) {
     var card = triad[positions[i]][0];
-    if (card.type === 'kapow' && !card.isFrozen) {
+    if (card.type === 'kapow') {
       kapowPositions.push(i);
     }
   }
@@ -374,7 +357,7 @@ function tryKapowCompletion(triad, positions, kapowPositions) {
   var baseValues = [null, null, null];
   for (var i = 0; i < 3; i++) {
     var card = triad[positions[i]][0];
-    if (card.type !== 'kapow' || card.isFrozen) {
+    if (card.type !== 'kapow') {
       baseValues[i] = getPositionValue(triad[positions[i]]);
     }
   }
@@ -412,7 +395,7 @@ function findKapowAssignments(triad, positions, kapowPositions) {
   var baseValues = [null, null, null];
   for (var i = 0; i < 3; i++) {
     var card = triad[positions[i]][0];
-    if (card.type !== 'kapow' || card.isFrozen) {
+    if (card.type !== 'kapow') {
       baseValues[i] = getPositionValue(triad[positions[i]]);
     }
   }
@@ -628,11 +611,7 @@ function logHandState(state, playerIndex) {
         if (!card.isRevealed) {
           vals.push('fd');
         } else if (card.type === 'kapow') {
-          if (card.isFrozen && card.assignedValue != null) {
-            vals.push('K!=' + card.assignedValue);
-          } else {
-            vals.push('K!');
-          }
+          vals.push('K!');
         } else if (card.type === 'power' && posCards.length === 1) {
           vals.push('P' + card.faceValue);
         } else {
@@ -815,7 +794,7 @@ function checkAndDiscardTriads(state, playerIndex) {
       var dCards = triad[positions[dp]];
       if (dCards.length === 0) { diagParts.push('empty'); }
       else if (!dCards[0].isRevealed) { diagParts.push('fd'); }
-      else if (dCards[0].type === 'kapow') { diagParts.push('K!' + (dCards[0].isFrozen ? '(assigned=' + dCards[0].assignedValue + ')' : '(wild)')); }
+      else if (dCards[0].type === 'kapow') { diagParts.push('K!(wild)'); }
       else { diagParts.push('' + getPositionValue(dCards)); }
     }
     var complete = isTriadComplete(triad);
@@ -830,31 +809,15 @@ function checkAndDiscardTriads(state, playerIndex) {
       var kapowPositions = [];
       for (var i = 0; i < positions.length; i++) {
         var card = triad[positions[i]][0];
-        if (card.type === 'kapow' && !card.isFrozen) {
+        if (card.type === 'kapow') {
           kapowPositions.push(i);
-        }
-      }
-
-      if (kapowPositions.length > 0) {
-        var assignments = findKapowAssignments(triad, positions, kapowPositions);
-        if (assignments) {
-          for (var ki in assignments) {
-            var posName = positions[ki];
-            triad[posName][0].assignedValue = assignments[ki];
-            triad[posName][0].isFrozen = true;
-          }
         }
       }
 
       // Log the triad completion
       var completionVals = [];
       for (var ci = 0; ci < positions.length; ci++) {
-        var cCard = triad[positions[ci]][0];
-        if (cCard.type === 'kapow' && cCard.assignedValue != null) {
-          completionVals.push('K!=' + cCard.assignedValue);
-        } else {
-          completionVals.push('' + getPositionValue(triad[positions[ci]]));
-        }
+        completionVals.push('' + getPositionValue(triad[positions[ci]]));
       }
       logAction(state, playerIndex, 'Triad ' + (t + 1) + ' completed! [' + completionVals.join(',') + '] - discarded');
 
@@ -874,11 +837,6 @@ function checkAndDiscardTriads(state, playerIndex) {
         // Then push face-up card last (so it ends up on top for this position)
         if (posCards.length > 0) {
           posCards[0].isRevealed = true;
-          // Reset KAPOW cards back to wild when discarded from a completed triad
-          if (posCards[0].type === 'kapow') {
-            posCards[0].isFrozen = false;
-            posCards[0].assignedValue = null;
-          }
           state.discardPile.push(posCards[0]);
         }
       }
@@ -1319,7 +1277,7 @@ function wouldHelpCompleteTriad(hand, card) {
     var positions = ['top', 'middle', 'bottom'];
     for (var p = 0; p < positions.length; p++) {
       var origCards = triad[positions[p]];
-      triad[positions[p]] = [{ id: card.id, type: card.type, faceValue: card.faceValue, modifiers: card.modifiers, isRevealed: true, isFrozen: false, assignedValue: null }];
+      triad[positions[p]] = [{ id: card.id, type: card.type, faceValue: card.faceValue, modifiers: card.modifiers, isRevealed: true,  }];
       var complete = isTriadComplete(triad);
       triad[positions[p]] = origCards;
       if (complete) return true;
@@ -1427,7 +1385,7 @@ function buildAiExplanation(gameState, drawnCard, drawChoice, action) {
     // WHY this position — check for triad completion
     var origCards = triad[action.position];
     var newCard = { id: drawnCard.id, type: drawnCard.type, faceValue: drawnCard.faceValue,
-      modifiers: drawnCard.modifiers, isRevealed: true, isFrozen: false, assignedValue: null };
+      modifiers: drawnCard.modifiers, isRevealed: true,  };
     triad[action.position] = [newCard];
     var wouldComplete = isTriadComplete(triad);
     triad[action.position] = origCards;
@@ -1566,7 +1524,7 @@ function findTriadCompletionSpot(hand, card) {
     var positions = ['top', 'middle', 'bottom'];
     for (var p = 0; p < positions.length; p++) {
       var origCards = triad[positions[p]];
-      triad[positions[p]] = [{ id: card.id, type: card.type, faceValue: card.faceValue, modifiers: card.modifiers, isRevealed: true, isFrozen: false, assignedValue: null }];
+      triad[positions[p]] = [{ id: card.id, type: card.type, faceValue: card.faceValue, modifiers: card.modifiers, isRevealed: true,  }];
       var complete = isTriadComplete(triad);
       triad[positions[p]] = origCards;
       if (complete) return { triadIndex: t, position: positions[p] };
@@ -1638,7 +1596,7 @@ function aiDecideAction(gameState, drawnCard) {
       var origSimCards = triad[positions[p]];
       triad[positions[p]] = [{ id: drawnCard.id, type: drawnCard.type,
         faceValue: drawnCard.faceValue, modifiers: drawnCard.modifiers,
-        isRevealed: true, isFrozen: false, assignedValue: null }];
+        isRevealed: true,  }];
       var wouldComplete = isTriadComplete(triad);
       triad[positions[p]] = origSimCards; // restore
 
@@ -1793,7 +1751,7 @@ function aiFindPowersetOpportunity(hand, drawnCard) {
         modifiers: powerCard.modifiers, isRevealed: true, isFrozen: false,
         activeModifier: usePositive ? powerCard.modifiers[1] : powerCard.modifiers[0] };
       var simFace = { id: drawnCard.id, type: drawnCard.type, faceValue: drawnCard.faceValue,
-        modifiers: drawnCard.modifiers, isRevealed: true, isFrozen: false, assignedValue: null };
+        modifiers: drawnCard.modifiers, isRevealed: true,  };
       triad[positions[p]] = [simFace, simPower];
 
       var triadBonus = 0;
@@ -1847,7 +1805,7 @@ function aiAnalyzeTriad(triad) {
       result.revealedCount++;
       result.values[i] = getPositionValue(posCards);
       result.triadScore += result.values[i];
-      if (posCards[0].type === 'kapow' && !posCards[0].isFrozen) {
+      if (posCards[0].type === 'kapow') {
         result.hasUnfrozenKapow = true;
       }
     }
@@ -1872,7 +1830,7 @@ function aiAnalyzeTriad(triad) {
         for (var ki = 0; ki < 3; ki++) {
           if (ki === emptyIdx) continue;
           var kCards = triad[positions[ki]];
-          if (kCards.length > 0 && kCards[0].type === 'kapow' && !kCards[0].isFrozen) {
+          if (kCards.length > 0 && kCards[0].type === 'kapow') {
             kapowIdx = ki;
           } else {
             fixedIdx = ki;
@@ -2384,7 +2342,7 @@ function aiScorePlacement(hand, card, triadIndex, position) {
     // Check if placement completes a triad
     var origCardsFT = triad[position];
     triad[position] = [{ id: card.id, type: card.type, faceValue: card.faceValue,
-      modifiers: card.modifiers, isRevealed: true, isFrozen: false, assignedValue: null }];
+      modifiers: card.modifiers, isRevealed: true,  }];
     var completesFT = isTriadComplete(triad);
     triad[position] = origCardsFT; // restore
 
@@ -2620,7 +2578,7 @@ function aiScorePlacement(hand, card, triadIndex, position) {
   // Simulate placement and check triad completion / building
   var origCards = triad[position];
   triad[position] = [{ id: card.id, type: card.type, faceValue: card.faceValue,
-    modifiers: card.modifiers, isRevealed: true, isFrozen: false, assignedValue: null }];
+    modifiers: card.modifiers, isRevealed: true,  }];
 
   if (isTriadComplete(triad)) {
     // Completing a triad is extremely valuable.
@@ -3581,10 +3539,7 @@ function renderCardHTML(card, faceDown, clickable) {
 
   if (card.type === 'kapow') {
     classes += ' card-kapow';
-    if (card.isFrozen) classes += ' frozen';
-    var valueText = (card.isFrozen && card.assignedValue != null)
-      ? '= ' + card.assignedValue
-      : 'Wild (0-12)';
+    var valueText = 'Wild (0-12)';
     return '<div class="' + classes + '">' +
       '<span class="kapow-text">KAPOW!</span>' +
       '<span class="kapow-value">' + valueText + '</span></div>';
