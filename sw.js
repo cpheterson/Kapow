@@ -1,5 +1,5 @@
 // KAPOW! Service Worker — offline caching
-const CACHE_NAME = 'kapow-v24';
+const CACHE_NAME = 'kapow-v25';
 const ASSETS = [
   '/Kapow/',
   '/Kapow/index.html',

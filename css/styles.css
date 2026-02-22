@@ -75,7 +75,8 @@ body::before {
   display: flex;
   gap: 20px;
   width: 100%;
-  max-width: 1400px;
+  max-width: 1100px;
+  margin: 0 auto;
   padding: 10px 20px;
   justify-content: center;
   align-items: flex-start;
@@ -1094,22 +1095,22 @@ body::before {
   }
 
   #game-container {
-    flex: 1;
+    flex: 0 1 auto;
     min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
   }
 
-  /* Piles sit directly next to the hands — gap:12px keeps them tucked in tight.
-     justify-content:center packs everything without stretching to edges. */
+  /* Piles tucked tight against hands. flex-shrink:0 on piles prevents
+     them from collapsing. The whole play-area is intrinsically sized
+     by its contents — never stretches to fill the viewport. */
   #play-area {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 12px;
     width: auto;
-    max-width: 100%;
   }
 
   #hands-column {
@@ -1150,7 +1151,8 @@ body::before {
 
   #center-strip #game-message {
     flex: 0 0 100%;
-    max-width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
     text-align: center;
     white-space: normal;
     height: 50px;
