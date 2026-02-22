@@ -1831,19 +1831,20 @@ body::before {
   width: 28px;
 }
 
-/* Scorecard actions row */
+/* Scorecard actions — stacked vertically */
 .scorecard-actions {
   display: flex;
+  flex-direction: column;
   gap: 6px;
   margin-top: 12px;
 }
 
 .scorecard-action-btn {
-  flex: 1;
+  width: 100%;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   font-size: 11px;
-  padding: 6px 8px;
+  padding: 8px 12px;
 }
 
 .scorecard-action-btn:hover:not(:disabled) {
@@ -2265,19 +2266,9 @@ body:has(#page-layout:not(.hidden)) #help-toggle {
   }
 }
 
-#revision-text {
-  font-family: 'Courier New', monospace;
-}
-
 /* ========================================
    BUY FUNNEL — CTAs & Modals
    ======================================== */
-
-/* Footer buy link */
-.footer-sep {
-  margin: 0 6px;
-  opacity: 0.3;
-}
 
 .footer-buy {
   color: var(--color-accent);

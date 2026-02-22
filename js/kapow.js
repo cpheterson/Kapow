@@ -797,6 +797,11 @@ function shareGameResults() {
   }
 }
 
+// Expose to inline onclick handlers (IIFE-scoped otherwise)
+window.closeSidebar = closeSidebar;
+window.addGameNote = addGameNote;
+window.shareGameResults = shareGameResults;
+
 function startRound(state) {
   // Tutorial: use stacked deck for first-ever game's round 1
   if (state.round === 1 && shouldStartTutorial()) {
