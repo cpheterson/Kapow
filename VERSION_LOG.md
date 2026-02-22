@@ -2,6 +2,18 @@
 
 ## Version History
 
+### 02-21-2026 v1
+**Implemented within-triad KAPOW swaps for strategic card positioning.**
+- When a placement completes a triad containing a revealed KAPOW, player can now swap it within that triad before discard
+- Prevents KAPOW from being immediately exposed on the discard pile's top position
+- New swap phase enters after placement but before triad discard
+- Button text changes to "Discard Triad and End Turn" during within-triad swap phase
+- Message box highlights with swap-phase styling
+- New helper functions: `hasRevealedKapow()`, `completeWithinTriadSwap()`
+- Modified `findSwapTargets()` with optional scope restriction parameter
+- AI unchanged: uses normal cross-triad swap logic after discard
+- Commit: 1011155
+
 ### 02-20-2026 v3
 **Fixed AI explanation to avoid nonsensical future completion paths when going out.**
 - When placement triggers going out, explanation now focuses on going-out decision
@@ -45,4 +57,4 @@ When making changes that warrant a version bump:
 
 ---
 
-## Latest Version: 02-20-2026 v3
+## Latest Version: 02-21-2026 v1
