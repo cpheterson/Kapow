@@ -6,8 +6,8 @@ The living document. Updated every session.
 
 ## Current State (2026-02-22)
 
-**Live at:** cpheterson.github.io/Kapow/ (Eric's fork, GitHub Pages)
-**Canonical:** github.com/cpheterson/Kapow (Chuck's repo)
+**Live at:** epheterson.github.io/Kapow/ (Eric's fork, GitHub Pages — auto-deploys on push)
+**Canonical:** github.com/cpheterson/Kapow (Chuck's repo, not yet synced)
 **Version:** v10 | SW cache: v29
 
 ### What's Working
