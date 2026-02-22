@@ -1,8 +1,8 @@
 # KAPOW! Card Game
 
-An original rummy-style card game with a novel twist — power card modifiers, KAPOW! wild cards, and triad completion mechanics. Built in vanilla HTML/CSS/JavaScript with a sophisticated AI opponent. No frameworks, no dependencies, playable in any browser.
+An original rummy-style card game with a novel twist — power card modifiers, KAPOW! wild cards, and triad completion mechanics. Built in vanilla HTML/CSS/JavaScript with a built-in opponent named **Kai**. No frameworks, no dependencies, playable in any browser.
 
-**[Play now →](https://cpheterson.github.io/Kapow/)**
+**[Play now →](https://epheterson.github.io/Kapow/)**
 
 ---
 
@@ -48,14 +48,14 @@ When all your cards are revealed or discarded, the round ends. All other players
 
 ## Features
 
-- **Sophisticated AI opponent** — threat modeling, discard safety analysis, going-out timing, matched-pair protection
-- **"Understand AI's Move"** — explains the AI's reasoning after every turn, with strategic takeaway tips
+- **Kai, your built-in opponent** — threat modeling, discard safety analysis, going-out timing, matched-pair protection
+- **"Understand Kai's Move"** — explains Kai's reasoning after every turn, with strategic takeaway tips
 - **Hint button** — suggests the best move when you're stuck
 - **Interactive tutorial** — first game uses a guided deck to teach triads, power cards, and KAPOW! mechanics
 - **Sound effects** — Web Audio API synthesized sounds (flip, draw, place, triad chime, KAPOW hit)
 - **Card animations** — flip on reveal, slide-in on placement, screen shake on triad completion, KAPOW glow
 - **Mobile-first responsive layout** — works great on phones and tablets, add to iPhone home screen as a standalone app
-- **100+ AI banter messages** — contextual commentary across 17 game scenarios
+- **100+ banter messages** — Kai's contextual commentary across 17 game scenarios
 - **Scorecard** — round-by-round tracking across all 10 rounds
 - **Game log** — full turn-by-turn history with export
 
@@ -67,7 +67,7 @@ Single-file IIFE bundle (`js/kapow.js`, ~192KB unminified):
 
 | Section | What It Does |
 |---------|-------------|
-| AI Banter | 100+ contextual messages across 17 categories |
+| Kai's Banter | 100+ contextual messages across 17 categories |
 | Deck/Hand | Card creation, Fisher-Yates shuffle, deal, hand management |
 | Triads | Completion detection: sets, runs, KAPOW value assignment |
 | Scoring | Hand evaluation, first-out doubling penalty, winner determination |
@@ -77,9 +77,9 @@ Single-file IIFE bundle (`js/kapow.js`, ~192KB unminified):
 | Tutorial | Stacked-deck onboarding: triads, power cards, KAPOW mechanics |
 | Action Log | Turn-by-turn history with text export |
 
-### The AI
+### Kai (the AI)
 
-The AI opponent evaluates every possible action each turn:
+Kai evaluates every possible action each turn:
 
 - **Placement scoring** — value delta, triad completion potential, synergy with revealed cards, KAPOW timing
 - **Opponent threat modeling** — tracks near-complete triads, reveal ratio, estimated score
