@@ -756,7 +756,9 @@ function exportLog(silent) {
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
-  a.download = 'kapow-log.txt';
+  var now = new Date();
+  var ts = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+  a.download = 'kapow-log_' + ts + '.txt';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
