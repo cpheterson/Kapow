@@ -155,6 +155,7 @@
     <div id="power-modal" class="hidden">
       <div class="modal-content">
         <div id="power-modal-title" class="modal-title"></div>
+        <div id="power-modal-detail" class="modal-detail"></div>
         <div id="power-modal-buttons" class="modal-buttons"></div>
       </div>
     </div>
@@ -181,6 +182,7 @@
   <!-- Scorecard Sidebar -->
   <div id="sidebar" onclick="closeSidebar(event)">
     <div id="scorecard">
+    <button id="scorecard-close" onclick="event.stopPropagation();document.getElementById('sidebar').classList.remove('mobile-visible')">&times;</button>
     <h3>Scorecard</h3>
     <table id="scorecard-table">
       <thead>

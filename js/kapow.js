@@ -800,11 +800,11 @@ function shareGameResults() {
   if (!gameState) return;
   var p = gameState.players[0];
   var k = gameState.players[1];
-  var pTotal = p.scores.reduce(function(a, b) { return a + b; }, 0);
-  var kTotal = k.scores.reduce(function(a, b) { return a + b; }, 0);
-  var roundsPlayed = p.scores.length;
+  var pTotal = p.totalScore;
+  var kTotal = k.totalScore;
+  var roundsPlayed = p.roundScores.length;
   var winner = pTotal <= kTotal ? p.name : 'Kai';
-  var gameOver = gameState.round > 10 || roundsPlayed === 10;
+  var gameOver = gameState.phase === 'gameOver';
 
   var lines = [];
   lines.push('KAPOW! ' + (gameOver ? 'Final' : 'Round ' + roundsPlayed) + ' Score');
@@ -816,7 +816,7 @@ function shareGameResults() {
 
   // Round-by-round
   for (var i = 0; i < roundsPlayed; i++) {
-    lines.push('R' + (i + 1) + ': ' + p.scores[i] + ' - ' + k.scores[i]);
+    lines.push('R' + (i + 1) + ': ' + p.roundScores[i] + ' - ' + k.roundScores[i]);
   }
 
   // Notes if any
@@ -4764,19 +4764,30 @@ function getClickablePositions() {
 }
 
 // Custom modal for power card choices (replaces browser confirm dialogs)
-function showModal(title, buttons) {
+function showModal(title, buttons, detail) {
   return new Promise(function(resolve) {
     var modal = document.getElementById('power-modal');
     var titleEl = document.getElementById('power-modal-title');
+    var detailEl = document.getElementById('power-modal-detail');
     var buttonsEl = document.getElementById('power-modal-buttons');
 
     titleEl.textContent = title;
+    if (detailEl) {
+      detailEl.innerHTML = detail || '';
+      detailEl.style.display = detail ? 'block' : 'none';
+    }
     buttonsEl.innerHTML = '';
 
     buttons.forEach(function(btn) {
       var buttonEl = document.createElement('button');
       buttonEl.className = 'modal-btn ' + (btn.style || 'primary');
       buttonEl.textContent = btn.label;
+      if (btn.subtitle) {
+        var sub = document.createElement('span');
+        sub.className = 'modal-btn-subtitle';
+        sub.textContent = btn.subtitle;
+        buttonEl.appendChild(sub);
+      }
       buttonEl.addEventListener('click', function() {
         modal.classList.add('hidden');
         resolve(btn.value);
@@ -4911,14 +4922,19 @@ window._onCardClick = function(triadIndex, position) {
     if (drawnIsPower && targetIsRevealed && !targetIsKapow) {
       var targetIsPowerset = targetPosCards.length > 1;
       var replaceLabel = targetIsPowerset ? 'Replace Powerset' : 'Replace Card';
-      showModal('Power ' + drawnCard.faceValue + ' card — how would you like to play it?', [
-        { label: 'Use as Modifier', value: 'modifier', style: 'accent' },
-        { label: replaceLabel, value: 'replace', style: 'primary' }
-      ]).then(function(choice) {
+      var targetVal = getPositionValue(targetPosCards);
+      var posModVal = drawnCard.modifiers[1];
+      var negModVal = drawnCard.modifiers[0];
+      var modDetail = 'Your ' + cardDescription(targetPosCards[0]) + ' (worth ' + targetVal + ') would become ' + (targetVal + posModVal) + ' or ' + (targetVal + negModVal) + ' with the modifier.';
+      showModal('Power ' + drawnCard.faceValue + ' — Modify or Replace?', [
+        { label: 'Use as Modifier', value: 'modifier', style: 'accent', subtitle: 'Card becomes ' + targetVal + ' ± ' + posModVal },
+        { label: replaceLabel, value: 'replace', style: 'primary', subtitle: 'Swap it out, old card to discard' }
+      ], modDetail).then(function(choice) {
         if (choice === 'modifier') {
-          showModal('Which modifier value?', [
-            { label: '+' + drawnCard.modifiers[1] + ' (positive)', value: 'positive', style: 'primary' },
-            { label: drawnCard.modifiers[0] + ' (negative)', value: 'negative', style: 'secondary' }
+          var baseVal = getPositionValue(targetPosCards);
+          showModal('Which modifier for your ' + cardDescription(targetPosCards[0]) + '?', [
+            { label: '+' + drawnCard.modifiers[1], value: 'positive', style: 'primary', subtitle: 'Value becomes ' + (baseVal + drawnCard.modifiers[1]) },
+            { label: '' + drawnCard.modifiers[0], value: 'negative', style: 'secondary', subtitle: 'Value becomes ' + (baseVal + drawnCard.modifiers[0]) }
           ]).then(function(modChoice) {
             runWithTriadAnimation(0, function() {
               handleAddPowerset(gameState, triadIndex, position, modChoice === 'positive');
@@ -4967,14 +4983,17 @@ window._onCardClick = function(triadIndex, position) {
     // Case 3: Target is a solo Power card, drawn is any non-power card — create powerset or replace
     if (targetIsPower) {
       var existingPower = targetPosCards[0];
-      showModal('Target is a Power ' + existingPower.faceValue + ' card — how would you like to play?', [
-        { label: 'Create Powerset', value: 'powerset', style: 'accent' },
-        { label: 'Replace Card', value: 'replace', style: 'primary' }
-      ]).then(function(choice) {
+      var drawnVal = drawnCard.faceValue;
+      var psMod = existingPower.modifiers[1];
+      var psDetail = 'Your ' + cardDescription(drawnCard) + ' (worth ' + drawnVal + ') would be modified by Power ' + existingPower.faceValue + ' to become ' + (drawnVal + psMod) + ' or ' + (drawnVal + existingPower.modifiers[0]) + '.';
+      showModal('Power ' + existingPower.faceValue + ' — Create Powerset or Replace?', [
+        { label: 'Create Powerset', value: 'powerset', style: 'accent', subtitle: 'Card ± modifier, keeps both' },
+        { label: 'Replace Card', value: 'replace', style: 'primary', subtitle: 'Swap Power out to discard' }
+      ], psDetail).then(function(choice) {
         if (choice === 'powerset') {
-          showModal('Power ' + existingPower.faceValue + ' modifier value?', [
-            { label: '+' + existingPower.modifiers[1] + ' (positive)', value: 'positive', style: 'primary' },
-            { label: existingPower.modifiers[0] + ' (negative)', value: 'negative', style: 'secondary' }
+          showModal('Power ' + existingPower.faceValue + ' modifier for your ' + cardDescription(drawnCard) + '?', [
+            { label: '+' + existingPower.modifiers[1], value: 'positive', style: 'primary', subtitle: 'Value becomes ' + (drawnCard.faceValue + existingPower.modifiers[1]) },
+            { label: '' + existingPower.modifiers[0], value: 'negative', style: 'secondary', subtitle: 'Value becomes ' + (drawnCard.faceValue + existingPower.modifiers[0]) }
           ]).then(function(modChoice) {
             runWithTriadAnimation(0, function() {
               handleCreatePowersetOnPower(gameState, triadIndex, position, modChoice === 'positive');
