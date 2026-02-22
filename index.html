@@ -167,6 +167,7 @@
         <h1 id="game-over-title">Game Over!</h1>
         <div id="final-scores"></div>
         <button id="btn-new-game" class="action-btn">New Game</button>
+        <a href="#" class="game-over-feedback" onclick="event.preventDefault();showFeedbackModal()">Send Feedback</a>
       </div>
     </div>
 
@@ -225,9 +226,34 @@
   </div>
   </div>
 
+  <!-- Feedback Modal -->
+  <div id="feedback-modal" class="hidden" onclick="if(event.target===this)hideFeedbackModal()">
+    <div class="feedback-modal-content">
+      <button class="buy-modal-close" onclick="hideFeedbackModal()">&times;</button>
+      <h2>Send Feedback</h2>
+      <p class="feedback-subtext">Bug? Suggestion? Just want to say hi? We read everything.</p>
+      <div class="feedback-form">
+        <select id="feedback-type">
+          <option value="suggestion">Suggestion</option>
+          <option value="bug">Bug Report</option>
+          <option value="love">Love It!</option>
+          <option value="confusing">Something Confusing</option>
+          <option value="other">Other</option>
+        </select>
+        <textarea id="feedback-text" placeholder="What's on your mind?" rows="4" maxlength="1000"></textarea>
+        <button id="btn-send-feedback" class="action-btn kapow-buy-btn" onclick="sendFeedback()">Send</button>
+      </div>
+      <div id="feedback-thanks" class="hidden">
+        <p>Thanks! Your feedback means a lot.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Desktop footer — buy link only, version lives in scorecard -->
   <div id="revision-footer">
     <a id="footer-buy-link" href="#" onclick="event.preventDefault();showBuyModal()" class="footer-buy">Get the Card Game &rarr;</a>
+    <span class="footer-sep">·</span>
+    <a href="#" class="footer-feedback" onclick="event.preventDefault();showFeedbackModal()">Feedback</a>
   </div>
 
   <!-- Help / Rules Modal -->

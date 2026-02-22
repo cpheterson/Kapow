@@ -2533,6 +2533,112 @@ body:has(#page-layout:not(.hidden)) #help-toggle {
   text-decoration: underline;
 }
 
+.footer-sep {
+  color: rgba(255, 255, 255, 0.3);
+  margin: 0 4px;
+}
+
+.footer-feedback {
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
+  font-size: 11px;
+  pointer-events: auto;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+.footer-feedback:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+/* Game over feedback link */
+.game-over-feedback {
+  display: block;
+  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  text-decoration: none;
+}
+.game-over-feedback:hover {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: underline;
+}
+
+/* Feedback modal */
+#feedback-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+}
+.feedback-modal-content {
+  background: linear-gradient(145deg, #0f2a1a, #1a3f2a);
+  padding: 36px;
+  border-radius: 20px;
+  text-align: center;
+  max-width: 420px;
+  width: 90%;
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  position: relative;
+}
+.feedback-modal-content h2 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--color-accent);
+  margin-bottom: 6px;
+  letter-spacing: 2px;
+}
+.feedback-subtext {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 16px;
+}
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#feedback-type {
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: var(--font-body);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.3);
+  color: white;
+  cursor: pointer;
+}
+#feedback-text {
+  padding: 12px;
+  font-size: 14px;
+  font-family: var(--font-body);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.3);
+  color: white;
+  resize: vertical;
+  min-height: 80px;
+}
+#feedback-text::placeholder {
+  color: rgba(255,255,255,0.35);
+}
+#btn-send-feedback {
+  margin-top: 4px;
+  font-size: 16px;
+  padding: 12px;
+}
+#feedback-thanks p {
+  color: var(--color-accent);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 20px 0;
+}
+
 /* Name screen CTA tiers */
 #name-screen-cta {
   margin-top: 16px;
