@@ -2,6 +2,16 @@
 
 ## Version History
 
+### 02-21-2026 v3
+**Redesigned powerset value display to appear directly on card.**
+- Powerset values now display on the fixed value card instead of below it
+- Format: "Powerset = X" where X is the total value (card + all modifiers)
+- Orange font (#ff9800), 14px, bold, centered above card bottom
+- Prevents card layout shift caused by below-card powerset info
+- Cleaner UI with improved readability for powerset values
+- Removed individual modifier display and calculation details
+- Commit: cde90c8
+
 ### 02-21-2026 v2
 **Removed frozen KAPOW property (deprecated feature).**
 - KAPOW cards are never frozen; this feature was removed from game long ago
@@ -66,4 +76,4 @@ When making changes that warrant a version bump:
 
 ---
 
-## Latest Version: 02-21-2026 v2
+## Latest Version: 02-21-2026 v3
