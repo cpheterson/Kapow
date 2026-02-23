@@ -4306,7 +4306,7 @@ function renderCardHTML(card, faceDown, clickable, extraClass) {
 
   if (card.type === 'fixed') {
     classes += ' card-fixed';
-    var html = '<div class="' + classes + '">' +
+    return '<div class="' + classes + '">' +
       '<span class="card-value-top">' + card.faceValue + '</span>' +
       '<span class="card-value-center">' + card.faceValue + '</span>' +
       '<span class="card-value-bottom">' + card.faceValue + '</span></div>';
