@@ -4483,16 +4483,16 @@ function init() {
     var played = getGamesPlayed();
     if (played >= 3) {
       ctaContainer.innerHTML = '<div class="kapow-cta-banner">' +
-        '<span>You\u2019ve played ' + played + ' games! The physical deck is coming soon.</span>' +
-        buildBuyLink('Get Notified \u2192', 'kapow-buy-btn') +
+        '<span>You\u2019ve played ' + played + ' games! Get the physical deck for game nights with friends.</span>' +
+        buildBuyLink('Get KAPOW! \u2192', 'kapow-buy-btn') +
         '</div>';
     } else if (returning) {
       ctaContainer.innerHTML = '<div class="kapow-cta-subtle">' +
-        'Love playing? ' + buildBuyLink('The real deck is coming soon \u2192', 'kapow-buy-link') +
+        'Love playing? ' + buildBuyLink('Get the real deck \u2192', 'kapow-buy-link') +
         '</div>';
     } else {
       ctaContainer.innerHTML = '<div class="kapow-cta-quiet">' +
-        buildBuyLink('KAPOW! Card Game \u2014 Coming Soon', 'kapow-buy-link-quiet') +
+        buildBuyLink('KAPOW! Card Game \u2014 Available Now', 'kapow-buy-link-quiet') +
         '</div>';
     }
   }
@@ -4546,7 +4546,7 @@ function startGameWithName() {
     var inter = document.getElementById('kapow-interstitial');
     if (inter) {
       inter.querySelector('.interstitial-text').textContent =
-        'You clearly love KAPOW! The physical deck is coming soon.' + gift;
+        'You clearly love KAPOW! Get the physical deck for game nights.' + gift;
       inter.classList.remove('hidden');
       // Wire up buttons
       inter.querySelector('.interstitial-later').onclick = function() {
@@ -5296,7 +5296,7 @@ function showRoundEnd() {
   // Subtle buy CTA after round 3
   if (gameState.round >= 3) {
     html += '<div class="kapow-cta-round">' +
-      buildBuyLink('KAPOW! is also a real card game \u2192 Get notified', 'kapow-buy-link') +
+      buildBuyLink('KAPOW! is also a real card game \u2192 Get it', 'kapow-buy-link') +
       '</div>';
   }
 
@@ -5369,8 +5369,8 @@ function showGameOver() {
   // Share + Buy CTA on game over screen
   html += '<div class="kapow-cta-gameover">' +
     '<button class="action-btn scorecard-action-btn" onclick="shareGameResults()" style="margin-bottom:10px">Share Results</button>' +
-    '<p>Want to play with real people? The physical deck is coming soon.</p>' +
-    buildBuyLink('Notify Me \u2192', 'kapow-buy-btn kapow-buy-btn-warm') +
+    '<p>Want to play with real people?</p>' +
+    buildBuyLink('Get KAPOW! \u2192', 'kapow-buy-btn kapow-buy-btn-warm') +
     '</div>';
 
   scores.innerHTML = html;
