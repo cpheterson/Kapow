@@ -119,6 +119,7 @@ body::before {
   padding: 6px 0;
   width: 100%;
   justify-content: center;
+  min-height: 48px;
 }
 
 #center-strip #game-message {
@@ -156,7 +157,7 @@ body::before {
   flex-direction: column;
   gap: 4px;
   align-items: center;
-  padding: 8px 6px 14px;
+  padding: 8px 6px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -241,7 +242,7 @@ body::before {
 .card-back-text {
   color: white;
   font-family: var(--font-display);
-  font-size: clamp(10px, 2.2svh, 15px);
+  font-size: clamp(12px, 2.8svh, 18px);
   letter-spacing: clamp(0.5px, 0.3svh, 2px);
   text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
@@ -472,18 +473,18 @@ body::before {
 
 .powerset-info {
   position: absolute;
-  bottom: 0;
+  bottom: 4px;
   left: 50%;
-  transform: translateX(-50%) translateY(50%);
+  transform: translateX(-50%);
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 4px;
-  background: rgba(30, 60, 30, 0.92);
+  background: rgba(20, 50, 20, 0.95);
   border: 1.5px solid rgba(212, 146, 10, 0.8);
-  border-radius: 6px;
-  padding: 2px 8px;
-  font-size: 11px;
+  border-radius: 5px;
+  padding: 1px 6px;
+  font-size: 10px;
   font-weight: 700;
   white-space: nowrap;
   z-index: 10;
@@ -534,7 +535,7 @@ body::before {
 
 .drawn-highlight .card {
   box-shadow: 0 0 0 3px var(--color-accent), 0 0 12px var(--color-accent-glow);
-  animation: pulse 1.2s infinite;
+  animation: pulse 1.4s ease-in-out infinite;
 }
 
 /* AI action highlights */
@@ -573,7 +574,7 @@ body::before {
 
 .pile.discard-target .card,
 .pile.discard-target .empty-pile {
-  animation: pulse 1.2s infinite;
+  animation: pulse 1.4s ease-in-out infinite;
 }
 
 .pile.discard-target .pile-label::after {
@@ -1283,7 +1284,8 @@ body::before {
     display: flex;
     justify-content: center;
     gap: 10px;
-    min-height: 32px;
+    min-height: 40px;
+    align-items: center;
   }
 
   #center-strip #btn-understand-move {
@@ -1491,6 +1493,17 @@ body::before {
     color: rgba(255, 255, 255, 0.5);
     font-size: 11px;
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    height: 100%;
+  }
+
+  /* Ensure all score-bar spans vertically center */
+  #mobile-score-bar > span {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 100%;
   }
 
   /* CSS grid layout for mobile — 3 rows: AI / piles+controls / player
@@ -1718,7 +1731,7 @@ body::before {
   }
 
   .card-back-text {
-    font-size: clamp(8px, 1.5svh, 10px);
+    font-size: clamp(9px, 1.8svh, 12px);
     letter-spacing: 0.5px;
   }
 
@@ -1967,6 +1980,15 @@ body::before {
   flex-direction: column;
   gap: 6px;
   margin-top: 12px;
+}
+
+.scorecard-actions-row {
+  display: flex;
+  gap: 6px;
+}
+
+.scorecard-actions-row .scorecard-action-btn {
+  flex: 1;
 }
 
 .scorecard-action-btn {
@@ -2227,22 +2249,26 @@ body::before {
 /* ---- Secondary links on name screen ---- */
 .name-screen-secondary {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   gap: 8px;
   margin-top: 16px;
+  width: 260px;
 }
 
 .link-btn {
+  display: block;
+  width: 100%;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.6);
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  padding: 8px 16px;
+  padding: 10px 16px;
   border-radius: 8px;
   transition: all 0.15s ease;
+  text-align: center;
 }
 
 .link-btn:hover {
@@ -3098,6 +3124,27 @@ body:has(#page-layout:not(.hidden)) #help-toggle {
   margin-bottom: 16px;
 }
 
+/* Leaderboard loading animation — three mini cards dealing */
+.loading-cards {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.loading-cards span {
+  display: block;
+  width: 20px;
+  height: 28px;
+  background: linear-gradient(145deg, #2563eb, #1d4ed8);
+  border-radius: 4px;
+  animation: loading-deal 1.2s ease-in-out infinite;
+}
+.loading-cards span:nth-child(2) { animation-delay: 0.15s; }
+.loading-cards span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes loading-deal {
+  0%, 80%, 100% { transform: translateY(0) scale(1); opacity: 0.4; }
+  40% { transform: translateY(-10px) scale(1.1); opacity: 1; }
+}
+
 .leaderboard-table {
   width: 100%;
   border-collapse: collapse;
@@ -3229,13 +3276,4 @@ body:has(#page-layout:not(.hidden)) #help-toggle {
   border-color: #ef4444 !important;
 }
 
-.scorecard-leaderboard-link {
-  display: block;
-  margin-top: 8px;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.scorecard-leaderboard-link:hover {
-  color: rgba(255, 255, 255, 0.7);
-}
+/* scorecard-leaderboard-link removed — leaderboard now in actions row */

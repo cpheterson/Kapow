@@ -38,7 +38,6 @@
       <button id="btn-start-game" class="action-btn">Play</button>
       <div class="name-screen-secondary">
         <button id="btn-how-to-play" class="link-btn" onclick="document.getElementById('help-modal').classList.remove('hidden')">How to Play</button>
-        <span class="name-screen-sep">&middot;</span>
         <button class="link-btn" onclick="showLeaderboard()">Leaderboard</button>
       </div>
       <div id="name-screen-cta"></div>
@@ -220,11 +219,13 @@
     </table>
     <div id="scorecard-notes"></div>
     <div class="scorecard-actions">
+      <div class="scorecard-actions-row">
+        <button id="btn-share-game" class="action-btn scorecard-action-btn" onclick="event.stopPropagation();shareGameResults()">Share</button>
+        <button class="action-btn scorecard-action-btn" onclick="event.stopPropagation();showLeaderboard()">Leaderboard</button>
+      </div>
       <button id="btn-add-note" class="action-btn scorecard-action-btn" onclick="event.stopPropagation();addGameNote()">Add Note</button>
-      <button id="btn-share-game" class="action-btn scorecard-action-btn" onclick="event.stopPropagation();shareGameResults()">Share</button>
       <button id="btn-export-log" class="action-btn scorecard-action-btn" onclick="event.stopPropagation()">Export Log</button>
     </div>
-    <button class="link-btn scorecard-leaderboard-link" onclick="event.stopPropagation();showLeaderboard()">Leaderboard</button>
     <div class="scorecard-version">02-22-2026 v10</div>
     </div>
     <div id="ai-commentary"></div>
@@ -261,7 +262,7 @@
   </div>
 
   <!-- Leaderboard Modal -->
-  <div id="leaderboard-modal" class="hidden" onclick="if(event.target===this)hideLeaderboard()">
+  <div id="leaderboard-modal" class="hidden" onclick="hideLeaderboard()">
     <div class="leaderboard-modal-content">
       <button class="buy-modal-close" onclick="hideLeaderboard()">&times;</button>
       <h2>Leaderboard</h2>

@@ -1255,7 +1255,11 @@ function showLeaderboard() {
   if (_leaderboardCache) {
     renderLeaderboardData(_leaderboardCache, body);
   } else {
-    body.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; opacity:0.5;">Loading...</td></tr>';
+    body.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:30px 20px;">' +
+      '<div class="leaderboard-loading">' +
+      '<div class="loading-cards"><span></span><span></span><span></span></div>' +
+      '<div style="margin-top:12px; opacity:0.5; font-size:13px;">Loading scores...</div>' +
+      '</div></td></tr>';
   }
 
   fetch(LEADERBOARD_SCRIPT_URL)
@@ -4819,15 +4823,7 @@ function init() {
     }
   }
 
-  // Challenge link for returning players on name screen
-  if (returning && getGamesPlayed() >= 1) {
-    var secondary = document.querySelector('.name-screen-secondary');
-    if (secondary) {
-      var challengeSpan = document.createElement('span');
-      challengeSpan.innerHTML = ' <span class="name-screen-sep">\u00b7</span> <button class="link-btn challenge-btn" onclick="challengeFriend()">Challenge a Friend</button>';
-      secondary.appendChild(challengeSpan);
-    }
-  }
+  // Challenge moved to game over screen only — cleaner name screen
 
   // Init mute button state
   KapowSounds.updateMuteButton();
