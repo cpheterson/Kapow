@@ -154,13 +154,14 @@ body::before {
 .triad-column {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   align-items: center;
-  padding: 8px 6px;
+  padding: 8px 6px 14px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.06);
   transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  overflow: visible;
 }
 
 .triad-column.complete {
@@ -170,13 +171,17 @@ body::before {
 }
 
 .triad-column.discarded-triad {
-  opacity: 0.25;
-  background: rgba(255, 255, 255, 0.02);
-  border-color: transparent;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.triad-column.discarded-triad .card {
+  opacity: 0.2;
 }
 
 .triad-column.discarded-triad .empty-slot {
-  border: 1px dashed rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
   border-radius: var(--card-radius);
 }
 
@@ -198,16 +203,23 @@ body::before {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  cursor: pointer;
+  cursor: default;
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
   position: relative;
   user-select: none;
   box-shadow: var(--shadow-card);
 }
 
-.card:hover {
-  transform: translateY(-5px) scale(1.02);
-  box-shadow: var(--shadow-card-hover);
+/* Only lift clickable cards on hover, and only on devices with real hover */
+.card.clickable {
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .card.clickable:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: var(--shadow-card-hover);
+  }
 }
 
 /* Card Back — rich blue with subtle pattern */
@@ -433,7 +445,6 @@ body::before {
   position: relative;
   min-height: var(--card-height);
   min-width: var(--card-width);
-  padding-top: 16px;
 }
 
 .pos-label {
@@ -447,15 +458,15 @@ body::before {
 
 .powerset-info {
   position: absolute;
-  top: -16px;
+  bottom: 0;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(50%);
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 4px;
-  background: rgba(212, 146, 10, 0.4);
-  border: 1px solid rgba(212, 146, 10, 0.7);
+  background: rgba(30, 60, 30, 0.92);
+  border: 1.5px solid rgba(212, 146, 10, 0.8);
   border-radius: 6px;
   padding: 2px 8px;
   font-size: 11px;
@@ -1268,10 +1279,7 @@ body::before {
     text-align: center;
   }
 
-  /* Powerset badge: already top-positioned globally, just fine-tune desktop spacing */
-  .position-slot {
-    padding-top: 20px;
-  }
+  /* Powerset badge sits at bottom of card globally — no extra spacing needed */
 }
 
 /* Mid-range desktop: tighten gaps so 4 triads fit side by side comfortably.
@@ -2095,23 +2103,23 @@ body::before {
   50% { box-shadow: 0 4px 24px rgba(245, 158, 11, 0.5), 0 2px 4px rgba(0,0,0,0.2); }
 }
 
-/* When resume exists, New Game is secondary */
+/* When resume exists, New Game is secondary but still blue */
 #btn-resume-game:not(.hidden) ~ #btn-start-game {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.15);
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  border: 1.5px solid #1e40af;
   box-shadow: none;
   animation: none;
   font-size: 14px;
   padding: 10px 20px;
-  color: rgba(255, 255, 255, 0.7);
+  color: white;
   text-shadow: none;
   letter-spacing: 0;
 }
 #btn-resume-game:not(.hidden) ~ #btn-start-game:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
   color: white;
-  box-shadow: none;
-  transform: none;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  transform: translateY(-1px);
 }
 
 /* ---- Dopamine Hits: Celebrations & Streaks ---- */
@@ -2206,24 +2214,27 @@ body::before {
 .name-screen-secondary {
   display: flex;
   justify-content: center;
-  gap: 16px;
-  margin-top: 12px;
+  gap: 8px;
+  margin-top: 16px;
 }
 
 .link-btn {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.6);
   font-family: var(--font-body);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  padding: 4px 0;
-  transition: color 0.2s ease;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all 0.15s ease;
 }
 
 .link-btn:hover {
-  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 /* ---- Help "?" button (always visible during game) ---- */
@@ -2623,6 +2634,25 @@ body:has(#page-layout:not(.hidden)) #help-toggle {
   text-decoration: underline;
 }
 
+/* Game over New Game button — big, blue, inviting */
+#btn-new-game {
+  display: block;
+  width: 220px;
+  margin: 20px auto 0;
+  padding: 14px 28px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  border: 2px solid #1e40af;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
+}
+#btn-new-game:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+}
+
 /* Game over feedback link */
 .game-over-feedback {
   display: block;
@@ -2829,8 +2859,7 @@ body:has(#page-layout:not(.hidden)) #help-toggle {
 }
 
 .name-screen-sep {
-  color: rgba(255, 255, 255, 0.3);
-  margin: 0 2px;
+  display: none;
 }
 
 /* Game over CTA */
