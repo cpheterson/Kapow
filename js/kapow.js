@@ -351,6 +351,13 @@ function showFeedbackModal() {
     form.classList.remove('hidden');
   }
   document.getElementById('feedback-thanks').classList.add('hidden');
+  // Pre-fill email if previously captured (from feedback or buy modal)
+  var emailEl = document.getElementById('feedback-email');
+  if (emailEl) {
+    var saved = null;
+    try { saved = localStorage.getItem('kapow-email'); } catch(e) {}
+    if (saved) emailEl.value = saved;
+  }
   modal.classList.remove('hidden');
 }
 window.showFeedbackModal = showFeedbackModal;
@@ -361,7 +368,7 @@ function hideFeedbackModal() {
 }
 window.hideFeedbackModal = hideFeedbackModal;
 
-// Called right before Google Form submits — fills hidden context field
+// Called right before Google Form submits — fills hidden context + game log fields
 function prepareFeedback() {
   var context = [];
   if (playerName && playerName !== 'Player') context.push('Player: ' + playerName);
@@ -372,6 +379,18 @@ function prepareFeedback() {
   }
   context.push('Games played: ' + getGamesPlayed());
   document.getElementById('feedback-context').value = context.join(' | ');
+
+  // Populate game log (action log + notes)
+  var logEl = document.getElementById('feedback-gamelog');
+  if (logEl && gameState && gameState.actionLog && gameState.actionLog.length > 0) {
+    logEl.value = gameState.actionLog.join('\n');
+  }
+
+  // Save email for future pre-fill
+  var emailEl = document.getElementById('feedback-email');
+  if (emailEl && emailEl.value) {
+    try { localStorage.setItem('kapow-email', emailEl.value); } catch(e) {}
+  }
 }
 window.prepareFeedback = prepareFeedback;
 

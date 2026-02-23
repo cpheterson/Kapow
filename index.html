@@ -59,7 +59,7 @@
       <button class="buy-modal-close" onclick="hideBuyModal()">&times;</button>
       <h2>Get the Real Deck</h2>
       <p>KAPOW! is coming to Amazon soon. Leave your email and we'll let you know the moment it's available.</p>
-      <form id="kapow-email-form" action="https://docs.google.com/forms/d/1sOwXtDq9HZpbuwt5C_7qWD6LCOEWSIreNdwBboE_S3A/formResponse" method="POST" target="kapow-email-hidden" onsubmit="setTimeout(function(){document.getElementById('kapow-email-thanks').classList.remove('hidden');document.getElementById('kapow-email-form').classList.add('hidden')},500)">
+      <form id="kapow-email-form" action="https://docs.google.com/forms/d/1sOwXtDq9HZpbuwt5C_7qWD6LCOEWSIreNdwBboE_S3A/formResponse" method="POST" target="kapow-email-hidden" onsubmit="try{var e=this.querySelector('input[type=email]');if(e&&e.value)localStorage.setItem('kapow-email',e.value)}catch(x){}setTimeout(function(){document.getElementById('kapow-email-thanks').classList.remove('hidden');document.getElementById('kapow-email-form').classList.add('hidden')},500)">
         <input type="email" name="entry.1116097858" placeholder="your@email.com" required class="buy-modal-input">
         <button type="submit" class="action-btn kapow-buy-btn">Notify Me</button>
       </form>
@@ -232,17 +232,19 @@
       <button class="buy-modal-close" onclick="hideFeedbackModal()">&times;</button>
       <h2>Send Feedback</h2>
       <p class="feedback-subtext">Bug? Suggestion? Just want to say hi? We read everything.</p>
-      <form id="feedback-form" action="https://docs.google.com/forms/d/FEEDBACK_FORM_ID/formResponse" method="POST" target="feedback-hidden" onsubmit="prepareFeedback();setTimeout(function(){document.getElementById('feedback-thanks').classList.remove('hidden');document.getElementById('feedback-form').classList.add('hidden')},500)">
+      <form id="feedback-form" action="https://docs.google.com/forms/d/1du6KdHXiqiBiX0TLkgu83lnk3Kmo1JeWjdKPSSeNTDg/formResponse" method="POST" target="feedback-hidden" onsubmit="prepareFeedback();setTimeout(function(){document.getElementById('feedback-thanks').classList.remove('hidden');document.getElementById('feedback-form').classList.add('hidden')},500)">
         <div class="feedback-form">
-          <select id="feedback-type" name="entry.ENTRY_TYPE">
+          <select id="feedback-type" name="entry.997995687">
             <option value="Suggestion">Suggestion</option>
             <option value="Bug Report">Bug Report</option>
             <option value="Love It!">Love It!</option>
             <option value="Something Confusing">Something Confusing</option>
             <option value="Other">Other</option>
           </select>
-          <textarea id="feedback-text" name="entry.ENTRY_MESSAGE" placeholder="What's on your mind?" rows="4" maxlength="1000" required></textarea>
-          <input type="hidden" id="feedback-context" name="entry.ENTRY_CONTEXT">
+          <input type="email" id="feedback-email" name="entry.1350535275" placeholder="Email (optional)" class="buy-modal-input">
+          <textarea id="feedback-text" name="entry.331886633" placeholder="What's on your mind?" rows="4" maxlength="1000" required></textarea>
+          <input type="hidden" id="feedback-gamelog" name="entry.153587725">
+          <input type="hidden" id="feedback-context" name="entry.954163830">
           <button type="submit" class="action-btn kapow-buy-btn">Send</button>
         </div>
       </form>
