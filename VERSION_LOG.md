@@ -2,6 +2,11 @@
 
 ## Version History
 
+### 02-23-2026 v1
+**New session begins on 02-23-2026.**
+- Version counter resets to v1 for new date
+- All changes from 02-21-2026 carried forward
+
 ### 02-21-2026 v3
 **Redesigned powerset value display to appear directly on card.**
 - Powerset values now display on the fixed value card instead of below it
@@ -76,4 +81,4 @@ When making changes that warrant a version bump:
 
 ---
 
-## Latest Version: 02-21-2026 v3
+## Latest Version: 02-23-2026 v1
