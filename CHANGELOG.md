@@ -209,4 +209,4 @@
 - Pre-commit hook auto-bumps version on every commit
 - `scorecard-version` div in `index.html` is the source of truth
 
-## Latest Version: 02-23-2026 v7
+## Latest Version: 02-23-2026 v8

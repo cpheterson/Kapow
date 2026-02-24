@@ -896,9 +896,21 @@ function logHandState(state, playerIndex) {
           vals.push('P' + card.faceValue);
         } else {
           var val = card.faceValue;
-          if (posCards.length > 1 && posCards[1].type === 'power') {
-            var mod = posCards[1].activeModifier != null ? posCards[1].activeModifier : 0;
-            vals.push(val + '(' + (mod >= 0 ? '+' : '') + mod + ')=' + (val + mod));
+          if (posCards.length > 1) {
+            var modStr = '';
+            var total = val;
+            for (var m = 1; m < posCards.length; m++) {
+              if (posCards[m].type === 'power') {
+                var mod = posCards[m].activeModifier != null ? posCards[m].activeModifier : 0;
+                modStr += (mod >= 0 ? '+' : '') + mod;
+                total += mod;
+              }
+            }
+            if (modStr) {
+              vals.push(val + '(' + modStr + ')=' + total);
+            } else {
+              vals.push('' + val);
+            }
           } else {
             vals.push('' + val);
           }

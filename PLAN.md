@@ -110,6 +110,7 @@ The production AI is genuinely impressive (~1,600 lines of strategic evaluation)
 
 ## Tech Debt (Someday)
 
+- [ ] **App icon / favicon** — current PWA icon is placeholder garbage. Need a real KAPOW icon for: PWA home screen (icon-192.png, icon-512.png), favicon, apple-touch-icon, and a visible logo/icon on the site itself
 - Desktop layout: left/right or better top/down for wide screens
 - Chuck/Eric collaboration: PR Eric's fork into canonical, shared push access
 
