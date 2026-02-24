@@ -1,56 +1,32 @@
-# KAPOW! Card Game - Version Log
+# KAPOW! Card Game - Changelog
 
 ## Version History
 
-### 02-23-2026 v1
+### 02-23-2026 v3
 **Test suite + git hooks infrastructure.**
 - Added Vitest test suite: 133 tests across 7 modules (deck, hand, triad, scoring, rules, gameState, ai)
 - Pre-commit hook: runs tests, auto-bumps version, enforces changelog updates
-- Tests cover card distribution, powerset stacking, KAPOW wild card solver, scoring penalties, AI strategy priority chain, full turn cycles
+- Shared `hooks/` directory — Chuck runs `git config core.hooksPath hooks` once
+- CHANGELOG.md backfilled with full project history from initial commit
+- PLAN.md updated with AI improvement roadmap
 
-### 02-22-2026 v10
-**UI polish, AI KAPOW swaps, pile selection fix, direct sales CTA.**
-- Fixed cards showing as `?` after merge conflict (missing return statement)
-- Pile selection prompt says "either pile" (was only showing one option)
-- Updated buy CTA copy for direct card sales
-- UI polish: glows, badges, buttons, loading states, layout fixes
-
-### 02-22-2026 v9
-**Merge upstream + card spacing fixes.**
-- Merged upstream/master: AI KAPOW swaps, powerset value display fixes
-- Fixed card spacing, floating cards, button styles
-- Seeded leaderboard with initial data
-
-### 02-22-2026 v8
-**AI within-triad KAPOW swaps with oscillation prevention.**
-- AI can now swap unfrozen KAPOW cards to high-value positions within the same triad
-- Oscillation guard prevents repeated swaps between the same positions
-- KAPOW swap happens after main action, before turn end
-
-### 02-22-2026 v7
-**UX polish — glow sync, powerset badges, round end dopamine, leaderboard preload.**
-- Synchronized card glow animations
-- Powerset badges show modifier values on cards
-- Round-end celebration animations
-- Leaderboard data preloaded on game start
-
-### 02-22-2026 v6
-**Engagement hooks — challenge a friend, global leaderboard, powerset fix.**
-- Challenge-a-friend sharing flow
-- Global leaderboard (seeded, local-first)
-- Fixed powerset value calculation edge case
-
-### 02-22-2026 v5
-**Redesign powerset value display to appear on card.**
-- Power card modifiers now shown directly on the card face
-- Removed separate powerset indicator
-- Removed "frozen" from user-facing KAPOW card descriptions
+### 02-23-2026 v2
+**AI KAPOW swaps, engagement hooks, merge upstream, UI polish.**
+- AI within-triad KAPOW swaps with oscillation prevention
+- Engagement hooks: challenge-a-friend, global leaderboard (seeded, local-first)
+- Powerset value display redesigned — modifiers shown on card face
+- Merged upstream/master: AI KAPOW swaps, powerset value fixes
+- Fixed cards showing as `?` after merge conflict (missing return)
+- Pile selection says "either pile" (was only showing one option)
+- Buy CTA updated for direct card sales
+- UI polish: glows, badges, buttons, card spacing, loading states
 
 ### 02-22-2026 v4
-**Email suppression + feedback form fixes.**
+**Email suppression + feedback form.**
 - Buy CTAs suppressed once player has given their email
-- Wired feedback form to Google Form with email, game log, and context
+- Feedback form wired to Google Form with email, game log, context
 - Reverted price anchoring copy (cards aren't for sale yet)
+- Removed "frozen" from user-facing KAPOW card descriptions
 
 ### 02-22-2026 v3
 **Feedback via Google Form (replaces mailto).**
@@ -58,23 +34,23 @@
 - Includes game log and device context automatically
 
 ### 02-22-2026 v2
-**Feedback flow + game save & resume.**
-- Game save/resume via localStorage — never lose a 30-minute game
-- Mailto-based feedback flow (later replaced by Google Form)
+**Game save/resume + feedback flow.**
+- Game save & resume via localStorage — never lose a 30-minute game
+- Mailto-based feedback flow (later replaced by Google Form in v3)
 - `/play` redirect page for QR code in physical packaging
 - Corrected live URL to epheterson.github.io/Kapow/
+- AI renamed to "Kai" throughout README
 
 ### 02-22-2026 v1
-**Buy funnel, email capture, rename AI → Kai.**
+**Buy funnel, email capture, rename AI → Kai, dopamine hits.**
 - Buy modal with email capture form
-- AI opponent renamed to "Kai" throughout UI and README
-- Scorecard notes, share results, mobile layout fixes
+- AI opponent renamed to "Kai" throughout UI
 - Big "Start Game" button with breathing glow animation
+- Scorecard: notes, share (Web Share API), version tag, tap-to-close
 - Desktop layout width constraints, message capped at 480px
-- Dopamine hits: round win celebrations, streaks, personal bests
+- Dopamine hits: round win celebrations, streak badges, personal bests
 - Punchier card animations, juicier KAPOW placement effects
-- Share crash fix, scorecard UX improvements, power card context
-- Tap anywhere to dismiss scorecard
+- Share crash fix (p.scores → p.roundScores), power card context
 - Discard pile no longer hidden behind scorecard on desktop
 - Vertically centered game on desktop, timestamped log exports
 - How-to-play.txt for Chuck to edit rules text
@@ -83,45 +59,36 @@
 
 ### 02-21-2026 v7
 **Fix desktop piles tucked in: replaced CSS grid with flex+center on play-area.**
-- Root cause: `grid-template-columns: auto 1fr auto` made the center column claim full viewport width, pushing piles to screen edges
+- `grid-template-columns: auto 1fr auto` made center column claim full viewport width, pushing piles to screen edges
 - New: `display: flex; justify-content: center` — piles sit directly adjacent to cards
-- `#center-strip` uses `align-self: stretch` to lock its width to the hand-grid (not text content), preventing horizontal layout shifts
-- Game message `max-width: 100%` fills the available hand-grid width
+- `#center-strip` uses `align-self: stretch` to lock width to hand-grid
 
 ### 02-21-2026 v6
 **Fix desktop vertical spacing: remove artificial spreading between hands and center strip.**
 - Card formula overhead increased 165px → 280px to account for center strip + headers
-- Removed fixed height from hands-column — content now stacks naturally
-- Removed `flex: 1` from center-strip — no longer expands to fill empty space
-- Added `padding-bottom: 32px` to hands-column to clear the fixed revision footer
-- Cards now top out at ~103px on 900px viewports (still reach 130px at ≥1060px)
+- Removed fixed height from hands-column, removed `flex: 1` from center-strip
+- Cards top out at ~103px on 900px viewports (still reach 130px at ≥1060px)
 
 ### 02-21-2026 v5
 **Fix desktop center strip button layout: each element on its own row.**
 - Message, action buttons (Hint + End Turn), and Understand AI's Move each occupy a full-width row
-- Buttons never share a row with the understand button regardless of Hint visibility
-- Layout is now completely stable — no horizontal shifting as game state changes
-- `flex: 0 0 100%` on action-controls and understand-btn enforces single-row-per-element
+- `flex: 0 0 100%` enforces single-row-per-element — no horizontal shifting
 
 ### 02-21-2026 v4
 **Fix piles shifting horizontally and version to footer center.**
-- Replaced flex layout with CSS grid (`auto 1fr auto`) on play-area — piles locked in fixed columns
-- Center strip uses `width: fit-content; margin: auto` so it expands inward, not outward
-- Revision footer moved from bottom-right to bottom-center (`left: 50%; transform: translateX(-50%)`)
+- CSS grid (`auto 1fr auto`) locks piles in fixed columns
+- Center strip uses `width: fit-content; margin: auto`
+- Revision footer moved from bottom-right to bottom-center
 
 ### 02-21-2026 v3
 **Stack center strip vertically: message on its own row, buttons below.**
-- Added `flex-wrap: wrap` to center-strip
-- `flex: 0 0 100%` on game-message forces it to its own row
-- Buttons tuck in below on a separate row
+- `flex-wrap: wrap` on center-strip, `flex: 0 0 100%` on game-message
 
 ### 02-21-2026 v2
 **Fix desktop card overflow: viewport-height-based card sizing.**
-- Cards now scale to fit both hands in one viewport height without scrolling
-- Formula: clamp(68px, (100vh - 165px) / 6, 130px) — 6 card rows fill available height
+- Formula: `clamp(68px, (100vh - 165px) / 6, 130px)` — 6 card rows fill available height
 - Card width derives from height at fixed 100:140 aspect ratio
-- Removed hardcoded mid-range card sizes — formula handles all desktop screen sizes
-- Renamed VERSION_LOG.md → CHANGELOG.md (standard convention)
+- Renamed VERSION_LOG.md → CHANGELOG.md
 
 ### 02-21-2026 v1
 **Merged Eric's fork: mobile UI, sounds, animations, tutorial, PWA, bug fixes.**
@@ -135,59 +102,111 @@
 - "Understand AI's Move" lightbulb tips — contextual strategic insights in explanation modal
 - AI banter shown above AI hand on mobile
 - Cached player name via localStorage; welcome-back message on return
-- "?" help button always accessible (desktop and mobile)
 - TOP row label on first triad for orientation
 - XSS fix: player name sanitized with escapeHTML()
 - AI deadlock fix: empty draw + discard pile no longer silently freezes the game
 - Scoring null guard: applyFirstOutPenalty no longer crashes when nobody went out
-- Doubling penalty explanation: round-end screen explains exactly why score was doubled
-- Also merged Chuck's AI fixes from 02-20-2026: going-out-via-triad-completion detection,
+- Doubling penalty explanation on round-end screen
+- Also merged Chuck's AI fixes: going-out-via-triad-completion detection,
   matched-pair destruction penalty, stronger discard safety (0.4× → 1.0×),
   draw-from-discard going-out guard
-- Updated README: public-facing, architecture notes, credits
-- Added PLAN.md: roadmap, collaboration workflow, merge plan
 
 ### 02-20-2026 v3
 **Fixed AI explanation to avoid nonsensical future completion paths when going out.**
-- When placement triggers going out, explanation now focuses on going-out decision
-- Removed mention of "completion paths" that will never be needed post-game
-- Explanation now clarifies why the timing was right to end the round
+- Explanation now focuses on going-out decision when placement triggers going out
+- Clarifies why timing was right to end the round
 
 ### 02-20-2026 v2
 **Strengthened discard safety penalty for opponent-completion cards.**
-- Increased scaling factor for replaced-card discard penalty from 0.4 to 1.0
-- Penalty now directly proportional to danger level (stronger deterrent)
-- Prevents AI from discarding cards that would help opponent complete triads
-- Example: replacing 9 with 3 now scores -2 instead of +3 when 9 completes opponent's triad
+- Scaling factor for replaced-card discard penalty from 0.4 → 1.0
+- Penalty directly proportional to danger level (stronger deterrent)
 
 ### 02-20-2026 v1
-**Initial revision with software revision footer added.**
-- Added revision footer to lower right corner of page
-- Format: `02-20-2026 v1` (date v{version})
-- Created CHANGELOG.md for version tracking
+**Initial revision tracking. Software revision footer added.**
+- Revision footer in lower right corner: `02-20-2026 v1`
+- Created CHANGELOG.md
+
+---
+
+## Pre-Versioning History
+
+*Commits before version tracking was introduced (02-08 → 02-19). Reconstructed from git log.*
+
+### 02-19-2026
+**Powerset completion range fix.**
+- Widened triad completion test range to cover powerset effective values outside 0-12 (`539133b`)
+
+### 02-17-2026
+**Triad animation + pile improvements.**
+- Animate triad discard card-by-card, increase commentary font (`7419984`)
+- Replenish empty discard pile with top card from draw pile (`430aa45`)
+- Show card count beneath discard pile matching draw pile display (`a3dafb8`)
+
+### 02-16-2026
+**AI banter system + KAPOW/Power card rules + explanation enhancements.**
+- AI banter system with contextual commentary for 12 game scenarios (`fe8c7d1`)
+- Block Power card modifiers and powersets on KAPOW cards (`dcccdfe`)
+- KAPOW/Power modal feedback, Release Card button, scoreboard alignment (`6435792`)
+- Fix false KAPOW banter, penalize point-shedding in high-value triads (`c5f0e50`)
+- Enhance AI explanation modal with educational strategy details (`965e1aa`)
+- AI high-value triad building, KAPOW draw valuation, going-out risk assessment (`1396fd1`)
+
+### 02-15-2026
+**AI strategic depth: synergy, KAPOW awareness, defensive play.**
+- "Understand AI's Move" modal, defensive placement, swap-phase UX (`585b157`)
+- Reverse AI hand rendering, position labels, KAPOW/Power path counting (`b15a096`)
+- AI penalized for zero-synergy placements next to 1-revealed neighbors (`6d93354`)
+- Fix: 1-revealed synergy uses direct paths only, not Power modifier paths (`6d6569e`)
+- Scale KAPOW replace bonus by turn, penalize unsafe replacement discards (`f6de25d`)
+- Fix AI card-piling, KAPOW awareness, swap loop, matched-pair protection (`3379393`)
+
+### 02-14-2026
+**Major AI overhaul: threat awareness, synergy protection, final turn logic.**
+- Play-by-play logging, turn counter, AI threat awareness, KAPOW swap rule fix (`15079db`)
+- Fix deck.js Power card count to 8 each (118 total) (`b2a2c5a`)
+- Fix KAPOW cards staying frozen after triad discard (`95ba223`)
+- Penalize AI for breaking existing synergy when replacing revealed cards (`651f23d`)
+- AI prefers completing high-value triads over low-value ones (`8dfb041`)
+- AI uses pure score-shedding on final turn (`8dd9d7c`)
+- Fix round score display showing `+-5` for negative scores (`dfd4297`)
+- AI discard safety checks 3-revealed opponent triads (`f560daf`)
+- Keep AI placement highlight visible until player takes action (`6a0a6ef`)
+- Show "Replace Powerset" label when target is a powerset (`05f564c`)
+- AI preserves solo Power cards for potential powerset creation (`ace08ae`)
+- Penalize AI for replacing a revealed card with same value (`2e01549`)
+- Penalize AI for increasing triad value without gaining paths (`06a9fe1`)
+- Scale AI path/synergy penalties by opponent threat level (`3fe284f`)
+
+### 02-10-2026
+**AI strategy upgrade.**
+- Upgrade AI strategy with scored evaluation, synergy protection, smart going-out (`f852387`)
+
+### 02-09-2026
+**KAPOW swap, powerset rules, layout redesign.**
+- Educational AI turn visibility with step-by-step actions (`0c18823`)
+- Fix Power card count: 8 each type (16 total) per spec (`91dc96c`)
+- Redesign layout: piles flank hands, message between players (`7c16278`)
+- Implement KAPOW card swap with revealed-target-only logic (`ce414cc`)
+- Allow powerset creation when placing any card on a solo power card (`c936a65`)
+
+### 02-08-2026
+**Initial commit — fully playable KAPOW card game.**
+- Complete 2-player game (human vs AI) with 118-card deck (`51f842e`)
+- Card types: 96 fixed (0-12), 16 power (±1/±2 modifiers), 6 KAPOW (wild)
+- Triad completion via sets (three-of-a-kind) or runs (ascending/descending)
+- 10-round game, first-out doubling penalty, lowest cumulative score wins
+- Fix power card layout shift, turn order, modal, card visibility (`f7539f6`, `be7e2bd`)
+- Fix AI reveal timing — AI reveals instantly with player (`15a72e1`)
+- Restructure first turn: reveal is part of each player's turn (`0dea6c5`)
+- Show drawn card in place on source pile with highlight (`f58b684`)
+- Keep discard-drawn card visible on discard pile until placed (`472365c`)
 
 ---
 
 ## Version Numbering Convention
 
-- Format: `MM-DD-YYYY vN` where N is a sequential number (1, 2, 3, etc.)
-- Each new date resets the version counter to v1
-- Multiple versions on the same day are incremented (v1, v2, v3, etc.)
-- The revision text in the HTML footer (`index.html` line ~150) should be updated to match the latest version
+- Format: `MM-DD-YYYY vN` where N resets to 1 each new date
+- Pre-commit hook auto-bumps version on every commit
+- `scorecard-version` div in `index.html` is the source of truth
 
-## How to Increment
-
-When making changes that warrant a version bump:
-
-1. Determine today's date in MM-DD-YYYY format
-2. Check if today's version already exists (e.g., is there a v1, v2, etc.?)
-3. Increment accordingly:
-   - If new date: use `MM-DD-YYYY v1`
-   - If same date: increment to next number (e.g., `02-20-2026 v2`)
-4. Update `id="revision-text"` in `index.html` with the new version string
-5. Add an entry to this CHANGELOG.md file describing the changes
-6. Commit the changes with the version in the commit message
-
----
-
-## Latest Version: 02-23-2026 v3
+## Latest Version: 02-23-2026 v4
