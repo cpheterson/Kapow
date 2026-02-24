@@ -2557,9 +2557,30 @@ function aiFindPowersetOpportunity(hand, drawnCard) {
         }
       }
 
+      // KAPOW burial bonus: if this triad has a KAPOW in another position,
+      // creating a powerset that completes/nearly-completes it enables burying
+      // the KAPOW in the discard pile (25 pts saved).
+      var kapowBurialBonus = 0;
+      for (var kp = 0; kp < positions.length; kp++) {
+        if (kp === p) continue;
+        var kpCards = triad[positions[kp]];
+        if (kpCards.length > 0 && kpCards[0].type === 'kapow' && kpCards[0].isRevealed) {
+          if (isTriadComplete(triad)) {
+            // Triad completes → KAPOW gets discarded. Bonus is higher if KAPOW
+            // won't end up on top of discard pile (position determines discard order:
+            // bottom first, then middle, then top goes last/on top).
+            kapowBurialBonus = positions[kp] === 'top' ? 15 : 25;
+          } else {
+            // Near-completion with KAPOW present — moderate bonus for the setup
+            kapowBurialBonus = 8;
+          }
+          break;
+        }
+      }
+
       triad[positions[p]] = origCards; // restore
 
-      var totalScore = improvement + triadBonus;
+      var totalScore = improvement + triadBonus + kapowBurialBonus;
       if (totalScore > bestScore) {
         bestScore = totalScore;
         best = { type: 'powerset-on-power', triadIndex: t, position: positions[p], usePositive: usePositive };
@@ -4125,9 +4146,26 @@ function aiFindModifierOpportunity(hand, drawnCard) {
       }
       if (isTriadComplete(triad)) triadBonus = 80;
 
+      // KAPOW burial bonus: if this triad has a KAPOW in another position,
+      // creating a powerset that completes/nearly-completes it enables burying
+      // the KAPOW in the discard pile (25 pts saved).
+      var kapowBurialBonus = 0;
+      for (var kp2 = 0; kp2 < positions.length; kp2++) {
+        if (kp2 === p) continue;
+        var kp2Cards = triad[positions[kp2]];
+        if (kp2Cards.length > 0 && kp2Cards[0].type === 'kapow' && kp2Cards[0].isRevealed) {
+          if (isTriadComplete(triad)) {
+            kapowBurialBonus = positions[kp2] === 'top' ? 15 : 25;
+          } else {
+            kapowBurialBonus = 8;
+          }
+          break;
+        }
+      }
+
       triad[positions[p]] = origCards; // restore
 
-      var totalScore = improvement + triadBonus + synergyDestroyPenalty;
+      var totalScore = improvement + triadBonus + synergyDestroyPenalty + kapowBurialBonus;
       if (totalScore > bestScore && totalScore > 0) {
         bestScore = totalScore;
         best = { type: 'add-powerset', triadIndex: t, position: positions[p],

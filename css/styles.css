@@ -1193,19 +1193,26 @@ body::before {
    any cascade issues. Mobile overrides below.
    ============================================ */
 @media (min-width: 769px) {
-  /* Cards scale to viewport height so both hands + center strip fit.
-     Budget: headers ×2 (48px), center strip (120px), gaps (40px), padding (20px) = ~230px.
+  /* Cards scale to viewport height. Both hands + center controls must fit.
+     Budget per hand: triad padding 16px + triad gaps 8px + border 2px = 26px.
+     Two hands = 52px. Plus: center strip ~44px + flex gaps 8px + page padding 8px = 112px.
+     Six card rows total → each card = (100vh - 112px) / 6.
      Clamped: min 68px, max 120px. */
   :root {
-    --card-height: clamp(68px, calc((100vh - 230px) / 6), 120px);
+    --card-height: clamp(68px, calc((100vh - 112px) / 6), 120px);
     --card-width: calc(var(--card-height) * 0.714);
   }
+
+  /* --- Reclaim vertical space: hide redundant labels --- */
+  .triad-label { display: none; }
+  #ai-area h2, #player-area h2 { display: none; }
 
   #page-layout {
     display: flex;
     flex-direction: row;
     align-items: flex-start;
     gap: 20px;
+    padding: 4px 20px;
   }
 
   #game-container {
@@ -1214,6 +1221,7 @@ body::before {
     display: flex;
     flex-direction: column;
     align-items: center;
+    position: relative;
   }
 
   /* Piles tucked tight against hands, everything shrinks together */
@@ -1229,10 +1237,10 @@ body::before {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
     flex-shrink: 1;
     min-width: 0;
-    padding-bottom: 32px;
+    padding-bottom: 0;
   }
 
   #ai-area,
@@ -1258,41 +1266,80 @@ body::before {
     display: none !important;
   }
 
-  /* Center strip: fixed height reserves space so layout doesn't bounce.
-     align-self:stretch locks width to hands-column. */
+  /* --- Center strip: compact control row between hands ---
+     Instead of collapsing to nothing and overlaying corners,
+     keep it as a thin horizontal bar with message + buttons inline. */
   #center-strip {
     align-self: stretch;
     flex-shrink: 0;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px;
-    min-height: 100px;
-  }
-
-  #center-strip #game-message {
-    flex: 0 0 100%;
-    max-width: 480px;
-    margin: 0 auto;
-    text-align: center;
-    white-space: normal;
-    height: 50px;
-    min-height: 50px;
-  }
-
-  #center-strip #action-controls {
-    flex: 0 0 100%;
     display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
     justify-content: center;
-    gap: 10px;
-    min-height: 40px;
+    gap: 12px;
+    min-height: unset;
+    padding: 3px 0;
+  }
+
+  /* Game message: compact inline pill in center strip */
+  #center-strip #game-message {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+    height: auto;
+    min-height: unset;
+    padding: 4px 12px;
+    font-size: 11px;
+    line-height: 1.3;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    opacity: 0.9;
+  }
+
+  /* Long tutorial messages wrap instead of truncating */
+  #center-strip #game-message.tutorial-message,
+  #center-strip #game-message.swap-phase-message {
+    white-space: normal;
+    text-overflow: clip;
+    line-height: 1.25;
+  }
+
+  /* Action controls: compact inline beside message */
+  #center-strip #action-controls {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 6px;
+    min-height: unset;
     align-items: center;
   }
 
+  #center-strip #action-controls .action-btn {
+    padding: 4px 12px;
+    font-size: 11px;
+    border-radius: 6px;
+  }
+
+  /* "Understand Kai's Move": compact pill at end of strip */
   #center-strip #btn-understand-move {
-    flex: 0 0 100%;
-    max-width: 200px;
-    margin: 0 auto;
-    text-align: center;
+    flex: 0 0 auto;
+    max-width: none;
+    padding: 4px 10px;
+    font-size: 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    margin: 0;
+  }
+
+  /* Shrink End Turn glow style to match compact strip */
+  #center-strip .action-btn.end-turn-glow,
+  #center-strip .action-btn.release-card-glow {
+    font-size: 11px;
+    padding: 4px 14px;
   }
 
   /* Powerset badge sits at bottom of card globally — no extra spacing needed */

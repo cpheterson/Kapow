@@ -2,6 +2,14 @@
 
 ## Version History
 
+### 02-24-2026 v4
+**Desktop layout fix + smarter AI.**
+- Fixed desktop vertical overflow — replaced 146px center strip with compact inline control bar (zero scroll at 820px)
+- Hidden redundant section headers and triad labels on desktop, reclaiming ~216px vertical space
+- Card height formula now precisely accounts for triad padding, gaps, and borders
+- AI now considers KAPOW burial when evaluating powerset placements (prefers positions that enable discarding KAPOW through triad completion)
+- Bumped service worker cache (v48→v49)
+
 ### 02-24-2026 v2
 **Analytics docs + SW cache bump.**
 - Added analytics section to CONTRIBUTING.md (events, quick checks, debug tips)
@@ -240,4 +248,4 @@
 - Pre-commit hook auto-bumps version on every commit
 - `scorecard-version` div in `index.html` is the source of truth
 
-## Latest Version: 02-24-2026 v2
+## Latest Version: 02-24-2026 v5
