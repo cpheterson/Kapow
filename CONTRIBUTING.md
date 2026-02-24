@@ -59,7 +59,7 @@ The hook runs automatically on every `git commit` (after running `git config cor
 
 1. **Runs all tests** — commit blocked if any test fails
 2. **Auto-bumps version** — increments `MM-DD-YYYY vN` in `index.html`. New date resets to v1.
-3. **Warns if CHANGELOG.md wasn't updated** — not a blocker, just a reminder
+3. **Blocks if CHANGELOG.md wasn't updated** — skip with `--no-verify` if truly not needed
 4. **Syncs "Latest Version"** in CHANGELOG.md footer
 
 You don't need to manually bump versions. The hook handles it.
@@ -85,6 +85,37 @@ All CSS is in `css/styles.css`. Mobile-first with a `@media (min-width: 768px)` 
 - Pre-commit hook handles this automatically
 - Version shows in the scorecard overlay and is tracked in CHANGELOG.md
 - See CHANGELOG.md for full history back to initial commit
+
+## Analytics (GA4)
+
+Google Analytics 4 tracks player engagement. Measurement ID: `G-G9DW4L5Y5X`
+
+**Dashboard:** [analytics.google.com](https://analytics.google.com) → KAPOW property
+
+**Custom events tracked:**
+
+| Event | Where | Parameters |
+|-------|-------|------------|
+| `game_start` | Player hits Play | `games_played` |
+| `tutorial_complete` | First game tutorial finishes | — |
+| `round_complete` | End of each round | `round`, `player_score`, `kai_score`, `player_won` |
+| `game_over` | End of full game | `player_total`, `kai_total`, `player_won`, `rounds_played` |
+| `buy_cta_click` | Any "Get KAPOW!" button tap | — |
+| `email_submit` | Email captured (leaderboard or form) | `source` |
+| `feedback_submit` | Feedback form submitted | — |
+
+**Quick checks:**
+
+```bash
+# Verify gtag is loading (from browser console on the live site)
+typeof gtag === 'function'  # should be true
+
+# Check realtime: analytics.google.com → Realtime → play a game → watch events appear
+
+# GA4 Debug View: add ?gtm_debug=1 to URL, then check DebugView in GA4 console
+```
+
+**Implementation:** gtag snippet in `index.html` `<head>`, `trackEvent()` helper called from `js/kapow.js`. Events are no-ops if gtag fails to load (ad blockers, offline).
 
 ## Repo History
 

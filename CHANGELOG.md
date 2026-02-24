@@ -2,6 +2,12 @@
 
 ## Version History
 
+### 02-24-2026 v2
+**Analytics docs + SW cache bump.**
+- Added analytics section to CONTRIBUTING.md (events, quick checks, debug tips)
+- Bumped service worker cache (v47→v48) to force fresh version for returning users
+- Updated CONTRIBUTING.md to reflect changelog enforcement
+
 ### 02-24-2026 v1
 **Bug fixes + hook enforcement.**
 - Fixed powerset log display — stacked power modifiers now show all values (was only showing first)
@@ -234,4 +240,4 @@
 - Pre-commit hook auto-bumps version on every commit
 - `scorecard-version` div in `index.html` is the source of truth
 
-## Latest Version: 02-24-2026 v1
+## Latest Version: 02-24-2026 v2
