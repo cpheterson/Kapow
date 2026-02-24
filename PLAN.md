@@ -82,14 +82,37 @@ See `~/vault/projects/kapow/kapow-monetization.md` for full plan.
 
 ---
 
+## What's Shipped (02-23)
+- [x] Vitest test suite: 133 tests across 7 modules (deck, hand, triad, scoring, rules, gameState, ai)
+- [x] CHANGELOG.md backfilled (was stale since 02-21 v7, now current through 02-23 v1)
+- [x] Pre-commit hook: runs tests, auto-bumps version, changelog warning
+- [x] Shared hooks/ directory (Chuck gets hooks by running `git config core.hooksPath hooks`)
+
+---
+
+## Next Up — Code Quality & AI
+
+### IIFE → ES Module Refactor
+The modular files already exist and are well-structured (`js/deck.js`, `hand.js`, `triad.js`, `scoring.js`, `rules.js`, `gameState.js`, `ai.js`). Remaining work:
+- [ ] Port production AI strategic evaluation (~1,600 lines) into modular `ai.js` (current version is a simplified ~300 line subset)
+- [ ] Extract UI/rendering from `kapow.js` into a module
+- [ ] Replace `kapow.js` IIFE with imports from modules
+- [ ] This enables proper testing of the real AI, tree-shaking, and easier collaboration
+
+### AI Improvements to Propose to Chuck
+The production AI is genuinely impressive (~1,600 lines of strategic evaluation). Specific proposals:
+- [ ] **Cross-turn memory** — AI currently re-evaluates from scratch each turn. Tracking what opponent draws from discard would reveal their strategy (e.g., "they grabbed a 7, probably building a set/run around 7")
+- [ ] **Personality system** — AI always plays optimally. Adding "aggressive" (goes out early), "conservative" (hoards low cards), "chaotic" (random power card usage) personalities could create difficulty levels
+- [ ] **Tighter go-out decision** — simplified `aiShouldGoOut` uses flat thresholds. Should factor in opponent's estimated score and round number more aggressively (e.g., go out with 20 if opponent looks like they have 30+)
+- [ ] **Minification** — not needed yet (GitHub Pages gzips, 5K lines ≈ 35-40KB wire), but when modular refactor lands, `esbuild --bundle --minify` is free
+
+---
+
 ## Tech Debt (Someday)
 
-- kapow.js refactor: split ~5400-line IIFE into modules (multiplayer will force this)
 - Desktop layout: left/right or better top/down for wide screens
-- Proper versioning system (semver, auto-bump)
-- Test coverage (currently zero — it's a card game, manual testing)
 - Chuck/Eric collaboration: PR Eric's fork into canonical, shared push access
 
 ---
 
-*Last updated: 2026-02-22*
+*Last updated: 2026-02-23*

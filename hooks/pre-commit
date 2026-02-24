@@ -1,0 +1,71 @@
+#!/bin/bash
+# KAPOW pre-commit hook: tests + version bump + changelog check
+#
+# Install: git config core.hooksPath hooks
+# (Already configured — Chuck just needs to run the command above after cloning)
+
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+# ── 1. Run tests ──────────────────────────────
+echo "Running tests..."
+if ! npm test --prefix "$ROOT" 2>/dev/null; then
+  echo "FAIL: Tests failed. Fix them before committing."
+  exit 1
+fi
+echo "OK: All tests passed."
+
+# ── 2. Auto-bump version ─────────────────────
+# Version format: MM-DD-YYYY vN in index.html scorecard-version div
+HTML="$ROOT/index.html"
+TODAY=$(date +"%m-%d-%Y")
+
+if [ -f "$HTML" ]; then
+  # Extract current version (macOS-compatible — no grep -P)
+  CURRENT=$(sed -n 's/.*scorecard-version">\([0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9] v[0-9]*\).*/\1/p' "$HTML" | head -1)
+
+  if [ -n "$CURRENT" ]; then
+    CURRENT_DATE=$(echo "$CURRENT" | cut -d' ' -f1)
+    CURRENT_V=$(echo "$CURRENT" | sed 's/.*v//')
+
+    if [ "$CURRENT_DATE" = "$TODAY" ]; then
+      NEW_V=$((CURRENT_V + 1))
+    else
+      NEW_V=1
+    fi
+
+    NEW_VERSION="$TODAY v$NEW_V"
+
+    # Only bump if the version wasn't already manually updated in this commit
+    STAGED_VERSION=$(git diff --cached -- "$HTML" | sed -n 's/.*scorecard-version">\([0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9] v[0-9]*\).*/\1/p' | tail -1 2>/dev/null || echo "")
+
+    if [ -z "$STAGED_VERSION" ] || [ "$STAGED_VERSION" = "$CURRENT" ]; then
+      sed -i '' "s|scorecard-version\">$CURRENT|scorecard-version\">$NEW_VERSION|" "$HTML"
+      git add "$HTML"
+      echo "Version bumped: $CURRENT -> $NEW_VERSION"
+    else
+      echo "Version already updated in staging: $STAGED_VERSION"
+    fi
+  fi
+fi
+
+# ── 3. Changelog check ──────────────────────
+CHANGELOG="$ROOT/CHANGELOG.md"
+if [ -f "$CHANGELOG" ]; then
+  if ! git diff --cached --name-only | grep -q "CHANGELOG.md"; then
+    echo ""
+    echo "WARNING: CHANGELOG.md not updated. Consider adding an entry."
+    echo ""
+  fi
+fi
+
+# Update the "Latest Version" line in CHANGELOG to match
+if [ -n "$NEW_VERSION" ] && [ -f "$CHANGELOG" ]; then
+  if grep -q "^## Latest Version:" "$CHANGELOG"; then
+    sed -i '' "s|^## Latest Version:.*|## Latest Version: $NEW_VERSION|" "$CHANGELOG"
+    git add "$CHANGELOG"
+  fi
+fi
+
+exit 0

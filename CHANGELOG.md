@@ -2,6 +2,85 @@
 
 ## Version History
 
+### 02-23-2026 v1
+**Test suite + git hooks infrastructure.**
+- Added Vitest test suite: 133 tests across 7 modules (deck, hand, triad, scoring, rules, gameState, ai)
+- Pre-commit hook: runs tests, auto-bumps version, enforces changelog updates
+- Tests cover card distribution, powerset stacking, KAPOW wild card solver, scoring penalties, AI strategy priority chain, full turn cycles
+
+### 02-22-2026 v10
+**UI polish, AI KAPOW swaps, pile selection fix, direct sales CTA.**
+- Fixed cards showing as `?` after merge conflict (missing return statement)
+- Pile selection prompt says "either pile" (was only showing one option)
+- Updated buy CTA copy for direct card sales
+- UI polish: glows, badges, buttons, loading states, layout fixes
+
+### 02-22-2026 v9
+**Merge upstream + card spacing fixes.**
+- Merged upstream/master: AI KAPOW swaps, powerset value display fixes
+- Fixed card spacing, floating cards, button styles
+- Seeded leaderboard with initial data
+
+### 02-22-2026 v8
+**AI within-triad KAPOW swaps with oscillation prevention.**
+- AI can now swap unfrozen KAPOW cards to high-value positions within the same triad
+- Oscillation guard prevents repeated swaps between the same positions
+- KAPOW swap happens after main action, before turn end
+
+### 02-22-2026 v7
+**UX polish — glow sync, powerset badges, round end dopamine, leaderboard preload.**
+- Synchronized card glow animations
+- Powerset badges show modifier values on cards
+- Round-end celebration animations
+- Leaderboard data preloaded on game start
+
+### 02-22-2026 v6
+**Engagement hooks — challenge a friend, global leaderboard, powerset fix.**
+- Challenge-a-friend sharing flow
+- Global leaderboard (seeded, local-first)
+- Fixed powerset value calculation edge case
+
+### 02-22-2026 v5
+**Redesign powerset value display to appear on card.**
+- Power card modifiers now shown directly on the card face
+- Removed separate powerset indicator
+- Removed "frozen" from user-facing KAPOW card descriptions
+
+### 02-22-2026 v4
+**Email suppression + feedback form fixes.**
+- Buy CTAs suppressed once player has given their email
+- Wired feedback form to Google Form with email, game log, and context
+- Reverted price anchoring copy (cards aren't for sale yet)
+
+### 02-22-2026 v3
+**Feedback via Google Form (replaces mailto).**
+- Feedback modal submits to Google Form instead of opening mail client
+- Includes game log and device context automatically
+
+### 02-22-2026 v2
+**Feedback flow + game save & resume.**
+- Game save/resume via localStorage — never lose a 30-minute game
+- Mailto-based feedback flow (later replaced by Google Form)
+- `/play` redirect page for QR code in physical packaging
+- Corrected live URL to epheterson.github.io/Kapow/
+
+### 02-22-2026 v1
+**Buy funnel, email capture, rename AI → Kai.**
+- Buy modal with email capture form
+- AI opponent renamed to "Kai" throughout UI and README
+- Scorecard notes, share results, mobile layout fixes
+- Big "Start Game" button with breathing glow animation
+- Desktop layout width constraints, message capped at 480px
+- Dopamine hits: round win celebrations, streaks, personal bests
+- Punchier card animations, juicier KAPOW placement effects
+- Share crash fix, scorecard UX improvements, power card context
+- Tap anywhere to dismiss scorecard
+- Discard pile no longer hidden behind scorecard on desktop
+- Vertically centered game on desktop, timestamped log exports
+- How-to-play.txt for Chuck to edit rules text
+- Removed Skyjo reference from README
+- PLAN.md added as living project document
+
 ### 02-21-2026 v7
 **Fix desktop piles tucked in: replaced CSS grid with flex+center on play-area.**
 - Root cause: `grid-template-columns: auto 1fr auto` made the center column claim full viewport width, pushing piles to screen edges
@@ -111,4 +190,4 @@ When making changes that warrant a version bump:
 
 ---
 
-## Latest Version: 02-21-2026 v7
+## Latest Version: 02-23-2026 v3
