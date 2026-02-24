@@ -26,6 +26,7 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return; // Don't intercept POSTs (Google Form submissions)
   event.respondWith(
     fetch(event.request)
       .then(response => {

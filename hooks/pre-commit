@@ -10,7 +10,7 @@ ROOT="$(git rev-parse --show-toplevel)"
 
 # ── 1. Run tests ──────────────────────────────
 echo "Running tests..."
-if ! npm test --prefix "$ROOT" 2>/dev/null; then
+if ! npm test --prefix "$ROOT"; then
   echo "FAIL: Tests failed. Fix them before committing."
   exit 1
 fi
@@ -38,7 +38,7 @@ if [ -f "$HTML" ]; then
     NEW_VERSION="$TODAY v$NEW_V"
 
     # Only bump if the version wasn't already manually updated in this commit
-    STAGED_VERSION=$(git diff --cached -- "$HTML" | sed -n 's/.*scorecard-version">\([0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9] v[0-9]*\).*/\1/p' | tail -1 2>/dev/null || echo "")
+    STAGED_VERSION=$(git diff --cached -- "$HTML" | grep '^+' | sed -n 's/.*scorecard-version">\([0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9] v[0-9]*\).*/\1/p' | tail -1 || echo "")
 
     if [ -z "$STAGED_VERSION" ] || [ "$STAGED_VERSION" = "$CURRENT" ]; then
       sed -i '' "s|scorecard-version\">$CURRENT|scorecard-version\">$NEW_VERSION|" "$HTML"

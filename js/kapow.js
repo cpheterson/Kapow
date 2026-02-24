@@ -960,7 +960,7 @@ function addGameNote() {
   var container = document.getElementById('scorecard-notes');
   var div = document.createElement('div');
   div.className = 'scorecard-note';
-  div.innerHTML = '<span class="scorecard-note-time">' + timestamp + '</span>' + note.trim();
+  div.innerHTML = '<span class="scorecard-note-time">' + timestamp + '</span>' + escapeHTML(note.trim());
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
 }
@@ -1227,7 +1227,7 @@ function renderLeaderboardData(data, body) {
     html += '<tr>' +
       '<td class="lb-rank">' + medal + '</td>' +
       '<td class="lb-name">' + escapeHTML(displayName) + '</td>' +
-      '<td class="lb-score">' + data[i].score + '</td>' +
+      '<td class="lb-score">' + (parseInt(data[i].score, 10) || 0) + '</td>' +
       '</tr>';
   }
   body.innerHTML = html;
