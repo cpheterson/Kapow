@@ -2,6 +2,9 @@
 
 ## Version History
 
+### 02-24-2026 v11
+**Fix CSS regression from dad's merge.** Restored our full desktop layout + UI styling; surgically applied dad's two CSS fixes (powerset label position/color, modifier overlap).
+
 ### 02-24-2026 v9
 **Added Dad's VERSION_LOG.md** — his detailed version history tracking AI changes and bug fixes.
 
@@ -271,4 +274,4 @@
 - Pre-commit hook auto-bumps version on every commit
 - `scorecard-version` div in `index.html` is the source of truth
 
-## Latest Version: 02-24-2026 v10
+## Latest Version: 02-24-2026 v11
