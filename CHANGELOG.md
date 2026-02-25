@@ -2,6 +2,20 @@
 
 ## Version History
 
+### 02-24-2026 v8
+**Dad's AI strategy overhaul (batch 2).**
+- Steeper discard safety formula (two-segment) — prevents AI gifting triad-completing cards
+- KAPOW-swap completion lookahead: AI recognizes placements that complete via one swap
+- KAPOW-aware `aiCountFutureCompletions` for 3-revealed triads with KAPOW
+- KAPOW burial bonus in powerset opportunity scoring
+- Top-position penalty exempted when placement completes triad
+- Single within-triad swap (no loop) — simplified `aiStepWithinTriadSwap`
+- Human swap validates triad stays complete before executing
+- Discard animation after within-triad swap completion
+- AI hang fix: clear `aiTurnInProgress` in `completeWithinTriadSwap`
+- Power card modifier overlap fix (CSS)
+- Powerset value label shown on Power cards
+
 ### 02-24-2026 v5
 **Dad's AI improvements (PR #1).**
 - AI can now perform within-triad KAPOW swaps (previously human-only)
@@ -254,4 +268,4 @@
 - Pre-commit hook auto-bumps version on every commit
 - `scorecard-version` div in `index.html` is the source of truth
 
-## Latest Version: 02-24-2026 v7
+## Latest Version: 02-24-2026 v8

@@ -6,14 +6,6 @@
 'use strict';
 
 // ========================================
-// UTILITIES
-// ========================================
-
-function escapeHTML(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-// ========================================
 // AI BANTER SYSTEM
 // ========================================
 
@@ -125,10 +117,10 @@ var AI_BANTER = {
   ],
   ai_wins_game: [
     'GG! Better luck next time!',
-    'Built to win. No hard feelings!',
+    'I was programmed to win. No hard feelings!',
     'Victory! Want to go again?',
     "That was fun! Well, for me anyway.",
-    'Another win for Kai!',
+    'Another win for the AI. Humanity: 0.',
     "Great game! You made me work for it.",
     "I'd say it was close, but\u2026 was it?"
   ],
@@ -142,273 +134,6 @@ var AI_BANTER = {
     "Winner winner! Respect."
   ]
 };
-
-// ========================================
-// BUY FUNNEL — CONFIGURATION
-// ========================================
-
-// Change 'email' to 'amazon' when direct sales link is ready.
-// Then set KAPOW_BUY_URL to your Stripe link (or sales URL).
-var KAPOW_BUY_MODE = 'email'; // 'email' | 'amazon'
-var KAPOW_BUY_URL = '';        // Set to Stripe Payment Link URL
-
-// ---- Leaderboard (Google Forms write + Apps Script read) ----
-// Fill these in after creating the Google Form + Apps Script web app
-var LEADERBOARD_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdc5kWKkOQ2GazCLrQmm40fEQaen5f7jiVYNn9dC7RCxi19ng/formResponse';
-var LEADERBOARD_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxMG1taDyXyfyzTTxOWRt3jJTliq48x0VmMd8d4lvkSKvkJqQ8i9cjPfzIOspzXr4Fljg/exec';
-var LEADERBOARD_ENTRY_NAME = 'entry.420929999';
-var LEADERBOARD_ENTRY_EMAIL = 'entry.218690931';
-var LEADERBOARD_ENTRY_SCORE = 'entry.2013272014';
-var LEADERBOARD_ENTRY_ROUNDS = 'entry.1474295416';
-var LEADERBOARD_SUBMITTED_KEY = 'kapow-leaderboard-submitted';
-
-// Engagement tracking helpers (localStorage)
-function getGamesPlayed() {
-  try { return parseInt(localStorage.getItem('kapow-games-played'), 10) || 0; } catch(e) { return 0; }
-}
-function incrementGamesPlayed() {
-  try { localStorage.setItem('kapow-games-played', String(getGamesPlayed() + 1)); } catch(e) {}
-}
-function setFirstSeen() {
-  try {
-    if (!localStorage.getItem('kapow-first-seen')) {
-      localStorage.setItem('kapow-first-seen', new Date().toISOString());
-    }
-  } catch(e) {}
-}
-function ctaDismissed(key) {
-  try { return !!localStorage.getItem('kapow-cta-' + key); } catch(e) { return false; }
-}
-function dismissCta(key) {
-  try { localStorage.setItem('kapow-cta-' + key, '1'); } catch(e) {}
-}
-function hasGivenEmail() {
-  try { return !!localStorage.getItem('kapow-email'); } catch(e) { return false; }
-}
-
-// ========================================
-// STATS & DOPAMINE TRACKING
-// ========================================
-var STATS_KEY = 'kapow-stats';
-
-function getStats() {
-  try {
-    var raw = localStorage.getItem(STATS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch(e) {}
-  return { gamesWon: 0, gamesLost: 0, bestGameScore: null, roundsWon: 0, currentStreak: 0, bestStreak: 0 };
-}
-
-function saveStats(stats) {
-  try { localStorage.setItem(STATS_KEY, JSON.stringify(stats)); } catch(e) {}
-}
-
-function recordRoundWin() {
-  var stats = getStats();
-  stats.roundsWon++;
-  stats.currentStreak++;
-  if (stats.currentStreak > stats.bestStreak) stats.bestStreak = stats.currentStreak;
-  saveStats(stats);
-  return stats;
-}
-
-function recordRoundLoss() {
-  var stats = getStats();
-  stats.currentStreak = 0;
-  saveStats(stats);
-  return stats;
-}
-
-function recordGameResult(playerWon, playerScore) {
-  var stats = getStats();
-  if (playerWon) {
-    stats.gamesWon++;
-    if (stats.bestGameScore === null || playerScore < stats.bestGameScore) {
-      stats.bestGameScore = playerScore;
-      saveStats(stats);
-      return { stats: stats, isPersonalBest: true };
-    }
-  } else {
-    stats.gamesLost++;
-  }
-  saveStats(stats);
-  return { stats: stats, isPersonalBest: false };
-}
-
-// ========================================
-// GAME SAVE & RESUME
-// ========================================
-var SAVE_KEY = 'kapow-save';
-
-function saveGame() {
-  if (!gameState) return;
-  // Don't save in terminal states — game over clears save
-  if (gameState.phase === 'gameOver') return;
-  try {
-    var save = {
-      version: 1,
-      timestamp: new Date().toISOString(),
-      gameState: gameState,
-      nextCardId: nextCardId,
-      tutorialActive: tutorialActive,
-      tutorialSeen: tutorialSeen,
-      playerName: playerName
-    };
-    localStorage.setItem(SAVE_KEY, JSON.stringify(save));
-  } catch(e) {
-    // localStorage full or unavailable — silent fail
-  }
-}
-
-function clearSave() {
-  try { localStorage.removeItem(SAVE_KEY); } catch(e) {}
-}
-
-function loadSave() {
-  try {
-    var raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return null;
-    var save = JSON.parse(raw);
-    if (!save || !save.gameState || !save.version) return null;
-    return save;
-  } catch(e) {
-    return null;
-  }
-}
-
-function resumeGame(save) {
-  // Restore core state
-  gameState = save.gameState;
-  nextCardId = save.nextCardId || 0;
-  playerName = save.playerName || 'Player';
-  tutorialActive = save.tutorialActive || false;
-  tutorialSeen = save.tutorialSeen || { triad: false, powerDraw: false, powerStacked: false, kapow: false };
-
-  // Reset transient flags — never resume mid-animation
-  aiTurnInProgress = false;
-  triadAnimationInProgress = false;
-  aiSwapHistory = [];
-  aiMoveExplanation = '';
-  lastDrawReason = '';
-  lastActionReason = '';
-  gameState._justRevealed = null;
-  gameState._justPlaced = null;
-  gameState._justPlacedKapow = null;
-  gameState.aiHighlight = null;
-
-  // If it was AI's turn or mid-draw, clean up so human can continue
-  // If AI had drawn but not placed, put the card back
-  if (!gameState.players[gameState.currentPlayer].isHuman && gameState.drawnCard) {
-    gameState.drawPile.push(gameState.drawnCard);
-    gameState.drawnCard = null;
-    gameState.drawnFromDiscard = false;
-  }
-
-  // Show the game, hide name screen
-  document.getElementById('name-screen').classList.add('hidden');
-  document.getElementById('page-layout').classList.remove('hidden');
-  var helpToggle = document.getElementById('help-toggle');
-  if (helpToggle) helpToggle.classList.add('visible');
-
-  // Update headers
-  document.getElementById('player-area-header').textContent = playerName + "'s Hand";
-  document.getElementById('sc-player-name').textContent = playerName;
-
-  // Bind events if not already bound
-  if (!window._kapowEventsBound) {
-    bindGameEvents();
-    window._kapowEventsBound = true;
-  }
-
-  logSystem(gameState, '--- Game resumed ---');
-  gameState.message = 'Game resumed! Round ' + gameState.round + ', Turn ' + gameState.turnNumber + '.';
-  refreshUI();
-  requestAnimationFrame(updateGameScale);
-}
-
-// Build a buy CTA link/button. Returns HTML string.
-function buildBuyLink(text, cssClass) {
-  if (KAPOW_BUY_MODE === 'amazon' && !KAPOW_BUY_URL) {
-    console.warn('KAPOW: Buy mode is "amazon" but KAPOW_BUY_URL is empty. Falling back to email modal.');
-  }
-  if (KAPOW_BUY_MODE === 'amazon' && KAPOW_BUY_URL) {
-    return '<a href="' + KAPOW_BUY_URL + '" target="_blank" rel="noopener" class="' + (cssClass || 'kapow-buy-link') + '">' + text + '</a>';
-  }
-  // Email capture mode — open modal
-  return '<button onclick="showBuyModal()" class="' + (cssClass || 'kapow-buy-link') + '">' + text + '</button>';
-}
-
-// Show email capture modal
-function showBuyModal() {
-  var modal = document.getElementById('kapow-buy-modal');
-  if (modal) modal.classList.remove('hidden');
-  if (typeof trackEvent === 'function') trackEvent('buy_cta_click');
-}
-// Expose to onclick handlers
-window.showBuyModal = showBuyModal;
-
-function hideBuyModal() {
-  var modal = document.getElementById('kapow-buy-modal');
-  if (modal) modal.classList.add('hidden');
-}
-window.hideBuyModal = hideBuyModal;
-
-// ========================================
-// FEEDBACK
-// ========================================
-function showFeedbackModal() {
-  var modal = document.getElementById('feedback-modal');
-  if (!modal) return;
-  // Reset form state
-  var form = document.getElementById('feedback-form');
-  if (form) {
-    form.reset();
-    form.classList.remove('hidden');
-  }
-  document.getElementById('feedback-thanks').classList.add('hidden');
-  // Pre-fill email if previously captured (from feedback or buy modal)
-  var emailEl = document.getElementById('feedback-email');
-  if (emailEl) {
-    var saved = null;
-    try { saved = localStorage.getItem('kapow-email'); } catch(e) {}
-    if (saved) emailEl.value = saved;
-  }
-  modal.classList.remove('hidden');
-}
-window.showFeedbackModal = showFeedbackModal;
-
-function hideFeedbackModal() {
-  var modal = document.getElementById('feedback-modal');
-  if (modal) modal.classList.add('hidden');
-}
-window.hideFeedbackModal = hideFeedbackModal;
-
-// Called right before Google Form submits — fills hidden context + game log fields
-function prepareFeedback() {
-  var context = [];
-  if (playerName && playerName !== 'Player') context.push('Player: ' + playerName);
-  if (gameState) {
-    context.push('Round ' + gameState.round + '/' + gameState.maxRounds);
-    context.push('Score: ' + gameState.players[0].totalScore + '\u2013' + gameState.players[1].totalScore);
-    context.push('Phase: ' + gameState.phase);
-  }
-  context.push('Games played: ' + getGamesPlayed());
-  document.getElementById('feedback-context').value = context.join(' | ');
-
-  // Populate game log (action log + notes)
-  var logEl = document.getElementById('feedback-gamelog');
-  if (logEl && gameState && gameState.actionLog && gameState.actionLog.length > 0) {
-    logEl.value = gameState.actionLog.join('\n');
-  }
-
-  // Save email for future pre-fill
-  var emailEl = document.getElementById('feedback-email');
-  if (emailEl && emailEl.value) {
-    try { localStorage.setItem('kapow-email', emailEl.value); } catch(e) {}
-  }
-  if (typeof trackEvent === 'function') trackEvent('feedback_submit');
-}
-window.prepareFeedback = prepareFeedback;
 
 function generateAIBanter(state, scenario) {
   var pool = AI_BANTER[scenario];
@@ -528,10 +253,6 @@ function revealCard(hand, triadIndex, position) {
   if (posCards && posCards.length > 0) {
     posCards[0].isRevealed = true;
   }
-  // Track for flip animation — include hand reference to avoid cross-hand animation
-  if (gameState) {
-    gameState._justRevealed = { hand: hand, triadIndex: triadIndex, position: position };
-  }
   return hand;
 }
 
@@ -574,13 +295,50 @@ function completeWithinTriadSwap(state, completedTriadIndex, newKapowPosition) {
   state.swappingWithinCompletedTriad = false;
   state.completedTriadIndex = -1;
 
+  // Capture triad state before discard
+  var hand = state.players[state.currentPlayer].hand;
+  var triadsBefore = [];
+  for (var t = 0; t < hand.triads.length; t++) {
+    triadsBefore.push(hand.triads[t].isDiscarded);
+  }
+
   // Discard the completed triad
   checkAndDiscardTriads(state, state.currentPlayer);
   logAction(state, state.currentPlayer, 'Discards completed triad and ends turn.');
   logHandState(state, state.currentPlayer);
 
-  // End turn
-  endTurn(state);
+  // Check for newly discarded triads
+  var newlyDiscarded = [];
+  for (var n = 0; n < hand.triads.length; n++) {
+    if (!triadsBefore[n] && hand.triads[n].isDiscarded) {
+      newlyDiscarded.push(n);
+    }
+  }
+
+  if (newlyDiscarded.length > 0) {
+    // Block AI turn start during animation
+    triadAnimationInProgress = true;
+    // Temporarily undo isDiscarded so refreshUI renders cards still visible
+    for (var u = 0; u < newlyDiscarded.length; u++) {
+      hand.triads[newlyDiscarded[u]].isDiscarded = false;
+    }
+    refreshUI();
+    // Restore isDiscarded
+    for (var u2 = 0; u2 < newlyDiscarded.length; u2++) {
+      hand.triads[newlyDiscarded[u2]].isDiscarded = true;
+    }
+    // Animate cards disappearing, then end turn
+    animateNewlyDiscardedTriads(triadsBefore, state.currentPlayer, function() {
+      triadAnimationInProgress = false;
+      aiTurnInProgress = false; // clear AI guard before endTurn so next turn can start
+      endTurn(state);
+      refreshUI(); // refreshUI AFTER endTurn so AI trigger fires on the new player's turn
+    });
+  } else {
+    aiTurnInProgress = false; // clear AI guard before endTurn so next turn can start
+    endTurn(state);
+    refreshUI(); // refreshUI AFTER endTurn so the next player's turn triggers correctly
+  }
 }
 
 function getPositionValue(positionCards) {
@@ -758,7 +516,6 @@ function revealAllCards(hand) {
 }
 
 function applyFirstOutPenalty(roundScores, firstOutIndex) {
-  if (firstOutIndex === null || firstOutIndex === undefined) return roundScores;
   if (roundScores[firstOutIndex] === 0) return roundScores;
   var scores = roundScores.slice();
   var firstOutScore = scores[firstOutIndex];
@@ -809,7 +566,6 @@ function canSwapKapow(hand, triadIndex, position) {
 }
 
 // Check if a triad has a revealed KAPOW card (used to determine if within-triad swaps should be allowed)
-// KAPOW can be solo or in a powerset with a Power modifier underneath
 function hasRevealedKapow(triad) {
   var positions = ['top', 'middle', 'bottom'];
   for (var p = 0; p < positions.length; p++) {
@@ -868,7 +624,7 @@ function createGameState(playerNames) {
 // ========================================
 
 function logAction(state, playerIndex, text) {
-  var playerLabel = playerIndex === 0 ? state.players[0].name : 'Kai';
+  var playerLabel = playerIndex === 0 ? state.players[0].name : 'AI';
   var entry = 'R' + state.round + ' T' + state.turnNumber + ' [' + playerLabel + '] ' + text;
   state.actionLog.push(entry);
   try { localStorage.setItem('kapow-log', JSON.stringify(state.actionLog)); } catch(e) {}
@@ -905,21 +661,9 @@ function logHandState(state, playerIndex) {
           vals.push('P' + card.faceValue);
         } else {
           var val = card.faceValue;
-          if (posCards.length > 1) {
-            var modStr = '';
-            var total = val;
-            for (var m = 1; m < posCards.length; m++) {
-              if (posCards[m].type === 'power') {
-                var mod = posCards[m].activeModifier != null ? posCards[m].activeModifier : 0;
-                modStr += (mod >= 0 ? '+' : '') + mod;
-                total += mod;
-              }
-            }
-            if (modStr) {
-              vals.push(val + '(' + modStr + ')=' + total);
-            } else {
-              vals.push('' + val);
-            }
+          if (posCards.length > 1 && posCards[1].type === 'power') {
+            var mod = posCards[1].activeModifier != null ? posCards[1].activeModifier : 0;
+            vals.push(val + '(' + (mod >= 0 ? '+' : '') + mod + ')=' + (val + mod));
           } else {
             vals.push('' + val);
           }
@@ -928,7 +672,7 @@ function logHandState(state, playerIndex) {
     }
     parts.push('T' + (t + 1) + '[' + vals.join(',') + ']');
   }
-  var playerLabel = playerIndex === 0 ? state.players[0].name : 'Kai';
+  var playerLabel = playerIndex === 0 ? state.players[0].name : 'AI';
   var entry = 'R' + state.round + ' T' + state.turnNumber + ' [' + playerLabel + '] Hand: ' + parts.join(' ');
   state.actionLog.push(entry);
 }
@@ -939,7 +683,7 @@ function exportLog(silent) {
     return;
   }
   var header = 'KAPOW! Game Log\n';
-  header += 'Player: ' + gameState.players[0].name + ' vs Kai\n';
+  header += 'Player: ' + gameState.players[0].name + ' vs AI\n';
   header += 'Date: ' + new Date().toLocaleString() + '\n';
   header += '================================\n\n';
   var logText = header + gameState.actionLog.join('\n');
@@ -947,381 +691,14 @@ function exportLog(silent) {
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
-  var now = new Date();
-  var ts = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
-  a.download = 'kapow-log_' + ts + '.txt';
+  a.download = 'kapow-log.txt';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
-// ---- Sidebar / Scorecard helpers ----
-
-function closeSidebar(event) {
-  // Close scorecard when tapping anything that isn't a button or interactive element
-  var tag = event.target.tagName;
-  if (tag === 'BUTTON' || tag === 'A' || tag === 'INPUT') return;
-  var sidebar = document.getElementById('sidebar');
-  sidebar.classList.remove('mobile-visible');
-}
-
-function addGameNote() {
-  var note = prompt('Add a note:');
-  if (!note || !note.trim()) return;
-  var timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  var roundInfo = gameState ? 'R' + gameState.round : '';
-
-  // Store in gameState for export
-  if (gameState) {
-    if (!gameState.notes) gameState.notes = [];
-    gameState.notes.push({ time: timestamp, round: gameState.round, text: note.trim() });
-    gameState.actionLog.push(roundInfo + ' [NOTE] ' + note.trim());
-  }
-
-  // Show in scorecard
-  var container = document.getElementById('scorecard-notes');
-  var div = document.createElement('div');
-  div.className = 'scorecard-note';
-  div.innerHTML = '<span class="scorecard-note-time">' + timestamp + '</span>' + escapeHTML(note.trim());
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
-}
-
-function shareGameResults() {
-  if (!gameState) return;
-  var p = gameState.players[0];
-  var k = gameState.players[1];
-  var pTotal = p.totalScore;
-  var kTotal = k.totalScore;
-  var roundsPlayed = p.roundScores.length;
-  var winner = pTotal <= kTotal ? p.name : 'Kai';
-  var gameOver = gameState.phase === 'gameOver';
-
-  var lines = [];
-  lines.push('KAPOW! ' + (gameOver ? 'Final' : 'Round ' + roundsPlayed) + ' Score');
-  lines.push(p.name + ': ' + pTotal + ' | Kai: ' + kTotal);
-  if (gameOver) {
-    lines.push(winner + ' wins!');
-  }
-  lines.push('');
-
-  // Round-by-round
-  for (var i = 0; i < roundsPlayed; i++) {
-    lines.push('R' + (i + 1) + ': ' + p.roundScores[i] + ' - ' + k.roundScores[i]);
-  }
-
-  // Notes if any
-  if (gameState.notes && gameState.notes.length > 0) {
-    lines.push('');
-    lines.push('Notes:');
-    gameState.notes.forEach(function(n) {
-      lines.push('  R' + n.round + ' ' + n.text);
-    });
-  }
-
-  lines.push('');
-  lines.push('Play KAPOW! at epheterson.github.io/Kapow');
-
-  var text = lines.join('\n');
-
-  // Use Web Share API if available (mobile), fallback to clipboard
-  if (navigator.share) {
-    navigator.share({ text: text }).catch(function() {});
-  } else if (navigator.clipboard) {
-    navigator.clipboard.writeText(text).then(function() {
-      var btn = document.getElementById('btn-share-game');
-      var orig = btn.textContent;
-      btn.textContent = 'Copied!';
-      setTimeout(function() { btn.textContent = orig; }, 1500);
-    });
-  }
-}
-
-function challengeFriend() {
-  var url = 'https://epheterson.github.io/Kapow';
-  var text;
-
-  // Build contextual share text based on game state
-  if (gameState && gameState.phase === 'gameOver') {
-    var pScore = gameState.players[0].totalScore;
-    var kScore = gameState.players[1].totalScore;
-    var won = pScore < kScore;
-    if (won) {
-      var lines = [
-        'I beat Kai ' + pScore + '-' + kScore + ' in KAPOW! \ud83d\udca5',
-        'Think you can do better?'
-      ];
-      text = lines.join('\n');
-    } else {
-      var lines = [
-        'Kai crushed me ' + kScore + '-' + pScore + ' in KAPOW! \ud83d\ude29',
-        'Can you beat him? I couldn\u2019t\u2026'
-      ];
-      text = lines.join('\n');
-    }
-  } else if (gameState && gameState.players) {
-    // Mid-game challenge (from round end with streak)
-    var pScore = gameState.players[0].totalScore;
-    var kScore = gameState.players[1].totalScore;
-    var ahead = pScore < kScore;
-    if (ahead) {
-      text = 'I\u2019m crushing Kai ' + pScore + '-' + kScore + ' in KAPOW! \ud83d\udd25 Think you can keep up?';
-    } else {
-      text = 'Kai\u2019s got me ' + kScore + '-' + pScore + ' in KAPOW! \ud83d\ude2c Can you do better?';
-    }
-  } else {
-    // Fallback (name screen, no game context)
-    text = 'I\u2019ve been playing KAPOW! against Kai \u2014 think you can beat him?';
-  }
-
-  if (navigator.share) {
-    navigator.share({ title: 'KAPOW! Card Game', text: text, url: url }).catch(function() {});
-  } else if (navigator.clipboard) {
-    navigator.clipboard.writeText(text + '\n' + url).then(function() {
-      var btns = document.querySelectorAll('.challenge-btn');
-      btns.forEach(function(btn) {
-        var orig = btn.textContent;
-        btn.textContent = 'Link Copied!';
-        setTimeout(function() { btn.textContent = orig; }, 1500);
-      });
-    });
-  }
-}
-
-// ========================================
-// LEADERBOARD
-// ========================================
-
-// Basic profanity screening for public leaderboard names
-var PROFANITY_PATTERNS = [
-  /\bf+u+c+k+/i, /\bs+h+i+t+/i, /\ba+s+s+h+o+l+e/i, /\bb+i+t+c+h/i,
-  /\bd+i+c+k+/i, /\bc+u+n+t+/i, /\bn+i+g+g+/i, /\bf+a+g+/i,
-  /\bp+u+s+s+y+/i, /\bc+o+c+k+/i, /\bt+w+a+t+/i, /\bw+h+o+r+e/i,
-  /\bd+a+m+n+/i, /\bp+e+n+i+s/i, /\bv+a+g+i+n+a/i, /\ba+n+u+s/i,
-  /\bp+o+r+n/i, /\bs+e+x+y/i, /\bb+o+o+b/i, /\bp+i+s+s/i,
-  /\bk+i+l+l/i, /\br+a+p+e/i, /\bn+a+z+i/i, /\bh+i+t+l+e+r/i
-];
-
-function namePassesFilter(name) {
-  var normalized = name.replace(/[\s._\-0]/g, '').replace(/1/g, 'i').replace(/3/g, 'e').replace(/4/g, 'a').replace(/5/g, 's').replace(/8/g, 'b').replace(/@/g, 'a');
-  for (var i = 0; i < PROFANITY_PATTERNS.length; i++) {
-    if (PROFANITY_PATTERNS[i].test(normalized)) return false;
-  }
-  return true;
-}
-
-// Preloaded leaderboard cache — fetched on page load so modal opens instantly
-var _leaderboardCache = null;
-var _leaderboardCacheTime = 0;
-var LEADERBOARD_CACHE_TTL = 60000; // refresh every 60s
-
-function preloadLeaderboard() {
-  if (!LEADERBOARD_SCRIPT_URL) return;
-  fetch(LEADERBOARD_SCRIPT_URL)
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
-      _leaderboardCache = data;
-      _leaderboardCacheTime = Date.now();
-    })
-    .catch(function() {});
-}
-
-// Kick off preload on page load
-if (LEADERBOARD_SCRIPT_URL) {
-  setTimeout(preloadLeaderboard, 1000);
-}
-
-function getLeaderboardBest() {
-  try {
-    var raw = localStorage.getItem(LEADERBOARD_SUBMITTED_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch(e) {}
-  return null; // { name, email, score }
-}
-
-// Show the leaderboard submit confirmation modal (called from showGameOver)
-function promptLeaderboardSubmit(score) {
-  if (!LEADERBOARD_FORM_URL || !LEADERBOARD_ENTRY_NAME || !LEADERBOARD_ENTRY_SCORE) return;
-
-  // Only prompt if this beats the previously submitted score
-  var prev = getLeaderboardBest();
-  if (prev && prev.score <= score) return;
-
-  var modal = document.getElementById('leaderboard-submit-modal');
-  if (!modal) return;
-
-  // Pre-fill from cached data
-  var nameInput = document.getElementById('lb-submit-name');
-  var emailInput = document.getElementById('lb-submit-email');
-  var scoreDisplay = document.getElementById('lb-submit-score');
-
-  nameInput.value = playerName || '';
-  // Try cached email from email capture or previous leaderboard submit
-  var cachedEmail = '';
-  try { cachedEmail = localStorage.getItem('kapow-email') || ''; } catch(e) {}
-  if (!cachedEmail && prev && prev.email) cachedEmail = prev.email;
-  emailInput.value = cachedEmail;
-  scoreDisplay.textContent = score;
-
-  // Store score for the confirm handler
-  modal.dataset.score = score;
-  modal.classList.remove('hidden');
-}
-
-function confirmLeaderboardSubmit() {
-  var modal = document.getElementById('leaderboard-submit-modal');
-  var nameInput = document.getElementById('lb-submit-name');
-  var emailInput = document.getElementById('lb-submit-email');
-  var score = parseInt(modal.dataset.score, 10);
-
-  var name = nameInput.value.trim();
-  var email = emailInput.value.trim();
-  if (!name || !email) {
-    if (!name) nameInput.classList.add('input-shake');
-    if (!email) emailInput.classList.add('input-shake');
-    setTimeout(function() {
-      nameInput.classList.remove('input-shake');
-      emailInput.classList.remove('input-shake');
-    }, 500);
-    return;
-  }
-
-  // Profanity check on the public display name
-  if (!namePassesFilter(name)) {
-    nameInput.classList.add('input-shake');
-    nameInput.value = '';
-    nameInput.placeholder = 'Choose a different name';
-    setTimeout(function() {
-      nameInput.classList.remove('input-shake');
-      nameInput.placeholder = 'Your name';
-    }, 2000);
-    return;
-  }
-
-  // Submit to Google Form
-  var formData = new FormData();
-  formData.append(LEADERBOARD_ENTRY_NAME, name);
-  if (LEADERBOARD_ENTRY_EMAIL) formData.append(LEADERBOARD_ENTRY_EMAIL, email);
-  formData.append(LEADERBOARD_ENTRY_SCORE, String(score));
-  if (LEADERBOARD_ENTRY_ROUNDS) formData.append(LEADERBOARD_ENTRY_ROUNDS, '10');
-
-  fetch(LEADERBOARD_FORM_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    body: formData
-  }).catch(function() {});
-
-  // Cache name and email for next time
-  try {
-    localStorage.setItem('kapow-player-name', name);
-    localStorage.setItem('kapow-email', email);
-    localStorage.setItem(LEADERBOARD_SUBMITTED_KEY, JSON.stringify({ name: name, email: email, score: score }));
-  } catch(e) {}
-  if (typeof trackEvent === 'function') trackEvent('email_submit', { source: 'leaderboard' });
-
-  // Show confirmation and close
-  var form = modal.querySelector('.lb-submit-form');
-  var thanks = document.getElementById('lb-submit-thanks');
-  if (form) form.classList.add('hidden');
-  if (thanks) thanks.classList.remove('hidden');
-  setTimeout(function() {
-    modal.classList.add('hidden');
-    if (form) form.classList.remove('hidden');
-    if (thanks) thanks.classList.add('hidden');
-  }, 1800);
-}
-
-function hideLeaderboardSubmit() {
-  var modal = document.getElementById('leaderboard-submit-modal');
-  if (modal) modal.classList.add('hidden');
-}
-
-function renderLeaderboardData(data, body) {
-  if (!data || !data.length) {
-    body.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; opacity:0.5;">No scores yet. Be the first!</td></tr>';
-    return;
-  }
-  var html = '';
-  for (var i = 0; i < data.length; i++) {
-    var rank = i + 1;
-    var medal = rank === 1 ? '\u{1F947}' : rank === 2 ? '\u{1F948}' : rank === 3 ? '\u{1F949}' : rank;
-    var displayName = data[i].name || 'Anonymous';
-    if (!namePassesFilter(displayName)) displayName = 'Player';
-    html += '<tr>' +
-      '<td class="lb-rank">' + medal + '</td>' +
-      '<td class="lb-name">' + escapeHTML(displayName) + '</td>' +
-      '<td class="lb-score">' + (parseInt(data[i].score, 10) || 0) + '</td>' +
-      '</tr>';
-  }
-  body.innerHTML = html;
-}
-
-function showLeaderboard() {
-  var modal = document.getElementById('leaderboard-modal');
-  if (!modal) return;
-  modal.classList.remove('hidden');
-
-  var body = document.getElementById('leaderboard-body');
-
-  if (!LEADERBOARD_SCRIPT_URL) {
-    body.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; opacity:0.5;">Leaderboard coming soon!</td></tr>';
-    return;
-  }
-
-  // Use cache if fresh enough — instant open
-  if (_leaderboardCache && (Date.now() - _leaderboardCacheTime < LEADERBOARD_CACHE_TTL)) {
-    renderLeaderboardData(_leaderboardCache, body);
-    return;
-  }
-
-  // Show cached data immediately if stale, then refresh
-  if (_leaderboardCache) {
-    renderLeaderboardData(_leaderboardCache, body);
-  } else {
-    body.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:30px 20px;">' +
-      '<div class="leaderboard-loading">' +
-      '<div class="loading-cards"><span></span><span></span><span></span></div>' +
-      '<div style="margin-top:12px; opacity:0.5; font-size:13px;">Loading scores...</div>' +
-      '</div></td></tr>';
-  }
-
-  fetch(LEADERBOARD_SCRIPT_URL)
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
-      _leaderboardCache = data;
-      _leaderboardCacheTime = Date.now();
-      renderLeaderboardData(data, body);
-    })
-    .catch(function() {
-      if (!_leaderboardCache) {
-        body.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px; opacity:0.5;">Could not load leaderboard.</td></tr>';
-      }
-    });
-}
-
-function hideLeaderboard() {
-  var modal = document.getElementById('leaderboard-modal');
-  if (modal) modal.classList.add('hidden');
-}
-
-// Expose to inline onclick handlers (IIFE-scoped otherwise)
-window.closeSidebar = closeSidebar;
-window.addGameNote = addGameNote;
-window.shareGameResults = shareGameResults;
-window.challengeFriend = challengeFriend;
-window.showLeaderboard = showLeaderboard;
-window.hideLeaderboard = hideLeaderboard;
-window.confirmLeaderboardSubmit = confirmLeaderboardSubmit;
-window.hideLeaderboardSubmit = hideLeaderboardSubmit;
-
 function startRound(state) {
-  // Tutorial: use stacked deck for first-ever game's round 1
-  if (state.round === 1 && shouldStartTutorial()) {
-    startTutorialRound(state);
-    return state;
-  }
-
   var deck = shuffle(createDeck());
   var playerCount = state.players.length;
   var result = deal(deck, playerCount, 12);
@@ -1378,7 +755,6 @@ function handleFirstTurnReveal(state, triadIndex, position) {
   var player = state.players[state.currentPlayer];
   revealCard(player.hand, triadIndex, position);
   var revealedCard = player.hand.triads[triadIndex][position][0];
-  KapowSounds.cardFlip(state.currentPlayer === 0 ? 1 : 0.5);
   logAction(state, state.currentPlayer, 'Reveals ' + cardDescription(revealedCard) + ' in Triad ' + (triadIndex + 1) + ' (' + position + ')');
   state.firstTurnReveals++;
 
@@ -1386,20 +762,10 @@ function handleFirstTurnReveal(state, triadIndex, position) {
     // Done revealing — this player can now draw a card
     state.firstTurnReveals = 0;
     state.needsFirstReveal[state.currentPlayer] = false;
-    state.message = playerTurnMessage(player.name) + '. Draw from either pile.';
+    state.message = playerTurnMessage(player.name) + '. Draw a card.';
     logHandState(state, state.currentPlayer);
-    // Tutorial coaching
-    if (state.currentPlayer === 0) {
-      var tutMsg = getTutorialMessage(state, 'reveal_done');
-      if (tutMsg) state.message = tutMsg;
-    }
   } else {
     state.message = 'Reveal 1 more card.';
-    // Tutorial coaching
-    if (state.currentPlayer === 0) {
-      var tutMsg1 = getTutorialMessage(state, 'reveal_1', { card: revealedCard });
-      if (tutMsg1) state.message = tutMsg1;
-    }
   }
 
   return state;
@@ -1432,12 +798,6 @@ function handleDrawFromDeck(state) {
     state.drawPile = result.pile;
     state.message = 'Drew ' + cardDescription(result.card) + '. Place or discard.';
     logAction(state, state.currentPlayer, 'Draws ' + cardDescription(result.card) + ' from draw pile');
-    KapowSounds.drawCard(state.currentPlayer === 0 ? 1 : 0.5);
-    // Tutorial coaching
-    if (state.currentPlayer === 0) {
-      var tutMsg = getTutorialMessage(state, 'draw');
-      if (tutMsg) state.message = tutMsg;
-    }
   }
   return state;
 }
@@ -1457,16 +817,10 @@ function handleDrawFromDiscard(state) {
     }
     var desc = cardDescription(result.card);
     logAction(state, state.currentPlayer, 'Draws ' + desc + ' from discard pile');
-    KapowSounds.drawCard(state.currentPlayer === 0 ? 1 : 0.5);
     if (result.card.type === 'power') {
       state.message = 'Took ' + desc + '. Place or use as modifier.';
     } else {
       state.message = 'Took ' + desc + '. Place it in your hand.';
-    }
-    // Tutorial coaching for discard draws
-    if (state.currentPlayer === 0) {
-      var tutMsg = getTutorialMessage(state, 'draw');
-      if (tutMsg) state.message = tutMsg;
     }
   }
   return state;
@@ -1557,13 +911,7 @@ function advanceToNextPlayer(state) {
   } else if (state.needsFirstReveal && state.needsFirstReveal[state.currentPlayer]) {
     state.message = 'Reveal 2 cards to start your turn.';
   } else {
-    state.message = playerTurnMessage(state.players[state.currentPlayer].name) + '. Draw from either pile.';
-  }
-
-  // Auto-complete tutorial after enough turns
-  if (isTutorial() && state.turnNumber >= 7) {
-    completeTutorial();
-    state.message = playerTurnMessage(state.players[state.currentPlayer].name) + ". You're getting the hang of it! Play on.";
+    state.message = playerTurnMessage(state.players[state.currentPlayer].name) + '. Draw a card.';
   }
 }
 
@@ -1717,26 +1065,8 @@ function handlePlaceCard(state, triadIndex, position) {
 
   logAction(state, state.currentPlayer, 'Places ' + drawnDesc + ' in Triad ' + (triadIndex + 1) + ' (' + position + '), replacing ' + replacedDesc);
 
-  // Sound + animation
-  var vol = state.currentPlayer === 0 ? 1 : 0.5;
-  if (result.hand.triads[triadIndex][position][0] && result.hand.triads[triadIndex][position][0].type === 'kapow') {
-    KapowSounds.kapowHit(vol);
-    state._justPlacedKapow = { hand: result.hand, triadIndex: triadIndex, position: position };
-  } else {
-    KapowSounds.cardPlace(vol);
-  }
-  state._justPlaced = { hand: result.hand, triadIndex: triadIndex, position: position };
-
   state.drawnCard = null;
   state.drawnFromDiscard = false;
-
-  // Track triad state before checking for completions (for tutorial)
-  var triadsBefore = [];
-  if (isTutorial() && state.currentPlayer === 0) {
-    for (var tb = 0; tb < player.hand.triads.length; tb++) {
-      triadsBefore.push(player.hand.triads[tb].isDiscarded);
-    }
-  }
 
   // Check if this placement completes a triad with a KAPOW
   var triad = player.hand.triads[triadIndex];
@@ -1757,29 +1087,6 @@ function handlePlaceCard(state, triadIndex, position) {
 
   // Normal flow: discard and check for swaps in other triads
   checkAndDiscardTriads(state, state.currentPlayer);
-
-  // Tutorial coaching after placement
-  if (isTutorial() && state.currentPlayer === 0) {
-    var newTriadCompleted = false;
-    for (var tc = 0; tc < player.hand.triads.length; tc++) {
-      if (!triadsBefore[tc] && player.hand.triads[tc].isDiscarded) { newTriadCompleted = true; break; }
-    }
-    if (newTriadCompleted) {
-      var tutMsg = getTutorialMessage(state, 'triad_complete');
-      if (tutMsg) state.message = tutMsg;
-    } else if (!result.hand.triads[triadIndex].isDiscarded &&
-               result.hand.triads[triadIndex][position][0]) {
-      var placedType = result.hand.triads[triadIndex][position][0].type;
-      if (placedType === 'kapow') {
-        var tutMsg2 = getTutorialMessage(state, 'kapow_placed');
-        if (tutMsg2) state.message = tutMsg2;
-      } else if (placedType === 'power') {
-        var tutMsg3 = getTutorialMessage(state, 'power_placed_standalone', result.hand.triads[triadIndex][position][0]);
-        if (tutMsg3) state.message = tutMsg3;
-      }
-    }
-  }
-
   logHandState(state, state.currentPlayer);
   checkForKapowSwapOrEndTurn(state);
   return state;
@@ -1806,9 +1113,6 @@ function handleAddPowerset(state, triadIndex, position, usePositiveModifier) {
 
   logAction(state, state.currentPlayer, 'Creates powerset: ' + powerDesc + ' as modifier (' + modSign + modValue + ') under card in Triad ' + (triadIndex + 1) + ' (' + position + ')');
 
-  KapowSounds.cardPlace(state.currentPlayer === 0 ? 1 : 0.5);
-  state._justPlaced = { hand: state.players[state.currentPlayer].hand, triadIndex: triadIndex, position: position };
-
   state.drawnCard = null;
   state.drawnFromDiscard = false;
 
@@ -1827,13 +1131,6 @@ function handleAddPowerset(state, triadIndex, position, usePositiveModifier) {
 
   // Normal flow: discard and check for swaps in other triads
   checkAndDiscardTriads(state, state.currentPlayer);
-
-  // Tutorial coaching for power card stacking
-  if (isTutorial() && state.currentPlayer === 0) {
-    var tutMsg = getTutorialMessage(state, 'power_stacked');
-    if (tutMsg) state.message = tutMsg;
-  }
-
   logHandState(state, state.currentPlayer);
   checkForKapowSwapOrEndTurn(state);
   return state;
@@ -1862,9 +1159,6 @@ function handleCreatePowersetOnPower(state, triadIndex, position, usePositiveMod
   triad[position] = [state.drawnCard, existingPower];
 
   logAction(state, state.currentPlayer, 'Creates powerset: ' + drawnDesc + ' on top, Power ' + existingPower.faceValue + ' (' + modSign + modValue + ') as modifier in Triad ' + (triadIndex + 1) + ' (' + position + ')');
-
-  KapowSounds.cardPlace(state.currentPlayer === 0 ? 1 : 0.5);
-  state._justPlaced = { hand: state.players[state.currentPlayer].hand, triadIndex: triadIndex, position: position };
 
   state.drawnCard = null;
   state.drawnFromDiscard = false;
@@ -1896,7 +1190,6 @@ function handleDiscard(state) {
   state.discardPile.push(state.drawnCard);
   // Track whether human knowingly provided this discard (always true for explicit discard)
   if (state.currentPlayer === 0) state.lastDiscardKnown = true;
-  KapowSounds.cardPlace(state.currentPlayer === 0 ? 1 : 0.5);
   logAction(state, state.currentPlayer, 'Discards ' + discardDesc);
   state.drawnCard = null;
   state.drawnFromDiscard = false;
@@ -1959,7 +1252,7 @@ function advanceRound(state) {
     logSystem(state, '=== GAME OVER ===');
     logSystem(state, 'Winner: ' + state.players[winnerIndex].name);
     logSystem(state, state.players[0].name + ' final score: ' + state.players[0].totalScore);
-    logSystem(state, 'Kai final score: ' + state.players[1].totalScore);
+    logSystem(state, 'AI final score: ' + state.players[1].totalScore);
     // AI Banter: react to game result
     if (winnerIndex === 1) {
       generateAIBanter(state, 'ai_wins_game');
@@ -2064,20 +1357,20 @@ function buildAiExplanation(gameState, drawnCard, drawChoice, action) {
 
   // DRAW explanation
   if (drawChoice === 'discard') {
-    lines.push('<p class="explain-step"><span class="explain-label">Draw:</span> Kai chose to draw ' + drawnDesc + ' from the discard pile rather than taking an unknown card from the draw pile.');
+    lines.push('<p class="explain-step"><span class="explain-label">Draw:</span> AI chose to draw ' + drawnDesc + ' from the discard pile rather than taking an unknown card from the draw pile.');
     if (lastDrawReason === 'completes a triad') {
-      lines.push('This card directly completes one of Kai\'s triads, eliminating those points.</p>');
+      lines.push('This card directly completes one of AI\'s triads, eliminating those points.</p>');
     } else if (lastDrawReason === 'strong placement available') {
-      lines.push('Kai saw a strong use for this specific card in its hand.</p>');
+      lines.push('AI saw a strong use for this specific card in its hand.</p>');
     } else if (lastDrawReason === 'low card improves hand') {
-      lines.push('This is a low-value card that reduces Kai\'s score.</p>');
+      lines.push('This is a low-value card that reduces AI\'s score.</p>');
     } else {
       lines.push('</p>');
     }
   } else {
-    lines.push('<p class="explain-step"><span class="explain-label">Draw:</span> Kai drew from the draw pile.');
+    lines.push('<p class="explain-step"><span class="explain-label">Draw:</span> AI drew from the draw pile.');
     if (lastDrawReason === 'deck offers better odds') {
-      lines.push(' The discard pile card didn\'t offer a good opportunity, so Kai took a chance on an unknown card.</p>');
+      lines.push(' The discard pile card didn\'t offer a good opportunity, so AI took a chance on an unknown card.</p>');
     } else {
       lines.push('</p>');
     }
@@ -2090,7 +1383,7 @@ function buildAiExplanation(gameState, drawnCard, drawChoice, action) {
   }
 
   if (action.type === 'discard') {
-    lines.push('<p class="explain-step"><span class="explain-label">Action:</span> Kai discarded ' + drawnDesc + '.</p>');
+    lines.push('<p class="explain-step"><span class="explain-label">Action:</span> AI discarded ' + drawnDesc + '.</p>');
     // Explain why
     var discardReasons = [];
     var oppNeeds = aiGetOpponentNeeds(gameState);
@@ -2099,12 +1392,12 @@ function buildAiExplanation(gameState, drawnCard, drawChoice, action) {
       discardReasons.push('High-value cards (8+) are risky to place unless they build toward a triad completion');
     }
     if (cardVal >= 0 && oppNeeds[cardVal] && oppNeeds[cardVal] >= 2) {
-      discardReasons.push('<em>Caution: this card may help your triads — but Kai had no better option than to discard it</em>');
+      discardReasons.push('<em>Caution: this card may help your triads — but AI had no better option than to discard it</em>');
     }
     if (discardReasons.length > 0) {
       lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> ' + discardReasons.join('. ') + '. When no placement improves your hand, discarding is the right play — don\'t waste a slot on a card that doesn\'t fit.</p>');
     } else {
-      lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> None of the placement options improved Kai\'s hand enough to justify keeping this card. Sometimes the best move is to pass and wait for a better card.</p>');
+      lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> None of the placement options improved AI\'s hand enough to justify keeping this card. Sometimes the best move is to pass and wait for a better card.</p>');
     }
   } else if (action.type === 'powerset-on-power') {
     var existingPower = aiHand.triads[action.triadIndex][action.position][0];
@@ -2113,7 +1406,7 @@ function buildAiExplanation(gameState, drawnCard, drawChoice, action) {
     var posLabel2 = action.position.charAt(0).toUpperCase() + action.position.slice(1);
     var faceVal = drawnCard.faceValue;
     var effectiveVal = faceVal + modValue;
-    lines.push('<p class="explain-step"><span class="explain-label">Action:</span> Kai created a powerset in Triad ' + (action.triadIndex + 1) + ' (' + posLabel2 + '). The drawn ' + drawnDesc + ' sits on top of a Power ' + existingPower.faceValue + ' card, which acts as a modifier (' + modSign + modValue + '). The effective value is now ' + effectiveVal + ' instead of ' + faceVal + '.</p>');
+    lines.push('<p class="explain-step"><span class="explain-label">Action:</span> AI created a powerset in Triad ' + (action.triadIndex + 1) + ' (' + posLabel2 + '). The drawn ' + drawnDesc + ' sits on top of a Power ' + existingPower.faceValue + ' card, which acts as a modifier (' + modSign + modValue + '). The effective value is now ' + effectiveVal + ' instead of ' + faceVal + '.</p>');
     lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> Powersets are powerful because they let you change a card\'s effective value. Using a negative modifier can turn a medium card into a low-value one, reducing points and potentially enabling triad completion.</p>');
   } else if (action.type === 'add-powerset') {
     var posLabel3 = action.position.charAt(0).toUpperCase() + action.position.slice(1);
@@ -2123,7 +1416,7 @@ function buildAiExplanation(gameState, drawnCard, drawChoice, action) {
     var modSign2 = modVal2 >= 0 ? '+' : '';
     var oldEffective = targetCards.length > 0 ? getPositionValue(targetCards) : 0;
     var newEffective = oldEffective + modVal2;
-    lines.push('<p class="explain-step"><span class="explain-label">Action:</span> Kai used the drawn Power ' + drawnCard.faceValue + ' card as a modifier (' + modSign2 + modVal2 + ') beneath ' + targetDesc + ' in Triad ' + (action.triadIndex + 1) + ' (' + posLabel3 + '). The effective value changes from ' + oldEffective + ' to ' + newEffective + '.</p>');
+    lines.push('<p class="explain-step"><span class="explain-label">Action:</span> AI used the drawn Power ' + drawnCard.faceValue + ' card as a modifier (' + modSign2 + modVal2 + ') beneath ' + targetDesc + ' in Triad ' + (action.triadIndex + 1) + ' (' + posLabel3 + '). The effective value changes from ' + oldEffective + ' to ' + newEffective + '.</p>');
     lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> Stacking a Power card as a modifier beneath an existing card changes its effective value without using a placement slot. This can bring a card closer to matching its neighbors for a set or run.</p>');
   } else if (action.type === 'replace') {
     var triad = aiHand.triads[action.triadIndex];
@@ -2134,7 +1427,7 @@ function buildAiExplanation(gameState, drawnCard, drawChoice, action) {
     var replacedVal = replacedWasRevealed ? getPositionValue(posCards) : -1;
 
     // Build the base placement message with replaced card info
-    var placementMsg = 'Kai placed ' + drawnDesc + ' in Triad ' + (action.triadIndex + 1) + ' (' + posLabel + '), replacing ' + replacedDesc + '.';
+    var placementMsg = 'AI placed ' + drawnDesc + ' in Triad ' + (action.triadIndex + 1) + ' (' + posLabel + '), replacing ' + replacedDesc + '.';
     if (replacedWasRevealed) {
       var newVal = drawnCard.type === 'kapow' ? 25 : (drawnCard.type === 'power' ? drawnCard.faceValue : drawnCard.faceValue);
       var pointChange = replacedVal - newVal;
@@ -2162,7 +1455,7 @@ function buildAiExplanation(gameState, drawnCard, drawChoice, action) {
         var tpCards = tp === triadPositions.indexOf(action.position) ? [newCard] : triad[triadPositions[tp]];
         if (tpCards.length > 0) triadPointsShed += getPositionValue(tpCards);
       }
-      lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> This completes the triad! All three cards are discarded, removing ' + triadPointsShed + ' points from Kai\'s score. Completing triads is the most powerful move in the game.</p>');
+      lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> This completes the triad! All three cards are discarded, removing ' + triadPointsShed + ' points from AI\'s score. Completing triads is the most powerful move in the game.</p>');
     } else {
       // Check if this placement would trigger going out (hand becomes fully revealed).
       // If so, skip the "future completion paths" explanation — they're irrelevant after going out.
@@ -2179,7 +1472,7 @@ function buildAiExplanation(gameState, drawnCard, drawChoice, action) {
       if (wouldGoOut) {
         // Placement triggers going out — explain the going-out decision instead
         var goOutScore = handEvalForGoOut.knownScore + (drawnCard.type === 'kapow' ? 25 : drawnCard.faceValue);
-        lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> This placement reveals the last face-down card, triggering going out. Kai\'s score will be ' + goOutScore + ' points. Kai evaluated this was the best time to go out — the score is manageable and likely lower than your estimated final score.</p>');
+        lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> This placement reveals the last face-down card, triggering going out. AI\'s score will be ' + goOutScore + ' points. The AI evaluated this was the best time to go out — the score is manageable and likely lower than your estimated final score.</p>');
       } else {
         // Analyze AFTER simulated placement to explain what this builds toward
         triad[action.position] = [newCard];
@@ -2238,7 +1531,7 @@ function buildAiExplanation(gameState, drawnCard, drawChoice, action) {
         if (neighborSynergy) {
           lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> ' + triadVisual + ' This card has good synergy with ' + synergyWith + ' — they could form part of a set or run together. When cards work well together, future cards are more likely to complete the triad.</p>');
         } else {
-          lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> ' + triadVisual + ' Kai replaced a face-down card (unknown value) with a known low card to start building this triad. Even without obvious synergy yet, placing low-value cards reduces risk.</p>');
+          lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> ' + triadVisual + ' AI replaced a face-down card (unknown value) with a known low card to start building this triad. Even without obvious synergy yet, placing low-value cards reduces risk.</p>');
         }
       } else if (replacedWasRevealed && replacedVal > newVal) {
         lines.push('<p class="explain-step"><span class="explain-label">Strategy:</span> ' + triadVisual + ' Reducing the value of cards that aren\'t part of a near-complete triad helps minimize your score if you can\'t complete the triad before the round ends.</p>');
@@ -2269,59 +1562,10 @@ function buildAiExplanation(gameState, drawnCard, drawChoice, action) {
     if (aiHand.triads[t].isDiscarded) discardedCount++;
   }
   if (discardedCount > 0) {
-    lines.push('<p class="explain-step"><span class="explain-label">Status:</span> Kai has discarded ' + discardedCount + ' of 4 triads. Remaining hand score is approximately ' + handEval.knownScore + ' points (plus unknowns).</p>');
-  }
-
-  // Lightbulb takeaway — contextual tip for the player
-  var tip = generateTakeawayTip(gameState, drawnCard, drawChoice, action, discardedCount);
-  if (tip) {
-    lines.push('<div class="explain-takeaway"><span class="explain-takeaway-icon">💡</span> <span class="explain-takeaway-text">' + tip + '</span></div>');
+    lines.push('<p class="explain-step"><span class="explain-label">Status:</span> AI has discarded ' + discardedCount + ' of 4 triads. Remaining hand score is approximately ' + handEval.knownScore + ' points (plus unknowns).</p>');
   }
 
   aiMoveExplanation = lines.join('\n');
-}
-
-function generateTakeawayTip(state, drawnCard, drawChoice, action, aiTriadsCompleted) {
-  // Only show tips directly related to what the AI just did — no generic advice.
-
-  // Tip based on what AI drew from discard
-  if (drawChoice === 'discard') {
-    return 'Kai grabbed from the discard pile — it saw exactly what it needed. Watch what you discard: if it completes an obvious pattern, Kai will pounce.';
-  }
-
-  // Tip based on AI completing a triad
-  if (action && action.type === 'replace') {
-    var aiTriad = state.players[1].hand.triads[action.triadIndex];
-    if (aiTriad && aiTriad.isDiscarded) {
-      return 'Kai just completed a triad for 0 points. Focus on building your own triads — even partial progress (two matching cards) puts you one draw away from clearing a column.';
-    }
-  }
-
-  // Tip if AI discarded a low card — player might want it
-  if (action && action.type === 'discard' && drawnCard) {
-    var discardVal = drawnCard.type === 'fixed' ? drawnCard.faceValue : -1;
-    if (discardVal >= 0 && discardVal <= 4) {
-      return 'Kai just discarded a low card (' + discardVal + '). Low cards in the discard pile can be valuable — grab them if they fit your triads.';
-    }
-  }
-
-  // Tip if AI is pulling ahead on triads
-  if (aiTriadsCompleted >= 2) {
-    return 'Kai has cleared ' + aiTriadsCompleted + ' triads already. Prioritize completing at least one triad soon — those 0-point columns are how you stay competitive.';
-  }
-
-  // Tip about KAPOW cards the AI just played
-  if (drawnCard && drawnCard.type === 'kapow') {
-    return 'KAPOW! cards are wild but cost 25 points if unused. Kai placed one strategically — if you draw one, get it into a near-complete triad quickly.';
-  }
-
-  // Tip about power cards the AI just stacked
-  if (action && (action.type === 'powerset-on-power' || action.type === 'modifier-on-card')) {
-    return 'Power card modifiers can create negative values — a -2 modifier on a 0 card = -2 points. Look for stacking opportunities in your own hand.';
-  }
-
-  // No tip if nothing noteworthy happened
-  return null;
 }
 
 function aiDecideDraw(gameState) {
@@ -2461,7 +1705,7 @@ function aiDecideAction(gameState, drawnCard) {
       }
 
       var reason = 'places in Triad ' + (t + 1);
-      if (ps >= 100) reason = 'completes Triad ' + (t + 1);
+      if (ps >= 80) reason = 'completes Triad ' + (t + 1);
       else if (ps >= 15) reason = 'builds toward completing Triad ' + (t + 1);
       else if (ps > 0) reason = 'reduces score in Triad ' + (t + 1);
 
@@ -2478,7 +1722,7 @@ function aiDecideAction(gameState, drawnCard) {
                          (triad[positions[p]][0].type === 'power' ? 'P' + triad[positions[p]][0].faceValue :
                           triad[positions[p]][0].type === 'kapow' ? 'KAPOW' :
                           triad[positions[p]][0].faceValue) : 'fd';
-      logAction(gameState, 1, 'DEBUG: T' + (t+1) + ' ' + positions[p] + ' (' + posCardsDesc + '\u2192' + drawnCardDesc + ') score=' + ps);
+      logAction(gameState, 1, 'DEBUG: T' + (t+1) + ' ' + positions[p] + ' (' + posCardsDesc + '→' + drawnCardDesc + ') score=' + ps);
     }
   }
 
@@ -2511,12 +1755,30 @@ function aiDecideAction(gameState, drawnCard) {
   }
 
   // Score discard option (only if drew from deck, not discard)
+  // Scoring logic (two-segment formula):
+  //   safety >= 50: mild positive slope — safe discards are acceptable alternatives.
+  //     score = (safety - 50) * 0.15 - 2  → -2 at s=50, up to ~+5 at s=100
+  //   safety < 50: steep negative slope — dangerous discards lose badly to placements.
+  //     score = -(50 - safety) * 0.4 - 2  → -2 at s=50, -22 at s=0
+  //   Extra below 40: -(40 - safety) * 0.4 → extra steepness for triad-completing discards
+  //     e.g., safety=39: -6.4 - 0.4 = -6.8 (beats marginal placements at -4.x)
+  //          safety=25: -12 - 6 = -18   safety=15: -16 - 10 = -26
+  // This ensures even a marginal placement (-4.x) beats a mildly dangerous discard (-6.8+).
   if (!drewFromDiscard) {
     var discardSafety = aiEvaluateDiscardSafety(drawnCard, gameState);
+    var discardScore;
+    if (discardSafety >= 50) {
+      discardScore = (discardSafety - 50) * 0.15 - 2;
+    } else {
+      discardScore = -(50 - discardSafety) * 0.4 - 2;
+      if (discardSafety < 40) {
+        discardScore -= (40 - discardSafety) * 0.4; // extra steepness below 40
+      }
+    }
     candidates.push({
       action: { type: 'discard' },
-      score: discardSafety * 0.05 - 2,  // scale to be comparable; slight penalty to prefer placement
-      reason: 'discards — no good placement'
+      score: discardScore,
+      reason: 'discards (safety=' + discardSafety + ')'
     });
   }
 
@@ -2541,7 +1803,7 @@ function aiDecideAction(gameState, drawnCard) {
       ('discard:' + candidates[ci].score);
     if (ci < candidates.length - 1) debugMsg += ' | ';
   }
-  debugMsg += ' \u2192 CHOSEN: ' + (bestCandidate.action.type === 'replace' ?
+  debugMsg += ' → CHOSEN: ' + (bestCandidate.action.type === 'replace' ?
     ('T' + (bestCandidate.action.triadIndex+1) + '-' + bestCandidate.action.position) :
     'discard');
   logAction(gameState, 1, debugMsg);
@@ -2602,7 +1864,24 @@ function aiFindPowersetOpportunity(hand, drawnCard) {
 
       triad[positions[p]] = origCards; // restore
 
-      var totalScore = improvement + triadBonus;
+      // Bonus for setting up KAPOW burial: if this triad has other positions with KAPOW cards,
+      // creating a powerset here enables swapping KAPOW to safer positions before discard
+      var kapowBuryBonus = 0;
+      var kapowSwapdPositionsCount = 0;
+      for (var kb = 0; kb < positions.length; kb++) {
+        if (kb !== p && triad[positions[kb]][0] && triad[positions[kb]][0].type === 'kapow' && triad[positions[kb]][0].isRevealed) {
+          kapowBuryBonus += 8;  // reward for enabling KAPOW swap setups
+          kapowSwapdPositionsCount++;
+        }
+      }
+
+      // Positional preference: top position is more strategic for swaps (more movement flexibility)
+      var positionBonus = 0;
+      if (kapowSwapdPositionsCount > 0 && positions[p] === 'top') {
+        positionBonus = 6;  // slight preference for top position when setting up KAPOW swaps
+      }
+
+      var totalScore = improvement + triadBonus + kapowBuryBonus + positionBonus;
       if (totalScore > bestScore) {
         bestScore = totalScore;
         best = { type: 'powerset-on-power', triadIndex: t, position: positions[p], usePositive: usePositive };
@@ -2856,15 +2135,43 @@ function aiAssessOpponentThreat(gameState) {
 // Count future completion paths for a fully-revealed (3 cards) non-complete triad.
 // For each position, counts how many replacement values (0-12) would complete the triad.
 // Returns { totalPaths, bestPosition (index), bestPositionPaths, pathsByPosition: [n,n,n] }
+// KAPOW-aware: if one of the values is 25 (KAPOW placeholder), tests all 13 KAPOW values
+// for each candidate replacement, counting unique replacements that complete the triad
+// with at least one KAPOW assignment. Mirrors aiAnalyzeTriad's KAPOW handling for 2-revealed.
 function aiCountFutureCompletions(values) {
   var result = { totalPaths: 0, bestPosition: -1, bestPositionPaths: 0, pathsByPosition: [0, 0, 0] };
+
+  // Find the KAPOW position if any (value 25 is the KAPOW placeholder)
+  var kapowPos = -1;
+  for (var ki = 0; ki < 3; ki++) {
+    if (values[ki] === 25) { kapowPos = ki; break; }
+  }
+
   // Widen test range to cover powerset effective values outside 0-12
   var futureRange = getTestRange(values);
+
   for (var pos = 0; pos < 3; pos++) {
     var saved = values[pos];
     for (var v = futureRange.min; v <= futureRange.max; v++) {
       values[pos] = v;
-      if (isSet(values) || isAscendingRun(values) || isDescendingRun(values)) {
+      var completes = false;
+      if (kapowPos >= 0 && kapowPos !== pos) {
+        // KAPOW occupies a different position — test all 13 KAPOW values to find
+        // any (replacement, KAPOW) combination that completes the triad.
+        var kapowSaved = values[kapowPos];
+        for (var kv = 0; kv <= 12; kv++) {
+          values[kapowPos] = kv;
+          if (isSet(values) || isAscendingRun(values) || isDescendingRun(values)) {
+            completes = true;
+            break;
+          }
+        }
+        values[kapowPos] = kapowSaved; // restore KAPOW slot
+      } else {
+        // No KAPOW in other positions (or this IS the KAPOW slot being replaced)
+        completes = isSet(values) || isAscendingRun(values) || isDescendingRun(values);
+      }
+      if (completes) {
         result.totalPaths++;
         result.pathsByPosition[pos]++;
       }
@@ -2876,10 +2183,6 @@ function aiCountFutureCompletions(values) {
     }
   }
   // NOTE: Power modifier paths intentionally NOT added to totalPaths.
-  // Including them inflated path counts for existing triads, making the AI over-value
-  // card-piling into developed triads vs. spreading to untouched ones. Power modifier
-  // paths are too speculative (require drawing a Power card + choosing correct modifier)
-  // to justify inflating the core path-counting metric.
   return result;
 }
 
@@ -3174,11 +2477,38 @@ function aiScorePlacement(hand, card, triadIndex, position) {
   var isFinalTurn = gameState && gameState.phase === 'finalTurns';
   var finalNewValue = (card.type === 'kapow') ? 25 : newValue;
   if (isFinalTurn) {
-    // Check if placement completes a triad
+    // Check if placement completes a triad (directly or via a single within-triad KAPOW swap)
     var origCardsFT = triad[position];
     triad[position] = [{ id: card.id, type: card.type, faceValue: card.faceValue,
       modifiers: card.modifiers, isRevealed: true,  }];
     var completesFT = isTriadComplete(triad);
+
+    // Also check KAPOW-swap completion if not directly complete
+    if (!completesFT) {
+      var allRevFT = true;
+      for (var ftri = 0; ftri < 3; ftri++) {
+        var ftrC = triad[positions[ftri]];
+        if (ftrC.length === 0 || !ftrC[0].isRevealed) { allRevFT = false; break; }
+      }
+      if (allRevFT) {
+        for (var ftkp = 0; ftkp < 3 && !completesFT; ftkp++) {
+          var ftkSlot = triad[positions[ftkp]];
+          if (ftkSlot.length > 0 && ftkSlot[0].type === 'kapow' && !ftkSlot[0].isFrozen) {
+            for (var ftkt = 0; ftkt < 3 && !completesFT; ftkt++) {
+              if (ftkt === ftkp) continue;
+              var ftSavedFrom = triad[positions[ftkp]];
+              var ftSavedTo   = triad[positions[ftkt]];
+              triad[positions[ftkp]] = ftSavedTo;
+              triad[positions[ftkt]] = ftSavedFrom;
+              completesFT = isTriadComplete(triad);
+              triad[positions[ftkt]] = ftSavedTo;
+              triad[positions[ftkp]] = ftSavedFrom;
+            }
+          }
+        }
+      }
+    }
+
     triad[position] = origCardsFT; // restore
 
     if (completesFT) {
@@ -3415,7 +2745,58 @@ function aiScorePlacement(hand, card, triadIndex, position) {
   triad[position] = [{ id: card.id, type: card.type, faceValue: card.faceValue,
     modifiers: card.modifiers, isRevealed: true,  }];
 
-  if (isTriadComplete(triad)) {
+  var placementCompletesTriad = isTriadComplete(triad);
+
+  // Check if a single within-triad KAPOW swap (after this placement) would complete the triad.
+  // This is one-step lookahead: place card, then swap KAPOW to any other position, check completion.
+  // No deep lookahead needed — just simulate each possible KAPOW swap within the triad.
+  var placementCompletesViaKapowSwap = false;
+  var kapowSwapExistingPoints = 0;
+  if (!placementCompletesTriad) {
+    // All 3 positions must be revealed for a within-triad swap to complete
+    var allRevealed = true;
+    for (var ksi = 0; ksi < 3; ksi++) {
+      var ksCards = triad[positions[ksi]];
+      if (ksCards.length === 0 || !ksCards[0].isRevealed) { allRevealed = false; break; }
+    }
+    if (allRevealed) {
+      // Find any KAPOW in the triad
+      for (var ksp = 0; ksp < 3; ksp++) {
+        var ksSlot = triad[positions[ksp]];
+        if (ksSlot.length > 0 && ksSlot[0].type === 'kapow' && !ksSlot[0].isFrozen) {
+          // Try swapping this KAPOW to each other position
+          for (var kst = 0; kst < 3; kst++) {
+            if (kst === ksp) continue;
+            // Simulate swap
+            var savedFrom = triad[positions[ksp]];
+            var savedTo   = triad[positions[kst]];
+            triad[positions[ksp]] = savedTo;
+            triad[positions[kst]] = savedFrom;
+            var swapCompletes = isTriadComplete(triad);
+            // Restore
+            triad[positions[kst]] = savedTo;
+            triad[positions[ksp]] = savedFrom;
+            if (swapCompletes) {
+              placementCompletesViaKapowSwap = true;
+              // Compute existing points — skip the placed slot (posIdx), matching how
+              // direct completion's existingPoints is calculated. Including the placed
+              // card inflates the bonus (e.g., KAPOW=25 makes swap look better than
+              // direct completion at a different position that correctly excludes it).
+              kapowSwapExistingPoints = 0;
+              for (var kse = 0; kse < 3; kse++) {
+                if (kse === posIdx) continue; // skip the slot we placed into
+                kapowSwapExistingPoints += getPositionValue(triad[positions[kse]]);
+              }
+              break;
+            }
+          }
+        }
+        if (placementCompletesViaKapowSwap) break;
+      }
+    }
+  }
+
+  if (placementCompletesTriad) {
     // Completing a triad is extremely valuable.
     // Bonus scales with the points of the OTHER cards already in the triad —
     // prefer completing high-value triads (e.g., [9,9,fd] has 18 known pts)
@@ -3431,6 +2812,11 @@ function aiScorePlacement(hand, card, triadIndex, position) {
       }
     }
     score += 100 + existingPoints;
+  } else if (placementCompletesViaKapowSwap) {
+    // One within-triad KAPOW swap after this placement would complete the triad.
+    // Treat this almost like direct completion — slightly discounted because it
+    // requires the swap step, but still overwhelmingly the best move.
+    score += 80 + kapowSwapExistingPoints;
   } else {
     // Analyze the triad AFTER placement
     var analysis = aiAnalyzeTriad(triad);
@@ -3713,7 +3099,9 @@ function aiScorePlacement(hand, card, triadIndex, position) {
   // If the card in the top position is something the opponent badly needs, prefer placing it
   // in the middle or bottom instead (where it gets buried in the discard pile).
   // KAPOW! cards are the MOST dangerous to leave at top — opponent gets a universal wild card.
-  if (gameState && position === 'top') {
+  // EXCEPTION: if this placement completes the triad (directly or via a KAPOW swap),
+  // KAPOW at top is fine — the within-triad swap will bury it before discard.
+  if (gameState && position === 'top' && !placementCompletesTriad && !placementCompletesViaKapowSwap) {
     var oppNeeds = aiGetOpponentNeeds(gameState);
     var isNeededByOpp = false;
     var topNeedUrgency = 0;
@@ -4224,14 +3612,6 @@ function animateTriadDiscard(containerId, triadIndex, isOpponent, savedCards, ca
   // Highlight the triad column as completing
   triadEl.classList.add('triad-completing');
 
-  // Sound and screen shake
-  KapowSounds.triadComplete(isOpponent ? 0.5 : 1);
-  var gameContainer = document.getElementById('game-container');
-  if (gameContainer) {
-    gameContainer.classList.add('screen-shake');
-    setTimeout(function() { gameContainer.classList.remove('screen-shake'); }, 300);
-  }
-
   // Add the discarding class to all position slots that have cards
   for (var i = 0; i < posSlots.length; i++) {
     var cardEl = posSlots[i].querySelector('.card');
@@ -4351,10 +3731,9 @@ function runWithTriadAnimation(playerIndex, handlerFn) {
   }
 }
 
-function renderCardHTML(card, faceDown, clickable, extraClass) {
+function renderCardHTML(card, faceDown, clickable, powersetValue) {
   var classes = 'card';
   if (clickable) classes += ' clickable';
-  if (extraClass) classes += ' ' + extraClass;
 
   if (faceDown || !card.isRevealed) {
     classes += ' card-back';
@@ -4364,20 +3743,37 @@ function renderCardHTML(card, faceDown, clickable, extraClass) {
 
   if (card.type === 'fixed') {
     classes += ' card-fixed';
-    return '<div class="' + classes + '">' +
+    var html = '<div class="' + classes + '">' +
       '<span class="card-value-top">' + card.faceValue + '</span>' +
       '<span class="card-value-center">' + card.faceValue + '</span>' +
-      '<span class="card-value-bottom">' + card.faceValue + '</span></div>';
+      '<span class="card-type-label">Fixed</span>' +
+      '<span class="card-value-bottom">' + card.faceValue + '</span>';
+
+    // Add powerset value on the card if present
+    if (powersetValue !== undefined && powersetValue !== null) {
+      html += '<span class="powerset-value-on-card">Powerset = ' + powersetValue + '</span>';
+    }
+
+    html += '</div>';
+    return html;
   }
 
   if (card.type === 'power') {
     classes += ' card-power';
-    return '<div class="' + classes + '">' +
+    var html = '<div class="' + classes + '">' +
       '<span class="card-type-label">Power</span>' +
       '<span class="card-power-face-value">' + card.faceValue + '</span>' +
       '<div class="card-power-modifiers">' +
       '<span class="modifier-negative">' + card.modifiers[0] + '</span>' +
-      '<span class="modifier-positive">+' + card.modifiers[1] + '</span></div></div>';
+      '<span class="modifier-positive">+' + card.modifiers[1] + '</span></div>';
+
+    // Add powerset value on the card if present (when Power card is on top of another Power card)
+    if (powersetValue !== undefined && powersetValue !== null) {
+      html += '<span class="powerset-value-on-card">Powerset = ' + powersetValue + '</span>';
+    }
+
+    html += '</div>';
+    return html;
   }
 
   if (card.type === 'kapow') {
@@ -4446,12 +3842,8 @@ function renderHand(hand, containerId, isOpponent, clickablePositions, onClickAt
         else if (highlight.type === 'reveal') hlClass = ' ai-reveal-highlight';
         else if (highlight.type === 'kapow-selected') hlClass = ' kapow-selected-highlight';
       }
-      // Show "TOP" label on first triad's top-position row to orient players
-      var isTopRow = (pos === 'top' && t === 0);
-      var topClass = isTopRow ? ' top-row' : '';
-      html += '<div class="position-slot' + hlClass + topClass + '">';
+      html += '<div class="position-slot' + hlClass + '">';
       html += '<span class="pos-label">' + posLabels[pos] + '</span>';
-      if (isTopRow) html += '<span class="top-row-label">TOP</span>';
 
       if (triad[pos].length > 0) {
         var isClickable = false;
@@ -4468,34 +3860,19 @@ function renderHand(hand, containerId, isOpponent, clickablePositions, onClickAt
         var faceDown = isOpponent && !card.isRevealed;
         var hasPowerset = triad[pos].length > 1 && card.isRevealed;
 
-        // Determine animation class from state flags (only for the correct hand)
-        var animClass = '';
-        if (gameState) {
-          var jr = gameState._justRevealed;
-          var jp = gameState._justPlaced;
-          var jpk = gameState._justPlacedKapow;
-          if (jr && jr.hand === hand && jr.triadIndex === t && jr.position === pos) {
-            animClass = 'card-flip-in';
-          } else if (jpk && jpk.hand === hand && jpk.triadIndex === t && jpk.position === pos) {
-            animClass = 'card-slide-in card-kapow-placed';
-          } else if (jp && jp.hand === hand && jp.triadIndex === t && jp.position === pos) {
-            animClass = 'card-slide-in';
-          }
+        // Calculate powerset value if it exists (to display on card)
+        var powersetValue = null;
+        if (hasPowerset) {
+          powersetValue = getPositionValue(triad[pos]);
         }
 
         // Wrap in clickable div if needed
         if (isClickable && onClickAttr) {
           html += '<div onclick="' + onClickAttr + '(' + t + ',\'' + pos + '\')">';
-          html += renderCardHTML(card, faceDown, true, animClass);
-          if (hasPowerset) {
-            html += renderPowersetInfo(triad[pos]);
-          }
+          html += renderCardHTML(card, faceDown, true, powersetValue);
           html += '</div>';
         } else {
-          html += renderCardHTML(card, faceDown, false, animClass);
-          if (hasPowerset) {
-            html += renderPowersetInfo(triad[pos]);
-          }
+          html += renderCardHTML(card, faceDown, false, powersetValue);
         }
       }
 
@@ -4529,6 +3906,7 @@ function renderDiscardPile(discardPile, drawnCard, drawnFromDiscard) {
     container.innerHTML =
       '<span class="card-value-top">' + topCard.faceValue + '</span>' +
       '<span class="card-value-center">' + topCard.faceValue + '</span>' +
+      '<span class="card-type-label">Fixed</span>' +
       '<span class="card-value-bottom">' + topCard.faceValue + '</span>';
   } else if (topCard.type === 'power') {
     container.classList.add('card-power');
@@ -4577,16 +3955,6 @@ function renderScorecard(state) {
   // Update totals
   document.getElementById('sc-player-total').innerHTML = '<strong>' + state.players[0].totalScore + '</strong>';
   document.getElementById('sc-ai-total').innerHTML = '<strong>' + state.players[1].totalScore + '</strong>';
-
-  // Update mobile score bar
-  var mobileRound = document.getElementById('mobile-round');
-  var mobilePlayerScore = document.getElementById('mobile-player-score');
-  var mobileAiScore = document.getElementById('mobile-ai-score');
-  var mobilePlayerLabel = document.getElementById('mobile-player-label');
-  if (mobileRound) mobileRound.textContent = 'R' + state.round;
-  if (mobilePlayerScore) mobilePlayerScore.textContent = state.players[0].totalScore;
-  if (mobileAiScore) mobileAiScore.textContent = state.players[1].totalScore;
-  if (mobilePlayerLabel) mobilePlayerLabel.textContent = escapeHTML(state.players[0].name);
 }
 
 function renderDrawPile(state) {
@@ -4604,220 +3972,6 @@ function renderDrawPile(state) {
 }
 
 // ========================================
-// TUTORIAL SYSTEM
-// ========================================
-
-var tutorialActive = false;
-var tutorialSeen = { triad: false, powerDraw: false, powerStacked: false, kapow: false };
-
-function isTutorial() { return tutorialActive; }
-
-function shouldStartTutorial() {
-  try { return !localStorage.getItem('kapow-tutorial-done'); }
-  catch(e) { return false; }
-}
-
-function completeTutorial() {
-  tutorialActive = false;
-  try { localStorage.setItem('kapow-tutorial-done', '1'); } catch(e) {}
-  if (typeof trackEvent === 'function') trackEvent('tutorial_complete');
-}
-
-// Exposed globally for the "Replay Tutorial" button in How to Play
-window.resetTutorial = function() {
-  try { localStorage.removeItem('kapow-tutorial-done'); } catch(e) {}
-  document.getElementById('help-modal').classList.add('hidden');
-
-  // Ensure game layout is visible (may be called from name screen)
-  document.getElementById('name-screen').classList.add('hidden');
-  document.getElementById('page-layout').classList.remove('hidden');
-  var helpToggle = document.getElementById('help-toggle');
-  if (helpToggle) helpToggle.classList.add('visible');
-
-  // Use current name or fallback
-  if (!playerName) playerName = 'Player';
-  document.getElementById('player-area-header').textContent = playerName + "'s Hand";
-  document.getElementById('sc-player-name').textContent = playerName;
-
-  gameState = createGameState([playerName, 'Kai']);
-  logSystem(gameState, '=== New Game (Tutorial Replay): ' + playerName + ' vs Kai ===');
-  startRound(gameState);
-  if (!window._kapowEventsBound) {
-    bindGameEvents();
-    window._kapowEventsBound = true;
-  }
-  refreshUI();
-};
-
-function buildTutorialDeck() {
-  // Stacked deck that guarantees encountering all 3 key mechanics:
-  // Turn 1: triad completion (set of 7s)
-  // Turn 2: power card (stacking/modifiers)
-  // Turn 3: KAPOW card (wild + 25pt risk)
-
-  nextCardId = 0;
-
-  // Player hand: Triad 0 has two 7s (third 7 on draw pile)
-  var playerCards = [
-    createCard('fixed', 7), createCard('fixed', 7), createCard('fixed', 10),  // Triad 0: 7,7,10
-    createCard('fixed', 5), createCard('fixed', 6), createCard('fixed', 12),  // Triad 1: 5,6,12
-    createCard('fixed', 9), createCard('fixed', 9), createCard('fixed', 3),   // Triad 2: 9,9,3
-    createCard('fixed', 4), createCard('fixed', 8), createCard('fixed', 11)   // Triad 3: 4,8,11
-  ];
-
-  // AI hand: reasonable cards
-  var aiCards = [
-    createCard('fixed', 3), createCard('fixed', 8), createCard('fixed', 6),
-    createCard('fixed', 10), createCard('fixed', 5), createCard('fixed', 2),
-    createCard('fixed', 7), createCard('fixed', 11), createCard('fixed', 4),
-    createCard('fixed', 1), createCard('fixed', 9), createCard('fixed', 0)
-  ];
-
-  // First discard card (visible)
-  var firstDiscard = createCard('fixed', 2);
-
-  // Draw pile — last element drawn first via .pop()
-  // Fill bottom with random cards for the rest of the game
-  var drawPile = [];
-  for (var i = 0; i < 50; i++) {
-    drawPile.push(createCard('fixed', Math.floor(Math.random() * 13)));
-  }
-  // Then place stacked cards (drawn in reverse order):
-  // Turn sequence: Player → AI → Player → AI → Player → AI → Player...
-  drawPile.push(createCard('power', 1, [-1, 1]));       // Player turn 4 draw (7th pop) — standalone power
-  drawPile.push(createCard('fixed', 8));                // AI turn 3 draw (6th pop)
-  drawPile.push(createCard('kapow', 0));               // Player turn 3 draw (5th pop)
-  drawPile.push(createCard('fixed', 6));                // AI turn 2 draw (4th pop)
-  drawPile.push(createCard('power', 2, [-2, 2]));       // Player turn 2 draw (3rd pop)
-  drawPile.push(createCard('fixed', 3));                // AI turn 1 draw (2nd pop)
-  drawPile.push(createCard('fixed', 7));                // Player turn 1 draw (1st pop)
-
-  return { playerCards: playerCards, aiCards: aiCards, drawPile: drawPile, firstDiscard: firstDiscard };
-}
-
-function startTutorialRound(state) {
-  var td = buildTutorialDeck();
-  state.players[0].hand = initializeHand(td.playerCards);
-  state.players[1].hand = initializeHand(td.aiCards);
-
-  td.firstDiscard.isRevealed = true;
-  state.discardPile = [td.firstDiscard];
-  state.drawPile = td.drawPile;
-
-  state.drawnCard = null;
-  state.drawnFromDiscard = false;
-  state.awaitingKapowSwap = false;
-  state.selectedKapow = null;
-  state.firstOutPlayer = null;
-  state.finalTurnsRemaining = 0;
-  state.phase = 'playing';
-  state.firstTurnReveals = 0;
-  state.needsFirstReveal = [true, true];
-  state.currentPlayer = 0; // Player always goes first in tutorial
-  state.turnNumber = 1;
-  state.previousFirstOut = null;
-
-  tutorialActive = true;
-  tutorialSeen = { triad: false, powerDraw: false, powerStacked: false, kapow: false };
-  state.message = "Welcome to KAPOW! Tap your first 2 cards to peek at what you've got.";
-
-  logSystem(state, '=== Round 1 starts (Tutorial) ===');
-  logSystem(state, 'First player: ' + state.players[0].name);
-  logSystem(state, 'Discard pile starts with: ' + cardDescription(state.discardPile[0]));
-}
-
-// Called after player actions to inject coaching messages
-function getTutorialMessage(state, event, extra) {
-  if (!tutorialActive) return null;
-
-  var hand = state.players[0].hand;
-
-  if (event === 'reveal_1') {
-    // After first reveal
-    var card = extra.card;
-    return 'A ' + card.faceValue + '! Reveal one more card.';
-  }
-
-  if (event === 'reveal_done') {
-    // After both reveals — check what they can see
-    var sevenCount = 0;
-    for (var t = 0; t < hand.triads.length; t++) {
-      var triad = hand.triads[t];
-      var positions = ['top', 'middle', 'bottom'];
-      for (var p = 0; p < positions.length; p++) {
-        var c = triad[positions[p]][0];
-        if (c.isRevealed && c.faceValue === 7) sevenCount++;
-      }
-    }
-    if (sevenCount >= 2) {
-      return "Two 7s! If you get one more in that column, the whole triad vanishes for 0 points. Draw from either pile!";
-    }
-    return "Cards revealed! Now draw a card from either pile.";
-  }
-
-  if (event === 'draw') {
-    var drawn = state.drawnCard;
-    if (drawn.type === 'kapow' && !tutorialSeen.kapow) {
-      tutorialSeen.kapow = true;
-      return "KAPOW! The wild card — it can be ANY value 0\u201312. Place it where it\u2019ll help build a triad. But careful: unused KAPOW costs 25 points!";
-    }
-    if (drawn.type === 'power' && !tutorialSeen.powerDraw) {
-      tutorialSeen.powerDraw = true;
-      var modStr = drawn.modifiers[0] + '/' + (drawn.modifiers[1] > 0 ? '+' : '') + drawn.modifiers[1];
-      return "\u26A1 Power Card! Face value " + drawn.faceValue + ", modifiers " + modStr + ". Stack it under a revealed card to change its value, or play it standalone.";
-    }
-    if (drawn.type === 'power' && tutorialSeen.powerDraw && tutorialSeen.powerStacked) {
-      return "\u26A1 Another Power Card! This time try placing it as a standalone " + drawn.faceValue + " — it keeps its face value.";
-    }
-    if (drawn.type === 'fixed' && drawn.faceValue === 7) {
-      // Check if they have two 7s visible in a triad
-      for (var t = 0; t < hand.triads.length; t++) {
-        var tr = hand.triads[t];
-        if (tr.isDiscarded) continue;
-        var sevens = 0; var openPos = null;
-        var positions = ['top', 'middle', 'bottom'];
-        for (var p = 0; p < positions.length; p++) {
-          var c = tr[positions[p]][0];
-          if (c.isRevealed && c.faceValue === 7) sevens++;
-          else if (!c.isRevealed || c.faceValue !== 7) openPos = positions[p];
-        }
-        if (sevens >= 2 && openPos) {
-          return "A 7! Place it in column " + (t + 1) + " (" + openPos + ") to complete a set of three 7s!";
-        }
-      }
-      return "A low card! Place it somewhere to reduce your score.";
-    }
-    return null; // Use default message
-  }
-
-  if (event === 'triad_complete' && !tutorialSeen.triad) {
-    tutorialSeen.triad = true;
-    return "Three of a kind \u2014 triad complete! That whole column scores 0. That's the goal!";
-  }
-
-  if (event === 'power_stacked' && !tutorialSeen.powerStacked) {
-    tutorialSeen.powerStacked = true;
-    return "Stacked! The modifier changes that position\u2019s effective value. Power cards are the key to creative triads.";
-  }
-
-  if (event === 'kapow_placed') {
-    return "KAPOW placed! You can swap it around later until it\u2019s locked in a completed triad. Keep building!";
-  }
-
-  if (event === 'power_placed_standalone') {
-    return "Placed as a standalone " + (extra ? extra.faceValue : '') + ". Pro tip: stacking power cards as modifiers is where they really shine!";
-  }
-
-  // Check if all mechanics seen — end tutorial
-  if (tutorialSeen.triad && tutorialSeen.powerDraw && tutorialSeen.kapow) {
-    completeTutorial();
-    return "Sets, Power Cards, KAPOW \u2014 you\u2019ve seen it all! Runs work too (e.g. 5-6-7). Now play for real. Good luck!";
-  }
-
-  return null;
-}
-
-// ========================================
 // MAIN GAME CONTROLLER
 // ========================================
 
@@ -4831,79 +3985,6 @@ function init() {
   document.getElementById('name-screen').classList.remove('hidden');
   document.getElementById('page-layout').classList.add('hidden');
 
-  // Track first visit
-  setFirstSeen();
-
-  // Restore cached name and show welcome-back message
-  var returning = false;
-  try {
-    var cached = localStorage.getItem('kapow-player-name');
-    if (cached) {
-      returning = true;
-      document.getElementById('player-name-input').value = cached;
-      var subtitle = document.querySelector('.name-screen-content p');
-      if (subtitle) subtitle.textContent = 'Welcome back!';
-    }
-  } catch(e) {}
-
-  // Update footer buy link for current buy mode (hide if email already captured)
-  var footerLink = document.getElementById('footer-buy-link');
-  if (footerLink) {
-    if (hasGivenEmail()) {
-      footerLink.style.display = 'none';
-      var sep = footerLink.nextElementSibling;
-      if (sep && sep.classList.contains('footer-sep')) sep.style.display = 'none';
-    } else if (KAPOW_BUY_MODE === 'amazon' && KAPOW_BUY_URL) {
-      footerLink.href = KAPOW_BUY_URL;
-      footerLink.target = '_blank';
-      footerLink.rel = 'noopener';
-      footerLink.onclick = null;
-    }
-    // else: default onclick=showBuyModal() from HTML is correct for email mode
-  }
-
-  // Build name-screen buy CTA based on engagement tier (skip if email already captured)
-  var ctaContainer = document.getElementById('name-screen-cta');
-  if (ctaContainer && !hasGivenEmail()) {
-    var played = getGamesPlayed();
-    if (played >= 3) {
-      ctaContainer.innerHTML = '<div class="kapow-cta-banner">' +
-        '<span>You\u2019ve played ' + played + ' games! Get the physical deck for game nights with friends.</span>' +
-        buildBuyLink('Get KAPOW! \u2192', 'kapow-buy-btn') +
-        '</div>';
-    } else if (returning) {
-      ctaContainer.innerHTML = '<div class="kapow-cta-subtle">' +
-        'Love playing? ' + buildBuyLink('Get the real deck \u2192', 'kapow-buy-link') +
-        '</div>';
-    } else {
-      ctaContainer.innerHTML = '<div class="kapow-cta-quiet">' +
-        buildBuyLink('KAPOW! Card Game \u2014 Get Notified', 'kapow-buy-link-quiet') +
-        '</div>';
-    }
-  }
-
-  // Challenge moved to game over screen only — cleaner name screen
-
-  // Init mute button state
-  KapowSounds.updateMuteButton();
-
-  // Check for saved game
-  var save = loadSave();
-  var resumeBtn = document.getElementById('btn-resume-game');
-  if (save && resumeBtn) {
-    resumeBtn.innerHTML = 'Resume <span class="resume-detail">Round ' +
-      save.gameState.round + ' \u2014 ' +
-      save.gameState.players[0].totalScore + ' to ' +
-      save.gameState.players[1].totalScore + '</span>';
-    resumeBtn.classList.remove('hidden');
-    resumeBtn.addEventListener('click', function() {
-      KapowSounds.init();
-      resumeGame(save);
-    });
-    // When resume exists, start button becomes "New Game"
-    document.getElementById('btn-start-game').textContent = 'New Game';
-  }
-
   document.getElementById('btn-start-game').addEventListener('click', startGameWithName);
   document.getElementById('player-name-input').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') startGameWithName();
@@ -4911,78 +3992,25 @@ function init() {
 }
 
 function startGameWithName() {
-  // Init AudioContext on first user gesture (browser requirement)
-  KapowSounds.init();
-
-  // Starting a new game — clear any existing save
-  clearSave();
-
   var input = document.getElementById('player-name-input');
   var name = input.value.trim();
   if (!name) name = 'Player';
   playerName = name;
 
-  // Cache name for next visit
-  try { localStorage.setItem('kapow-player-name', name); } catch(e) {}
-
-  // Track engagement
-  incrementGamesPlayed();
-  var played = getGamesPlayed();
-  if (typeof trackEvent === 'function') trackEvent('game_start', { games_played: played });
-
-  // Interstitial for engaged players (5+ games) — skip if email already captured
-  if (played >= 5 && !window._kapowInterstitialShown && !ctaDismissed('interstitial') && !hasGivenEmail()) {
-    window._kapowInterstitialShown = true;
-    var gift = played >= 10 ? ' Makes a perfect gift!' : '';
-    var inter = document.getElementById('kapow-interstitial');
-    if (inter) {
-      inter.querySelector('.interstitial-text').textContent =
-        'You clearly love KAPOW! Get the physical deck for game nights.' + gift;
-      inter.classList.remove('hidden');
-      // Wire up buttons
-      inter.querySelector('.interstitial-later').onclick = function() {
-        inter.classList.add('hidden');
-        dismissCta('interstitial');
-        proceedToGame();
-      };
-      inter.querySelector('.interstitial-show').onclick = function() {
-        inter.classList.add('hidden');
-        if (KAPOW_BUY_MODE === 'amazon' && KAPOW_BUY_URL) {
-          window.open(KAPOW_BUY_URL, '_blank');
-        } else {
-          showBuyModal();
-        }
-        proceedToGame();
-      };
-      return; // Wait for button click
-    }
-  }
-
-  proceedToGame();
-}
-
-function proceedToGame() {
   document.getElementById('name-screen').classList.add('hidden');
   document.getElementById('page-layout').classList.remove('hidden');
-  var helpToggle = document.getElementById('help-toggle');
-  if (helpToggle) helpToggle.classList.add('visible');
 
   // Update the player hand header
-  document.getElementById('player-area-header').textContent = playerName + "'s Hand";
+  document.getElementById('player-area-header').textContent = name + "'s Hand";
 
   // Update scorecard header
-  document.getElementById('sc-player-name').textContent = playerName;
+  document.getElementById('sc-player-name').textContent = name;
 
-  gameState = createGameState([playerName, 'Kai']);
-  logSystem(gameState, '=== New Game: ' + playerName + ' vs Kai ===');
+  gameState = createGameState([name, 'AI']);
+  logSystem(gameState, '=== New Game: ' + name + ' vs AI ===');
   startRound(gameState);
-  if (!window._kapowEventsBound) {
-    bindGameEvents();
-    window._kapowEventsBound = true;
-  }
+  bindGameEvents();
   refreshUI();
-  // Scale game to fit viewport after layout is visible
-  requestAnimationFrame(updateGameScale);
 }
 
 function bindGameEvents() {
@@ -4997,7 +4025,6 @@ function bindGameEvents() {
   document.getElementById('btn-export-log').addEventListener('click', exportLog);
   document.getElementById('btn-understand-move').addEventListener('click', onUnderstandMove);
   document.getElementById('btn-close-explain').addEventListener('click', onCloseExplain);
-  document.getElementById('btn-hint').addEventListener('click', onHint);
 }
 
 function onEndTurn() {
@@ -5040,88 +4067,6 @@ function onCloseExplain() {
   document.getElementById('explain-modal').classList.add('hidden');
 }
 
-function onHint() {
-  if (!gameState || !gameState.players[gameState.currentPlayer].isHuman) return;
-  var hint = generateHint();
-  if (hint) {
-    var msgEl = document.getElementById('game-message');
-    msgEl.innerHTML = '<span class="hint-message">💡 ' + hint + '</span>';
-  }
-}
-
-function generateHint() {
-  var hand = gameState.players[0].hand;
-  var needsReveal = gameState.needsFirstReveal && gameState.needsFirstReveal[gameState.currentPlayer];
-  var phase = gameState.phase;
-
-  // First turn: reveal advice
-  if (needsReveal) {
-    return 'Reveal 2 cards to see what you\'re working with. Corners are popular picks — they show you two different triads at once.';
-  }
-
-  // Draw phase: no drawn card yet
-  if (!gameState.drawnCard && (phase === 'playing' || phase === 'finalTurns')) {
-    // Check if the discard pile has anything useful
-    if (gameState.discardPile.length > 0) {
-      var topDiscard = gameState.discardPile[gameState.discardPile.length - 1];
-      // Run AI evaluation on the discard pile card for the player
-      var bestDiscardScore = -999;
-      for (var t = 0; t < hand.triads.length; t++) {
-        if (hand.triads[t].isDiscarded) continue;
-        var positions = ['top', 'middle', 'bottom'];
-        for (var p = 0; p < positions.length; p++) {
-          var ps = aiScorePlacement(hand, topDiscard, t, positions[p]);
-          if (ps > bestDiscardScore) bestDiscardScore = ps;
-        }
-      }
-      if (bestDiscardScore >= 15) {
-        return 'The ' + cardDescription(topDiscard) + ' in the discard pile looks useful for your hand. Consider grabbing it!';
-      } else if (bestDiscardScore >= 5) {
-        return 'The ' + cardDescription(topDiscard) + ' could fit your hand. But drawing from the deck might find something better.';
-      }
-    }
-    return 'Draw from the deck for a surprise, or grab the discard if it fits a triad you\'re building.';
-  }
-
-  // Place phase: player has a drawn card
-  if (gameState.drawnCard) {
-    var drawnCard = gameState.drawnCard;
-    var bestScore = -999;
-    var bestAction = null;
-
-    for (var t = 0; t < hand.triads.length; t++) {
-      if (hand.triads[t].isDiscarded) continue;
-      var positions = ['top', 'middle', 'bottom'];
-      for (var p = 0; p < positions.length; p++) {
-        var ps = aiScorePlacement(hand, drawnCard, t, positions[p]);
-        if (ps > bestScore) {
-          bestScore = ps;
-          bestAction = { triadIndex: t, position: positions[p], score: ps };
-        }
-      }
-    }
-
-    if (bestScore >= 100) {
-      return 'Place it in Triad ' + (bestAction.triadIndex + 1) + ' (' + bestAction.position + ') — it completes the triad!';
-    } else if (bestScore >= 15) {
-      return 'Triad ' + (bestAction.triadIndex + 1) + ' (' + bestAction.position + ') looks strong — it builds toward completion.';
-    } else if (bestScore >= 3) {
-      return 'Best spot: Triad ' + (bestAction.triadIndex + 1) + ' (' + bestAction.position + '). It\'s a small improvement, but every point counts.';
-    } else if (!gameState.drawnFromDiscard) {
-      return 'This card doesn\'t fit well anywhere. Consider discarding it and revealing a face-down card instead.';
-    } else {
-      return 'Tough draw from discard. Look for the position where this card does the least damage.';
-    }
-  }
-
-  // KAPOW swap phase
-  if (gameState.awaitingKapowSwap) {
-    return 'You can swap a free KAPOW! card to a better position, or click End Turn to skip.';
-  }
-
-  return null;
-}
-
 function refreshUI() {
   var isHumanTurn = gameState.players[gameState.currentPlayer].isHuman;
   var phase = gameState.phase;
@@ -5138,11 +4083,6 @@ function refreshUI() {
   }
   renderHand(gameState.players[0].hand, 'player-hand', false, clickablePositions, 'window._onCardClick', playerHL);
   renderHand(gameState.players[1].hand, 'ai-hand', true, [], null, aiHL);
-
-  // Clear animation flags after render (one-shot)
-  gameState._justRevealed = null;
-  gameState._justPlaced = null;
-  gameState._justPlacedKapow = null;
 
   // Render piles
   renderDiscardPile(gameState.discardPile, gameState.drawnCard, gameState.drawnFromDiscard);
@@ -5191,12 +4131,6 @@ function refreshUI() {
   } else {
     gameMsgEl.classList.remove('swap-phase-message');
   }
-  // Tutorial coaching visual style
-  if (isTutorial() && isHumanTurn) {
-    gameMsgEl.classList.add('tutorial-message');
-  } else {
-    gameMsgEl.classList.remove('tutorial-message');
-  }
 
   // Turn counter
   var turnCounterEl = document.getElementById('turn-counter');
@@ -5209,7 +4143,6 @@ function refreshUI() {
 
   // AI Commentary
   var commentaryEl = document.getElementById('ai-commentary');
-  var mobileBanter = document.getElementById('mobile-banter');
   if (commentaryEl) {
     if (gameState.aiCommentary) {
       commentaryEl.textContent = gameState.aiCommentary;
@@ -5217,15 +4150,6 @@ function refreshUI() {
     } else {
       commentaryEl.textContent = '';
       commentaryEl.classList.remove('visible');
-    }
-  }
-  if (mobileBanter) {
-    if (gameState.aiCommentary) {
-      mobileBanter.textContent = '\u201C' + gameState.aiCommentary + '\u201D';
-      mobileBanter.classList.add('visible');
-    } else {
-      mobileBanter.textContent = '';
-      mobileBanter.classList.remove('visible');
     }
   }
 
@@ -5265,12 +4189,6 @@ function refreshUI() {
     understandBtn.disabled = !(isHumanTurn && aiMoveExplanation);
   }
 
-  // Hint button: enabled during player's turn in active phases
-  var hintBtn = document.getElementById('btn-hint');
-  if (hintBtn) {
-    hintBtn.disabled = !(isHumanTurn && (phase === 'playing' || phase === 'finalTurns' || needsReveal));
-  }
-
   // Phase screens
   if (phase === 'scoring') {
     showRoundEnd();
@@ -5282,13 +4200,6 @@ function refreshUI() {
   if (!isHumanTurn && !aiTurnInProgress && !triadAnimationInProgress && (phase === 'playing' || phase === 'finalTurns')) {
     aiTurnInProgress = true;
     setTimeout(playAITurn, 1000);
-  }
-
-  // Auto-save at stable points: human's turn, scoring screen, or game over
-  if (isHumanTurn || phase === 'scoring') {
-    saveGame();
-  } else if (phase === 'gameOver') {
-    clearSave();
   }
 }
 
@@ -5358,30 +4269,19 @@ function getClickablePositions() {
 }
 
 // Custom modal for power card choices (replaces browser confirm dialogs)
-function showModal(title, buttons, detail) {
+function showModal(title, buttons) {
   return new Promise(function(resolve) {
     var modal = document.getElementById('power-modal');
     var titleEl = document.getElementById('power-modal-title');
-    var detailEl = document.getElementById('power-modal-detail');
     var buttonsEl = document.getElementById('power-modal-buttons');
 
     titleEl.textContent = title;
-    if (detailEl) {
-      detailEl.innerHTML = detail || '';
-      detailEl.style.display = detail ? 'block' : 'none';
-    }
     buttonsEl.innerHTML = '';
 
     buttons.forEach(function(btn) {
       var buttonEl = document.createElement('button');
       buttonEl.className = 'modal-btn ' + (btn.style || 'primary');
       buttonEl.textContent = btn.label;
-      if (btn.subtitle) {
-        var sub = document.createElement('span');
-        sub.className = 'modal-btn-subtitle';
-        sub.textContent = btn.subtitle;
-        buttonEl.appendChild(sub);
-      }
       buttonEl.addEventListener('click', function() {
         modal.classList.add('hidden');
         resolve(btn.value);
@@ -5449,21 +4349,48 @@ window._onCardClick = function(triadIndex, position) {
       return;
     }
 
+    // Validate that swapping KAPOW to this position keeps the triad complete
+    var kapowCards2 = completedTriad[kapowPos];
+    var targetCards2 = completedTriad[position];
+    completedTriad[kapowPos] = targetCards2;
+    completedTriad[position] = kapowCards2;
+    var swapKeepsComplete = isTriadComplete(completedTriad);
+    // Restore
+    completedTriad[position] = targetCards2;
+    completedTriad[kapowPos] = kapowCards2;
+    if (!swapKeepsComplete) {
+      gameState.message = 'That swap would break the triad! Choose a different position.';
+      refreshUI();
+      return;
+    }
+
     // Perform the swap
     runWithTriadAnimation(0, function() {
       var fromLabel = positions[kapowPos];
       var toLabel = position;
       swapKapowCard(hand, completedTriadIdx, kapowPos, completedTriadIdx, position);
       logAction(gameState, 0, 'Swaps KAPOW! within completed triad: ' + fromLabel + ' ↔ ' + toLabel);
+      logHandState(gameState, 0);
 
-      // Check if player wants to swap again (KAPOW might be in a new position now)
-      if (hasRevealedKapow(hand.triads[completedTriadIdx])) {
+      // One swap is all that's needed. If KAPOW is now buried (middle or bottom),
+      // auto-proceed to discard — no need to offer another swap.
+      // If KAPOW somehow ended up at top still, allow one more swap attempt.
+      var newKapowPos = null;
+      var posCheck = ['top', 'middle', 'bottom'];
+      for (var pk = 0; pk < posCheck.length; pk++) {
+        var pkCards = hand.triads[completedTriadIdx][posCheck[pk]];
+        if (pkCards.length > 0 && pkCards[0].type === 'kapow') {
+          newKapowPos = posCheck[pk];
+          break;
+        }
+      }
+      if (newKapowPos === 'top') {
+        // KAPOW still at top (swap to bottom/middle wasn't possible) — let player try again
         gameState.message = 'KAPOW! swapped! Swap again, or Discard Triad and End Turn.';
-        logHandState(gameState, 0);
         refreshUI();
       } else {
-        // No more KAPOW in the triad (shouldn't happen), proceed to discard
-        completeWithinTriadSwap(gameState, completedTriadIdx, position);
+        // KAPOW is buried (middle or bottom) — proceed straight to discard
+        completeWithinTriadSwap(gameState, completedTriadIdx, null);
       }
     });
     return;
@@ -5575,19 +4502,14 @@ window._onCardClick = function(triadIndex, position) {
     if (drawnIsPower && targetIsRevealed && !targetIsKapow) {
       var targetIsPowerset = targetPosCards.length > 1;
       var replaceLabel = targetIsPowerset ? 'Replace Powerset' : 'Replace Card';
-      var targetVal = getPositionValue(targetPosCards);
-      var posModVal = drawnCard.modifiers[1];
-      var negModVal = drawnCard.modifiers[0];
-      var modDetail = 'Your ' + cardDescription(targetPosCards[0]) + ' (worth ' + targetVal + ') would become ' + (targetVal + posModVal) + ' or ' + (targetVal + negModVal) + ' with the modifier.';
-      showModal('Power ' + drawnCard.faceValue + ' — Modify or Replace?', [
-        { label: 'Use as Modifier', value: 'modifier', style: 'accent', subtitle: 'Card becomes ' + targetVal + ' ± ' + posModVal },
-        { label: replaceLabel, value: 'replace', style: 'primary', subtitle: 'Swap it out, old card to discard' }
-      ], modDetail).then(function(choice) {
+      showModal('Power ' + drawnCard.faceValue + ' card — how would you like to play it?', [
+        { label: 'Use as Modifier', value: 'modifier', style: 'accent' },
+        { label: replaceLabel, value: 'replace', style: 'primary' }
+      ]).then(function(choice) {
         if (choice === 'modifier') {
-          var baseVal = getPositionValue(targetPosCards);
-          showModal('Which modifier for your ' + cardDescription(targetPosCards[0]) + '?', [
-            { label: '+' + drawnCard.modifiers[1], value: 'positive', style: 'primary', subtitle: 'Value becomes ' + (baseVal + drawnCard.modifiers[1]) },
-            { label: '' + drawnCard.modifiers[0], value: 'negative', style: 'secondary', subtitle: 'Value becomes ' + (baseVal + drawnCard.modifiers[0]) }
+          showModal('Which modifier value?', [
+            { label: '+' + drawnCard.modifiers[1] + ' (positive)', value: 'positive', style: 'primary' },
+            { label: drawnCard.modifiers[0] + ' (negative)', value: 'negative', style: 'secondary' }
           ]).then(function(modChoice) {
             runWithTriadAnimation(0, function() {
               handleAddPowerset(gameState, triadIndex, position, modChoice === 'positive');
@@ -5636,17 +4558,14 @@ window._onCardClick = function(triadIndex, position) {
     // Case 3: Target is a solo Power card, drawn is any non-power card — create powerset or replace
     if (targetIsPower) {
       var existingPower = targetPosCards[0];
-      var drawnVal = drawnCard.faceValue;
-      var psMod = existingPower.modifiers[1];
-      var psDetail = 'Your ' + cardDescription(drawnCard) + ' (worth ' + drawnVal + ') would be modified by Power ' + existingPower.faceValue + ' to become ' + (drawnVal + psMod) + ' or ' + (drawnVal + existingPower.modifiers[0]) + '.';
-      showModal('Power ' + existingPower.faceValue + ' — Create Powerset or Replace?', [
-        { label: 'Create Powerset', value: 'powerset', style: 'accent', subtitle: 'Card ± modifier, keeps both' },
-        { label: 'Replace Card', value: 'replace', style: 'primary', subtitle: 'Swap Power out to discard' }
-      ], psDetail).then(function(choice) {
+      showModal('Target is a Power ' + existingPower.faceValue + ' card — how would you like to play?', [
+        { label: 'Create Powerset', value: 'powerset', style: 'accent' },
+        { label: 'Replace Card', value: 'replace', style: 'primary' }
+      ]).then(function(choice) {
         if (choice === 'powerset') {
-          showModal('Power ' + existingPower.faceValue + ' modifier for your ' + cardDescription(drawnCard) + '?', [
-            { label: '+' + existingPower.modifiers[1], value: 'positive', style: 'primary', subtitle: 'Value becomes ' + (drawnCard.faceValue + existingPower.modifiers[1]) },
-            { label: '' + existingPower.modifiers[0], value: 'negative', style: 'secondary', subtitle: 'Value becomes ' + (drawnCard.faceValue + existingPower.modifiers[0]) }
+          showModal('Power ' + existingPower.faceValue + ' modifier value?', [
+            { label: '+' + existingPower.modifiers[1] + ' (positive)', value: 'positive', style: 'primary' },
+            { label: existingPower.modifiers[0] + ' (negative)', value: 'negative', style: 'secondary' }
           ]).then(function(modChoice) {
             runWithTriadAnimation(0, function() {
               handleCreatePowersetOnPower(gameState, triadIndex, position, modChoice === 'positive');
@@ -5722,16 +4641,12 @@ function onNewGame() {
   aiMoveExplanation = '';
   document.getElementById('explain-modal').classList.add('hidden');
 
-  // Clear save and log for the new game
-  clearSave();
+  // Clear the log for the new game
   try { localStorage.removeItem('kapow-log'); } catch(e) {}
 
-  // Track engagement
-  incrementGamesPlayed();
-
   // Start a fresh game with the same player name
-  gameState = createGameState([playerName, 'Kai']);
-  logSystem(gameState, '=== New Game: ' + playerName + ' vs Kai ===');
+  gameState = createGameState([playerName, 'AI']);
+  logSystem(gameState, '=== New Game: ' + playerName + ' vs AI ===');
   startRound(gameState);
   refreshUI();
 }
@@ -5741,100 +4656,25 @@ function showRoundEnd() {
   var title = document.getElementById('round-end-title');
   var scores = document.getElementById('round-scores');
 
-  var playerRound = gameState.players[0].roundScores[gameState.players[0].roundScores.length - 1];
-  var kaiRound = gameState.players[1].roundScores[gameState.players[1].roundScores.length - 1];
-  var playerWon = playerRound < kaiRound;
-  var tied = playerRound === kaiRound;
+  title.textContent = 'Round ' + gameState.round + ' Complete!';
 
-  if (typeof trackEvent === 'function') trackEvent('round_complete', {
-    round: gameState.round, player_score: playerRound, kai_score: kaiRound, player_won: playerWon
-  });
-
-  title.textContent = 'Round ' + gameState.round;
-
-  // Big winner announcement
-  var winnerClass = tied ? 'tied' : (playerWon ? 'player-won' : 'kai-won');
-  var winnerText = tied ? 'Tied Round!' : (playerWon ? 'You won this round!' : escapeHTML(gameState.players[1].name) + ' won this round');
-  var html = '<div class="round-winner-line ' + winnerClass + '">' + winnerText + '</div>';
-
-  html += '<table style="margin: 0 auto; text-align: left;">';
+  var html = '<table style="margin: 0 auto; text-align: left;">';
   for (var i = 0; i < gameState.players.length; i++) {
     var player = gameState.players[i];
     var roundScore = player.roundScores[player.roundScores.length - 1];
-    var scoreClass = (i === 0) ? 'score-delta-player' : 'score-delta-kai';
-    html += '<tr><td style="padding: 4px 12px; font-weight: bold;">' + escapeHTML(player.name) + '</td>' +
-      '<td style="padding: 4px 12px;"><span class="score-delta ' + scoreClass + '">' + (roundScore >= 0 ? '+' : '') + roundScore + '</span></td>' +
+    html += '<tr><td style="padding: 4px 12px; font-weight: bold;">' + player.name + '</td>' +
+      '<td style="padding: 4px 12px;">Round: ' + (roundScore >= 0 ? '+' : '') + roundScore + '</td>' +
       '<td style="padding: 4px 12px;">Total: ' + player.totalScore + '</td></tr>';
   }
   html += '</table>';
 
-  // Running standings
-  var playerLeading = gameState.players[0].totalScore < gameState.players[1].totalScore;
-  var totalTied = gameState.players[0].totalScore === gameState.players[1].totalScore;
-  var gap = Math.abs(gameState.players[0].totalScore - gameState.players[1].totalScore);
-  if (!totalTied) {
-    var leaderName = playerLeading ? 'You\'re' : escapeHTML(gameState.players[1].name) + ' is';
-    html += '<p style="margin-top:12px; font-size:15px; font-weight:600; opacity:0.9;">' + leaderName + ' leading by ' + gap + ' point' + (gap !== 1 ? 's' : '') + '</p>';
-  }
-
   if (gameState.firstOutPlayer !== null) {
-    var fop = gameState.firstOutPlayer;
-    var fopName = escapeHTML(gameState.players[fop].name);
-    var rawScore = scoreHand(gameState.players[fop].hand);
-    var finalScore = gameState.players[fop].roundScores[gameState.players[fop].roundScores.length - 1];
-    var wasDoubled = finalScore > rawScore;
-    html += '<p style="margin-top: 12px; font-size: 14px; opacity: 0.8;">' + fopName + ' went out first.';
-    if (wasDoubled) {
-      // Distinguish tied vs clearly-higher doubling
-      var otherScores = [];
-      for (var j = 0; j < gameState.players.length; j++) {
-        if (j !== fop) otherScores.push(scoreHand(gameState.players[j].hand));
-      }
-      var lowestOther = Math.min.apply(null, otherScores);
-      var reason = (rawScore === lowestOther) ? 'tied \u2014 must be strictly lowest!' : 'didn\u2019t have the lowest!';
-      html += ' <span style="color: #ef4444;">Score doubled (' + rawScore + ' \u2192 ' + finalScore + ') \u2014 ' + reason + '</span>';
-    }
-    html += '</p>';
-  }
-
-  // Subtle buy CTA after round 3 (skip if email already captured)
-  if (gameState.round >= 3 && !hasGivenEmail()) {
-    html += '<div class="kapow-cta-round">' +
-      buildBuyLink('KAPOW! is also a real card game \u2192 Get it', 'kapow-buy-link') +
-      '</div>';
+    html += '<p style="margin-top: 12px; font-size: 14px; opacity: 0.8;">' +
+      gameState.players[gameState.firstOutPlayer].name + ' went out first.</p>';
   }
 
   scores.innerHTML = html;
   screen.classList.remove('hidden');
-
-  // Dopamine: celebrate round winner
-  if (playerWon) {
-    var stats = recordRoundWin();
-    KapowSounds.roundWin();
-    // Flash the screen green briefly
-    screen.classList.add('round-win-flash');
-    setTimeout(function() { screen.classList.remove('round-win-flash'); }, 600);
-    // Show streak badge if 2+ in a row
-    if (stats.currentStreak >= 2) {
-      setTimeout(function() {
-        KapowSounds.streakPing();
-        var badge = document.createElement('div');
-        badge.className = 'streak-badge';
-        badge.textContent = stats.currentStreak + ' wins in a row!';
-        scores.appendChild(badge);
-        // Challenge link after streak
-        var challengeLink = document.createElement('a');
-        challengeLink.href = '#';
-        challengeLink.className = 'challenge-btn challenge-link-subtle';
-        challengeLink.textContent = 'Challenge a friend to beat that';
-        challengeLink.onclick = function(e) { e.preventDefault(); challengeFriend(); };
-        scores.appendChild(challengeLink);
-      }, 500);
-    }
-  } else {
-    recordRoundLoss();
-    KapowSounds.roundEnd();
-  }
 }
 
 function showGameOver() {
@@ -5849,14 +4689,9 @@ function showGameOver() {
 
   title.textContent = gameState.players[winnerIndex].name + ' Wins!';
 
-  if (typeof trackEvent === 'function') trackEvent('game_over', {
-    player_total: gameState.players[0].totalScore, kai_total: gameState.players[1].totalScore,
-    player_won: winnerIndex === 0, rounds_played: gameState.round
-  });
-
   var html = '<table style="margin: 0 auto; text-align: left;">';
   for (var i = 0; i < gameState.players.length; i++) {
-    html += '<tr><td style="padding: 4px 12px; font-weight: bold;">' + escapeHTML(gameState.players[i].name) + '</td>' +
+    html += '<tr><td style="padding: 4px 12px; font-weight: bold;">' + gameState.players[i].name + '</td>' +
       '<td style="padding: 4px 12px;">Final Score: ' + gameState.players[i].totalScore + '</td></tr>';
   }
   html += '</table>';
@@ -5865,7 +4700,7 @@ function showGameOver() {
   html += '<table style="margin: 0 auto; text-align: center; font-size: 14px;">';
   html += '<tr><th style="padding: 2px 8px;">Round</th>';
   for (var i = 0; i < gameState.players.length; i++) {
-    html += '<th style="padding: 2px 8px;">' + escapeHTML(gameState.players[i].name) + '</th>';
+    html += '<th style="padding: 2px 8px;">' + gameState.players[i].name + '</th>';
   }
   html += '</tr>';
   for (var r = 0; r < gameState.maxRounds; r++) {
@@ -5878,54 +4713,8 @@ function showGameOver() {
   }
   html += '</table>';
 
-  // Share + Challenge + Buy CTA on game over screen
-  html += '<div class="kapow-cta-gameover">' +
-    '<button class="action-btn scorecard-action-btn" onclick="shareGameResults()" style="margin-bottom:10px">Share Results</button>' +
-    '<button class="action-btn scorecard-action-btn challenge-btn" onclick="challengeFriend()" style="margin-bottom:10px">Challenge a Friend</button>' +
-    '<button class="action-btn scorecard-action-btn" onclick="showLeaderboard()" style="margin-bottom:10px">Leaderboard</button>';
-  if (!hasGivenEmail()) {
-    html += '<p>Want to play with real people?</p>' +
-      buildBuyLink('Get KAPOW! \u2192', 'kapow-buy-btn kapow-buy-btn-warm');
-  }
-  html += '</div>';
-
   scores.innerHTML = html;
   screen.classList.remove('hidden');
-
-  // Dopamine: record result and celebrate
-  var playerWon = winnerIndex === 0;
-  var playerScore = gameState.players[0].totalScore;
-  var result = recordGameResult(playerWon, playerScore);
-
-  // Prompt leaderboard submission if this is a new best score
-  setTimeout(function() { promptLeaderboardSubmit(playerScore); }, 1200);
-
-  if (playerWon) {
-    KapowSounds.gameOver(true);
-    screen.classList.add('game-win-flash');
-    setTimeout(function() { screen.classList.remove('game-win-flash'); }, 800);
-
-    // Personal best celebration
-    if (result.isPersonalBest) {
-      setTimeout(function() {
-        KapowSounds.personalBest();
-        var pbBadge = document.createElement('div');
-        pbBadge.className = 'personal-best-badge';
-        pbBadge.innerHTML = '&#9733; New Personal Best: ' + playerScore + ' points!';
-        scores.insertBefore(pbBadge, scores.firstChild);
-      }, 600);
-    }
-
-    // Show win stats
-    var stats = getStats();
-    var statsLine = document.createElement('p');
-    statsLine.className = 'win-stats-line';
-    statsLine.textContent = stats.gamesWon + ' win' + (stats.gamesWon !== 1 ? 's' : '') + ' total';
-    if (stats.bestStreak >= 2) statsLine.textContent += ' \u00b7 Best streak: ' + stats.bestStreak + ' rounds';
-    scores.appendChild(statsLine);
-  } else {
-    KapowSounds.gameOver(false);
-  }
 }
 
 // AI Turn — multi-step sequence with educational visibility
@@ -5954,7 +4743,7 @@ function playAITurn() {
   gameState.aiHighlight = null;
   aiMoveExplanation = ''; // clear previous explanation
   aiSwapHistory = []; // clear swap history to prevent stale data from previous turns
-  gameState.message = "Kai's turn...";
+  gameState.message = "AI's turn...";
   refreshUI();
 
   var needsReveal = gameState.needsFirstReveal && gameState.needsFirstReveal[gameState.currentPlayer];
@@ -5972,20 +4761,18 @@ function aiStepReveal() {
 
   // Reveal first card
   revealCard(gameState.players[1].hand, reveals[0].triadIndex, reveals[0].position);
-  KapowSounds.cardFlip(0.5);
   var card1 = gameState.players[1].hand.triads[reveals[0].triadIndex][reveals[0].position][0];
   gameState.aiHighlight = { type: 'reveal', triadIndex: reveals[0].triadIndex, position: reveals[0].position };
-  gameState.message = 'Kai reveals ' + cardDescription(card1) + ' in Triad ' + (reveals[0].triadIndex + 1) + '.';
+  gameState.message = 'AI reveals ' + cardDescription(card1) + ' in Triad ' + (reveals[0].triadIndex + 1) + '.';
   logAction(gameState, 1, 'Reveals ' + cardDescription(card1) + ' in Triad ' + (reveals[0].triadIndex + 1) + ' (' + reveals[0].position + ')');
   refreshUI();
 
   // Reveal second card after delay
   setTimeout(function() {
     revealCard(gameState.players[1].hand, reveals[1].triadIndex, reveals[1].position);
-    KapowSounds.cardFlip(0.5);
     var card2 = gameState.players[1].hand.triads[reveals[1].triadIndex][reveals[1].position][0];
     gameState.aiHighlight = { type: 'reveal', triadIndex: reveals[1].triadIndex, position: reveals[1].position };
-    gameState.message = 'Kai reveals ' + cardDescription(card2) + ' in Triad ' + (reveals[1].triadIndex + 1) + '.';
+    gameState.message = 'AI reveals ' + cardDescription(card2) + ' in Triad ' + (reveals[1].triadIndex + 1) + '.';
     logAction(gameState, 1, 'Reveals ' + cardDescription(card2) + ' in Triad ' + (reveals[1].triadIndex + 1) + ' (' + reveals[1].position + ')');
     gameState.firstTurnReveals = 0;
     gameState.needsFirstReveal[gameState.currentPlayer] = false;
@@ -6009,10 +4796,7 @@ function aiStepDraw() {
   }
 
   if (!gameState.drawnCard) {
-    // No card available from either pile — force end the AI turn to prevent deadlock
     gameState.aiHighlight = null;
-    endTurn(gameState);
-    aiTurnInProgress = false;
     refreshUI();
     return;
   }
@@ -6020,7 +4804,7 @@ function aiStepDraw() {
   var drawnDesc = cardDescription(gameState.drawnCard);
   var pileLabel = drewFrom === 'discard' ? 'discard pile' : 'draw pile';
   gameState.aiHighlight = { type: 'draw', pile: drewFrom };
-  gameState.message = 'Kai draws ' + drawnDesc + ' from the ' + pileLabel + '.';
+  gameState.message = 'AI draws ' + drawnDesc + ' from the ' + pileLabel + '.';
   if (lastDrawReason) {
     logAction(gameState, 1, 'Reason: ' + lastDrawReason);
   }
@@ -6065,17 +4849,17 @@ function aiStepPlace(action, drewFromDiscard, drawnDesc) {
     var modSign = action.usePositive ? '+' : '';
     var existingPower = gameState.players[1].hand.triads[action.triadIndex][action.position][0];
     var modValue = action.usePositive ? existingPower.modifiers[1] : existingPower.modifiers[0];
-    gameState.message = 'Kai creates powerset in Triad ' + (action.triadIndex + 1) + '.';
+    gameState.message = 'AI creates powerset in Triad ' + (action.triadIndex + 1) + '.';
     handleCreatePowersetOnPower(gameState, action.triadIndex, action.position, action.usePositive);
     gameState.aiHighlight = { type: 'place', triadIndex: action.triadIndex, position: action.position };
   } else if (action.type === 'add-powerset') {
     var posLabel = action.position.charAt(0).toUpperCase() + action.position.slice(1);
-    gameState.message = 'Kai uses modifier in Triad ' + (action.triadIndex + 1) + '.';
+    gameState.message = 'AI uses modifier in Triad ' + (action.triadIndex + 1) + '.';
     handleAddPowerset(gameState, action.triadIndex, action.position, action.usePositive);
     gameState.aiHighlight = { type: 'place', triadIndex: action.triadIndex, position: action.position };
   } else if (action.type === 'replace') {
     var posLabel = action.position.charAt(0).toUpperCase() + action.position.slice(1);
-    gameState.message = 'Kai places ' + drawnDesc + ' in Triad ' + (action.triadIndex + 1) + ' (' + posLabel + ').';
+    gameState.message = 'AI places ' + drawnDesc + ' in Triad ' + (action.triadIndex + 1) + ' (' + posLabel + ').';
     handlePlaceCard(gameState, action.triadIndex, action.position);
     gameState.aiHighlight = { type: 'place', triadIndex: action.triadIndex, position: action.position };
   } else if (drewFromDiscard) {
@@ -6093,14 +4877,14 @@ function aiStepPlace(action, drewFromDiscard, drawnDesc) {
     }
     if (bestT >= 0) {
       var posLabel = bestP.charAt(0).toUpperCase() + bestP.slice(1);
-      gameState.message = 'Kai places ' + drawnDesc + ' in Triad ' + (bestT + 1) + ' (' + posLabel + ').';
+      gameState.message = 'AI places ' + drawnDesc + ' in Triad ' + (bestT + 1) + ' (' + posLabel + ').';
       handlePlaceCard(gameState, bestT, bestP);
       gameState.aiHighlight = { type: 'place', triadIndex: bestT, position: bestP };
     }
   } else {
     handleDiscard(gameState);
     gameState.aiHighlight = { type: 'discard' };
-    gameState.message = 'Kai discards ' + drawnDesc + '.';
+    gameState.message = 'AI discards ' + drawnDesc + '.';
   }
   if (lastActionReason) {
     logAction(gameState, 1, 'Reason: ' + lastActionReason);
@@ -6168,12 +4952,6 @@ function aiStepWithinTriadSwap() {
   var completedTriadIdx = gameState.completedTriadIndex;
   var triad = aiHand.triads[completedTriadIdx];
 
-  // Initialize swap history if not present
-  if (!gameState.withinTriadSwapHistory) {
-    gameState.withinTriadSwapHistory = [];
-  }
-  var swapHistory = gameState.withinTriadSwapHistory;
-
   // Find the KAPOW card in the completed triad
   // KAPOW can be solo or in a powerset with a Power modifier underneath
   var kapowPos = null;
@@ -6186,68 +4964,51 @@ function aiStepWithinTriadSwap() {
     }
   }
 
-  if (!kapowPos) {
-    // No KAPOW found, proceed to discard
-    gameState.withinTriadSwapHistory = null;  // Clear history
+  // No KAPOW, or KAPOW already buried (middle/bottom) — proceed straight to discard.
+  // Only one swap is ever needed: top → bottom or top → middle.
+  // Once buried, no further swaps are evaluated.
+  if (!kapowPos || kapowPos !== 'top') {
     completeWithinTriadSwap(gameState, completedTriadIdx, null);
     return;
   }
 
-  // Evaluate all possible swaps and choose the best one
+  // Find the best single burial swap. Prefer bottom (deepest burial), then middle.
+  // Simulate each candidate and confirm the triad stays complete after the swap.
+  // Uses isTriadComplete() rather than hard-coding set/run rules.
   var bestSwap = null;
-  var bestScore = 0;
+  var burialPreference = ['bottom', 'middle']; // deepest first
 
-  for (var p = 0; p < positions.length; p++) {
-    if (positions[p] === kapowPos) continue;  // Don't swap with itself
+  for (var b = 0; b < burialPreference.length; b++) {
+    var targetPos = burialPreference[b];
 
-    // Prevent oscillation: don't swap KAPOW back to a position it came from
-    if (swapHistory.indexOf(positions[p]) >= 0) continue;
+    // Simulate the swap
+    var kapowCards = triad[kapowPos];
+    var targetCards = triad[targetPos];
+    triad[kapowPos] = targetCards;
+    triad[targetPos] = kapowCards;
+    var stillComplete = isTriadComplete(triad);
+    // Restore
+    triad[targetPos] = targetCards;
+    triad[kapowPos] = kapowCards;
 
-    // Evaluate this swap based on defensive positioning
-    // Strategy: prefer burying KAPOW (middle or bottom) over exposing on top
-    var swapScore = 0;
-
-    if (positions[p] === 'middle') {
-      swapScore = 10;  // Bury KAPOW in middle position
-    } else if (positions[p] === 'bottom') {
-      swapScore = 15;  // Bury KAPOW deep at bottom position
-    } else if (positions[p] === 'top') {
-      swapScore = 0;   // Don't expose KAPOW on top
-    }
-
-    // Add bonus if current position exposes KAPOW on top (avoid this)
-    if (kapowPos === 'top') {
-      swapScore += 5;  // Extra bonus for moving KAPOW away from top
-    }
-
-    if (swapScore > bestScore) {
-      bestScore = swapScore;
-      bestSwap = { from: kapowPos, to: positions[p] };
+    if (stillComplete) {
+      bestSwap = { from: kapowPos, to: targetPos };
+      break; // Take the first (deepest) valid burial and stop
     }
   }
 
-  // Perform the best swap if found
-  if (bestSwap && bestScore > 0) {
-    // Add explanation to AI move description
+  if (bestSwap) {
+    // Perform the single burial swap, then immediately proceed to discard — no loop.
     var explanationText = '<span class="explain-label">Within-Triad Swap:</span> ' +
       'AI swaps KAPOW! from ' + bestSwap.from + ' to ' + bestSwap.to +
-      ' to bury it in the discard pile (prevents you from easily drawing it).';
+      ' position to bury it in the discard pile (prevents you from easily drawing it).';
     aiMoveExplanation += '<p class="explain-step">' + explanationText + '</p>';
 
-    // Perform the swap and record the previous position in history
-    swapHistory.push(bestSwap.from);
     swapKapowCard(aiHand, completedTriadIdx, bestSwap.from, completedTriadIdx, bestSwap.to);
-    logAction(gameState, 1, 'Swaps KAPOW! within completed triad: ' + bestSwap.from + ' ↔ ' + bestSwap.to);
-
-    // Check for more beneficial swaps (same KAPOW may have moved)
-    setTimeout(function() { aiStepWithinTriadSwap(); }, AI_DELAY);
-  } else {
-    // No beneficial swap found, proceed to discard and then cross-triad swaps
-    gameState.withinTriadSwapHistory = null;  // Clear history
-    completeWithinTriadSwap(gameState, completedTriadIdx, null);
-    // After discard, check for cross-triad KAPOW swaps
-    setTimeout(function() { aiStepCheckSwap(); }, AI_DELAY);
+    logAction(gameState, 1, 'Swaps KAPOW! within completed triad: ' + bestSwap.from + ' ↔ ' + bestSwap.to + ' (buried)');
   }
+  // Whether or not a swap was found, discard the triad now.
+  completeWithinTriadSwap(gameState, completedTriadIdx, null);
 }
 
 // AI KAPOW swap: find beneficial swaps (triad completion, score improvement, or face-down on final turns)
@@ -6369,9 +5130,9 @@ function aiStepCheckSwap() {
     swapKapowCard(aiHand, swap.from.triadIndex, swap.from.position, swap.to.triadIndex, swap.to.position);
     var fromLabel = 'Triad ' + (swap.from.triadIndex + 1) + ' (' + swap.from.position + ')';
     var toLabel = 'Triad ' + (swap.to.triadIndex + 1) + ' (' + swap.to.position.charAt(0).toUpperCase() + swap.to.position.slice(1) + ')';
-    gameState.message = 'Kai swaps KAPOW! from ' + fromLabel + ' to ' + toLabel + '.';
+    gameState.message = 'AI swaps KAPOW! from ' + fromLabel + ' to ' + toLabel + '.';
     logAction(gameState, 1, 'Swaps KAPOW! from ' + fromLabel + ' to ' + toLabel);
-    aiMoveExplanation += '\n<p class="explain-step"><span class="explain-label">Swap:</span> Kai moved a KAPOW! card from ' + fromLabel + ' to ' + toLabel + '. KAPOW! cards are wild (worth 0\u201312) but count as 25 points if left unplayed. Moving them to better positions helps complete triads or reduce risk.</p>';
+    aiMoveExplanation += '\n<p class="explain-step"><span class="explain-label">Swap:</span> AI moved a KAPOW! card from ' + fromLabel + ' to ' + toLabel + '. KAPOW! cards are wild (worth 0\u201312) but count as 25 points if left unplayed. Moving them to better positions helps complete triads or reduce risk.</p>';
     gameState.aiHighlight = { type: 'place', triadIndex: swap.to.triadIndex, position: swap.to.position };
 
     // Capture triad state before checking for completions
@@ -6418,32 +5179,6 @@ function aiStepCheckSwap() {
     refreshUI();
   }
 }
-
-// ---- Viewport scaling: shrink the whole game as a unit when window is too narrow ----
-function updateGameScale() {
-  var layout = document.getElementById('page-layout');
-  if (!layout || layout.classList.contains('hidden')) return;
-  // Only scale on desktop — mobile has its own grid layout
-  if (window.innerWidth <= 768) {
-    layout.style.zoom = '';
-    return;
-  }
-  // Reset zoom to measure natural content width
-  layout.style.zoom = '1';
-  var natural = layout.scrollWidth;
-  var available = window.innerWidth;
-  if (natural > available) {
-    layout.style.zoom = Math.max(0.55, available / natural).toFixed(4);
-  } else {
-    layout.style.zoom = '';
-  }
-}
-
-var _scaleTimer;
-window.addEventListener('resize', function() {
-  clearTimeout(_scaleTimer);
-  _scaleTimer = setTimeout(updateGameScale, 50);
-});
 
 // Start
 document.addEventListener('DOMContentLoaded', init);
