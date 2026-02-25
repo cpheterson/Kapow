@@ -2,194 +2,91 @@
 
 ## Version History
 
-### 02-24-2026 v11
-**Fix CSS regression from dad's merge.** Restored our full desktop layout + UI styling; surgically applied dad's two CSS fixes (powerset label position/color, modifier overlap).
+### 02-24-2026
 
-### 02-24-2026 v9
-**Added Dad's VERSION_LOG.md** — his detailed version history tracking AI changes and bug fixes.
+**v12 [Eric]** Merged VERSION_LOG into CHANGELOG — single history file.
 
-### 02-24-2026 v8
-**Dad's AI strategy overhaul (batch 2).**
-- Steeper discard safety formula (two-segment) — prevents AI gifting triad-completing cards
-- KAPOW-swap completion lookahead: AI recognizes placements that complete via one swap
-- KAPOW-aware `aiCountFutureCompletions` for 3-revealed triads with KAPOW
-- KAPOW burial bonus in powerset opportunity scoring
-- Top-position penalty exempted when placement completes triad
-- Single within-triad swap (no loop) — simplified `aiStepWithinTriadSwap`
-- Human swap validates triad stays complete before executing
-- Discard animation after within-triad swap completion
-- AI hang fix: clear `aiTurnInProgress` in `completeWithinTriadSwap`
-- Power card modifier overlap fix (CSS)
-- Powerset value label shown on Power cards
+**v11 [Eric]** Fix CSS regression from dad's merge. Restored full desktop layout + UI styling; surgically applied Chuck's two CSS fixes (powerset label position/color, modifier overlap).
 
-### 02-24-2026 v5
-**Dad's AI improvements (PR #1).**
-- AI can now perform within-triad KAPOW swaps (previously human-only)
-- KAPOW detection handles powersets (KAPOW + Power modifier pairs), not just solo KAPOWs
-- Added debug logging for AI decision candidates and chosen actions
-- Updated `swapKapowCard`, `hasRevealedKapow`, `aiStepWithinTriadSwap` for powerset awareness
+**v10 [Eric]** Integrated Chuck's AI strategy overhaul (batch 2): steeper discard safety, KAPOW-swap completion lookahead, simplified within-triad swap, AI hang fixes, powerset value on cards.
 
-### 02-24-2026 v4
-**Desktop layout fix.**
-- Fixed desktop vertical overflow — replaced 146px center strip with compact inline control bar (zero scroll at 820px)
-- Hidden redundant section headers and triad labels on desktop, reclaiming ~216px vertical space
-- Card height formula now precisely accounts for triad padding, gaps, and borders
-- Bumped service worker cache (v48→v49)
+**v9 [Chuck]** Steepened discard safety formula further — two-segment: above safety=50 mild positive slope, below 50 steep negative, extra steepness below 40. Prevents gifting triad-completing cards even when placement scores are marginal.
 
-### 02-24-2026 v2
-**Analytics docs + SW cache bump.**
-- Added analytics section to CONTRIBUTING.md (events, quick checks, debug tips)
-- Bumped service worker cache (v47→v48) to force fresh version for returning users
-- Updated CONTRIBUTING.md to reflect changelog enforcement
+**v8 [Chuck]** KAPOW-swap completion lookahead in `aiScorePlacement` — awards +80 + existingPoints when placement + one within-triad swap completes triad. Fixed bonus inflation bug (was including placed card's value=25 in existingPoints). Top-position penalty now exempt when placement completes.
 
-### 02-24-2026 v1
-**Bug fixes + hook enforcement.**
-- Fixed powerset log display — stacked power modifiers now show all values (was only showing first)
-- Fixed name screen button centering — How to Play / Leaderboard were left of center on desktop
-- Changelog check in pre-commit hook now blocks commit (was warn-only)
-- Added app icon / favicon to tech debt tracker
+**v7 [Chuck]** Power card modifier overlap fix (CSS: absolute positioning). Powerset value label shown directly on Power cards.
 
-### 02-23-2026 v7
-**GA4 analytics.**
-- Google Analytics 4 wired up with 7 custom events (game_start, tutorial_complete, round_complete, game_over, buy_cta_click, email_submit, feedback_submit)
+**v6 [Chuck]** Within-triad swap overhaul — validated via `isTriadComplete()` simulation, simplified to exactly one swap (no loop), prefers bottom burial. Fixed 5 hang/ordering bugs: human swap hang (`hasRevealedKapow` always true), AI turn not firing (refreshUI/endTurn order), missing refreshUI in else branch, `aiTurnInProgress` guard stuck true. KAPOW-aware `aiCountFutureCompletions` (tests all 13 KAPOW values for triads with value=25 placeholder).
 
-### 02-23-2026 v6
-**Security fixes.**
-- XSS fix: game notes escaped via `escapeHTML()` before innerHTML
-- Leaderboard score injection fix: `parseInt()` on external data
-- Service worker no longer intercepts POST requests (Google Form submissions)
+**v5 [Eric]** Integrated Chuck's AI improvements (PR #1): within-triad KAPOW swaps for AI, powerset-aware KAPOW detection, debug logging.
 
-### 02-23-2026 v5
-**Developer docs.**
-- Added CONTRIBUTING.md — dev setup, architecture, deployment, versioning guide
+**v4 [Eric]** Desktop layout fix — replaced 146px center strip with compact inline control bar (zero scroll at 820px). Hidden triad labels + section headers on desktop. Card height formula: `clamp(68px, calc((100vh - 112px) / 6), 120px)`.
 
-### 02-23-2026 v4
-**Full changelog backfill.**
-- Reconstructed complete project history from initial commit (02-08) through current
+**v3 [Chuck]** Discard safety formula `safety*0.05-2` had tiny range (-2 to +3). New formula `(safety-50)*0.2-2` with extra penalty below 30. Debug logging for AI decision candidates.
 
-### 02-23-2026 v3
-**Test suite + git hooks infrastructure.**
-- Added Vitest test suite: 133 tests across 7 modules (deck, hand, triad, scoring, rules, gameState, ai)
-- Pre-commit hook: runs tests, auto-bumps version, enforces changelog updates
-- Shared `hooks/` directory — Chuck runs `git config core.hooksPath hooks` once
-- CHANGELOG.md backfilled with full project history from initial commit
-- PLAN.md updated with AI improvement roadmap
+**v2 [Eric]** Analytics docs + SW cache bump (v47→v48).
 
-### 02-23-2026 v2
-**AI KAPOW swaps, engagement hooks, merge upstream, UI polish.**
-- AI within-triad KAPOW swaps with oscillation prevention
-- Engagement hooks: challenge-a-friend, global leaderboard (seeded, local-first)
-- Powerset value display redesigned — modifiers shown on card face
-- Merged upstream/master: AI KAPOW swaps, powerset value fixes
-- Fixed cards showing as `?` after merge conflict (missing return)
-- Pile selection says "either pile" (was only showing one option)
-- Buy CTA updated for direct card sales
-- UI polish: glows, badges, buttons, card spacing, loading states
+**v1 [Eric]** Bug fixes: powerset log display, name screen button centering. Changelog check in pre-commit hook now blocks (was warn-only).
 
-### 02-22-2026 v4
-**Email suppression + feedback form.**
-- Buy CTAs suppressed once player has given their email
-- Feedback form wired to Google Form with email, game log, context
-- Reverted price anchoring copy (cards aren't for sale yet)
-- Removed "frozen" from user-facing KAPOW card descriptions
+### 02-23-2026
 
-### 02-22-2026 v3
-**Feedback via Google Form (replaces mailto).**
-- Feedback modal submits to Google Form instead of opening mail client
-- Includes game log and device context automatically
+**v12 [Eric]** GA4 analytics — 7 custom events (game_start, tutorial_complete, round_complete, game_over, buy_cta_click, email_submit, feedback_submit).
 
-### 02-22-2026 v2
-**Game save/resume + feedback flow.**
-- Game save & resume via localStorage — never lose a 30-minute game
-- Mailto-based feedback flow (later replaced by Google Form in v3)
-- `/play` redirect page for QR code in physical packaging
-- Corrected live URL to epheterson.github.io/Kapow/
-- AI renamed to "Kai" throughout README
+**v11 [Eric]** Security fixes — XSS in game notes, leaderboard score injection, SW POST bypass for Google Forms.
 
-### 02-22-2026 v1
-**Buy funnel, email capture, rename AI → Kai, dopamine hits.**
-- Buy modal with email capture form
-- AI opponent renamed to "Kai" throughout UI
-- Big "Start Game" button with breathing glow animation
-- Scorecard: notes, share (Web Share API), version tag, tap-to-close
-- Desktop layout width constraints, message capped at 480px
-- Dopamine hits: round win celebrations, streak badges, personal bests
-- Punchier card animations, juicier KAPOW placement effects
-- Share crash fix (p.scores → p.roundScores), power card context
-- Discard pile no longer hidden behind scorecard on desktop
-- Vertically centered game on desktop, timestamped log exports
-- How-to-play.txt for Chuck to edit rules text
-- Removed Skyjo reference from README
-- PLAN.md added as living project document
+**v10 [Chuck]** Powerset display fix (Power-on-Power shows value). KAPOW burial bonus (+8 per nearby KAPOW, +6 for top position).
 
-### 02-21-2026 v7
-**Fix desktop piles tucked in: replaced CSS grid with flex+center on play-area.**
-- `grid-template-columns: auto 1fr auto` made center column claim full viewport width, pushing piles to screen edges
-- New: `display: flex; justify-content: center` — piles sit directly adjacent to cards
-- `#center-strip` uses `align-self: stretch` to lock width to hand-grid
+**v9 [Eric]** CONTRIBUTING.md — dev setup, architecture, deployment, versioning guide.
 
-### 02-21-2026 v6
-**Fix desktop vertical spacing: remove artificial spreading between hands and center strip.**
-- Card formula overhead increased 165px → 280px to account for center strip + headers
-- Removed fixed height from hands-column, removed `flex: 1` from center-strip
-- Cards top out at ~103px on 900px viewports (still reach 130px at ≥1060px)
+**v8 [Eric]** Full changelog backfill — reconstructed project history from initial commit (02-08) through current.
 
-### 02-21-2026 v5
-**Fix desktop center strip button layout: each element on its own row.**
-- Message, action buttons (Hint + End Turn), and Understand AI's Move each occupy a full-width row
-- `flex: 0 0 100%` enforces single-row-per-element — no horizontal shifting
+**v7 [Eric]** Test suite + git hooks — 133 tests (Vitest) across 7 modules, pre-commit hook (tests, auto-bump, changelog), shared `hooks/` dir.
 
-### 02-21-2026 v4
-**Fix piles shifting horizontally and version to footer center.**
-- CSS grid (`auto 1fr auto`) locks piles in fixed columns
-- Center strip uses `width: fit-content; margin: auto`
-- Revision footer moved from bottom-right to bottom-center
+**v6 [Eric]** Merged Chuck's AI swaps + engagement hooks + UI polish. Leaderboard, challenge-a-friend, powerset display redesign, buy CTA, glows/badges.
 
-### 02-21-2026 v3
-**Stack center strip vertically: message on its own row, buttons below.**
-- `flex-wrap: wrap` on center-strip, `flex: 0 0 100%` on game-message
+**v5 [Chuck]** KAPOW in powersets not detected — `length === 1` missed KAPOW+modifier pairs. Changed to `length > 0` in `hasRevealedKapow`, `swapKapowCard`, `aiStepWithinTriadSwap`.
 
-### 02-21-2026 v2
-**Fix desktop card overflow: viewport-height-based card sizing.**
-- Formula: `clamp(68px, (100vh - 165px) / 6, 130px)` — 6 card rows fill available height
-- Card width derives from height at fixed 100:140 aspect ratio
-- Renamed VERSION_LOG.md → CHANGELOG.md
+**v4 [Chuck]** AI within-triad swaps not triggering — gated to `currentPlayer === 0` (human only). Enabled for both players in `handlePlaceCard`, `handleAddPowerset`, `handleCreatePowersetOnPower`.
 
-### 02-21-2026 v1
-**Merged Eric's fork: mobile UI, sounds, animations, tutorial, PWA, bug fixes.**
-- Mobile-first responsive layout (CSS grid, svh/dvh units, iOS Safari viewport lock)
-- PWA / iOS home screen app (manifest.json, service worker, Apple meta tags)
-- Sound effects via Web Audio API (flip, draw, place, triad chime, KAPOW hit, round/game end)
-- Card animations (3D flip on reveal, slide-in on placement, screen shake on triad, KAPOW glow)
-- Interactive tutorial — first game uses stacked deck with coaching messages; replayable from Help
-- "How to Play" modal with 5 tabs (Basics, Cards, Turns, Scoring, Tips) + YouTube link
-- Hint button — AI-powered best-move suggestion
-- "Understand AI's Move" lightbulb tips — contextual strategic insights in explanation modal
-- AI banter shown above AI hand on mobile
-- Cached player name via localStorage; welcome-back message on return
-- TOP row label on first triad for orientation
-- XSS fix: player name sanitized with escapeHTML()
-- AI deadlock fix: empty draw + discard pile no longer silently freezes the game
-- Scoring null guard: applyFirstOutPenalty no longer crashes when nobody went out
-- Doubling penalty explanation on round-end screen
-- Also merged Chuck's AI fixes: going-out-via-triad-completion detection,
-  matched-pair destruction penalty, stronger discard safety (0.4× → 1.0×),
-  draw-from-discard going-out guard
+**v3 [Chuck]** Reverted incorrect Power card scoring — briefly treated as 0 points. Correct: solo Power = face value (1 or 2); in powerset = face + modifier.
 
-### 02-20-2026 v3
-**Fixed AI explanation to avoid nonsensical future completion paths when going out.**
-- Explanation now focuses on going-out decision when placement triggers going out
-- Clarifies why timing was right to end the round
+**v2 [Chuck]** AI within-triad KAPOW swaps with oscillation prevention — swap history tracking, depth preference bottom > middle > top, recursive evaluation.
 
-### 02-20-2026 v2
-**Strengthened discard safety penalty for opponent-completion cards.**
-- Scaling factor for replaced-card discard penalty from 0.4 → 1.0
-- Penalty directly proportional to danger level (stronger deterrent)
+**v1 [Chuck]** New session, carrying forward 02-21 changes.
 
-### 02-20-2026 v1
-**Initial revision tracking. Software revision footer added.**
-- Revision footer in lower right corner: `02-20-2026 v1`
-- Created CHANGELOG.md
+### 02-22-2026
+
+**v4 [Eric]** Email suppression + feedback form via Google Form with game log, device context.
+
+**v3 [Eric]** Feedback via Google Form (replaces mailto). Auto-includes game log and device context.
+
+**v2 [Eric]** Game save/resume via localStorage. `/play` redirect page for QR code. AI renamed to "Kai" in README.
+
+**v1 [Eric]** Buy funnel, email capture, rename AI → Kai, dopamine hits. Scorecard (notes, share, tap-to-close), desktop layout constraints, card animations, breathing glow button, share crash fix.
+
+### 02-21-2026
+
+**v7 [Eric]** Fix desktop piles tucked in — replaced CSS grid with flex+center on play-area.
+
+**v6 [Eric]** Fix desktop vertical spacing — card formula overhead 165px → 280px, removed flex:1 from center-strip.
+
+**v5 [Eric]** Fix desktop center strip — each element on its own row via `flex: 0 0 100%`.
+
+**v4 [Eric]** Fix piles shifting horizontally — CSS grid locks columns. Revision footer to center.
+
+**v3 [Eric/Chuck]** Stack center strip vertically. Chuck: powerset value on card face ("Powerset = X").
+
+**v2 [Eric/Chuck]** Viewport-height card sizing formula. Chuck: removed deprecated `isFrozen`/`assignedValue` from KAPOW cards.
+
+**v1 [Eric/Chuck]** Merged Eric's fork into Chuck's: mobile UI, sounds, animations, tutorial, PWA, hint system, "Understand AI's Move", AI banter, XSS fix, deadlock fix, scoring guard. Chuck: within-triad KAPOW swaps (new swap phase, `hasRevealedKapow()`, `completeWithinTriadSwap()`).
+
+### 02-20-2026
+
+**v3 [Chuck]** Fixed AI explanation — avoids nonsensical future completion paths when going out.
+
+**v2 [Chuck]** Strengthened discard safety penalty — scaling factor 0.4 → 1.0.
+
+**v1 [Chuck]** Initial revision tracking. Software revision footer added.
 
 ---
 
@@ -268,48 +165,8 @@
 
 ---
 
-## Chuck's AI Development Log
-
-*Detailed root-cause analysis and AI debugging notes from Chuck's fork (cpheterson/Kapow). Version numbers reference his fork's versioning, not the main repo.*
-
-### 02-24: KAPOW Swap Completion Strategy
-- **v1:** AI/human within-triad swap now validated via `isTriadComplete()` simulation before committing. Sets always valid; runs can break (e.g., K with middle when mid=0 ascending). Human gets "That swap would break the triad!" message on invalid targets.
-- **v2:** Rewrote `aiStepWithinTriadSwap` — exactly one swap, no loop. Prefers bottom (deepest burial), falls back to middle. Removed `withinTriadSwapHistory`. Exempted top-position KAPOW penalty when placement completes triad.
-- **v3:** Fixed human swap hanging — `hasRevealedKapow` always true after swap. Now checks new position: if buried (mid/bot) → auto-discard; if still top → one more attempt.
-- **v4:** Fixed AI not taking turn after human swap+discard. `refreshUI()` was before `endTurn()` — AI trigger check saw human's turn. Swapped order.
-- **v5:** KAPOW-aware `aiCountFutureCompletions` — value 25 (KAPOW placeholder) now tested against all 13 possible values. [5,K,11] was scoring 0 paths (penalty -20); now correctly finds paths like [9,10,11].
-- **v6:** Missing `refreshUI()` in else branch of `completeWithinTriadSwap` — same class of bug as v4.
-- **v7:** `aiTurnInProgress` never cleared after within-triad swap path (bypasses `aiStepCheckSwap`). Guard stuck true → next AI turn never starts.
-- **v8:** Discard safety formula `safety*0.05-2` had tiny range (-2 to +3). Card completing opponent's triad (safety=25) scored -0.75, barely negative. New formula: `(safety-50)*0.2-2` with extra penalty below 30.
-- **v9:** Power card modifier (+/-) values overlapping powerset label. Fixed with absolute positioning.
-- **v10:** One-step KAPOW-swap lookahead in `aiScorePlacement` — if placement + one swap completes triad, awards +80 + existingPoints (vs +100 for direct completion).
-- **v11:** Steepened discard safety: two-segment formula. Above 50: mild positive `(s-50)*0.15-2`. Below 50: steep negative `-(50-s)*0.4-2`, extra steepness below 40.
-- **v12:** Fixed KAPOW-swap completion bonus including placed card's value (25) in existingPoints, inflating swap path over direct completion. Now skips placed slot.
-
-### 02-23: Within-Triad Swaps & Powerset Detection
-- **v1:** New session begins, carrying forward 02-21 changes.
-- **v2:** AI within-triad KAPOW swaps with oscillation prevention (swap history tracking, depth preference bottom>middle>top).
-- **v3:** Reverted incorrect Power card scoring (briefly treated as 0 points instead of face value).
-- **v4:** AI within-triad swaps weren't triggering — gated to `currentPlayer === 0` (human only). Enabled for both players in three handlers.
-- **v5:** KAPOW in powersets [KAPOW, P1] not detected — `length === 1` check missed pairs. Changed to `length > 0`.
-- **v6:** Powerset display fix (Power-on-Power shows value), KAPOW burial bonus (+8 per nearby KAPOW, +6 for top position).
-
-### 02-21: Powerset Display & Frozen KAPOW Cleanup
-- **v1:** Within-triad KAPOW swaps — new swap phase after placement, before triad discard. New helpers: `hasRevealedKapow()`, `completeWithinTriadSwap()`.
-- **v2:** Removed deprecated `isFrozen`/`assignedValue` from KAPOW cards. Simplified all checks.
-- **v3:** Powerset value displayed on card face ("Powerset = X") instead of below card.
-
-### 02-20: Initial AI Refinements
-- **v1:** Software revision footer added, VERSION_LOG.md created.
-- **v2:** Discard safety scaling factor 0.4→1.0 for opponent-completion cards.
-- **v3:** AI explanation avoids nonsensical future completion paths when going out.
-
----
-
 ## Version Numbering Convention
 
 - Format: `MM-DD-YYYY vN` where N resets to 1 each new date
 - Pre-commit hook auto-bumps version on every commit
 - `scorecard-version` div in `index.html` is the source of truth
-
-## Latest Version: 02-24-2026 v12
