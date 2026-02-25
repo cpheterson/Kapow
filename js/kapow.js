@@ -1261,6 +1261,8 @@ function advanceRound(state) {
     }
     // Auto-save the complete game log
     exportLog(true);
+    // Send telemetry
+    KapowTelemetry.onGameComplete(state);
     return state;
   }
   // Save who went out first so they go first next round
@@ -3992,6 +3994,14 @@ function init() {
 }
 
 function startGameWithName() {
+  // Show privacy banner on first game if not yet decided
+  try {
+    var consent = localStorage.getItem('kapow-telemetry-consent');
+    if (!consent) {
+      document.getElementById('privacy-banner').classList.remove('hidden');
+    }
+  } catch(e) {}
+
   var input = document.getElementById('player-name-input');
   var name = input.value.trim();
   if (!name) name = 'Player';
@@ -4008,6 +4018,7 @@ function startGameWithName() {
 
   gameState = createGameState([name, 'AI']);
   logSystem(gameState, '=== New Game: ' + name + ' vs AI ===');
+  KapowTelemetry.startTimer();
   startRound(gameState);
   bindGameEvents();
   refreshUI();
@@ -4647,6 +4658,7 @@ function onNewGame() {
   // Start a fresh game with the same player name
   gameState = createGameState([playerName, 'AI']);
   logSystem(gameState, '=== New Game: ' + playerName + ' vs AI ===');
+  KapowTelemetry.startTimer();
   startRound(gameState);
   refreshUI();
 }

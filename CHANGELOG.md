@@ -4,6 +4,15 @@
 
 ## Version History
 
+### 02-25-2026
+
+**v16 [Eric]** Telemetry system, analytics dashboard, scoreboard UX fix.
+- Game telemetry (telemetry.js): anonymous stats collection via Google Form → Sheet pipeline, player consent flow, abandonment tracking, GA4 events
+- Analytics dashboard (dashboard.html): live data via Apps Script API, Chart.js charts, 8 stat cards, recent games table, manual import feature
+- Scoreboard close fix: defined missing `closeSidebar()`, tap-anywhere-to-close on mobile overlay, improved X button visibility
+- Privacy consent banner for telemetry opt-in
+- Feedback modal with game log auto-capture
+
 ### 02-24-2026
 
 **v20 [Eric]** Unified changelog — merged VERSION_LOG.md into CHANGELOG.md with `[Eric]`/`[Chuck]` tags.

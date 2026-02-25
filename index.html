@@ -57,6 +57,17 @@
     </div>
   </div>
 
+  <!-- Privacy Consent Banner -->
+  <div id="privacy-banner" class="hidden">
+    <div class="privacy-banner-content">
+      <p>KAPOW! collects anonymous game stats (scores, rounds played) to improve the game. No personal info is collected unless you've shared your email.</p>
+      <div class="privacy-banner-buttons">
+        <button class="action-btn" onclick="KapowTelemetry.giveConsent();document.getElementById('privacy-banner').classList.add('hidden')">That's fine</button>
+        <button class="link-btn" onclick="KapowTelemetry.revokeConsent();document.getElementById('privacy-banner').classList.add('hidden')">No thanks</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Buy Interstitial (shown before game for engaged players) -->
   <div id="kapow-interstitial" class="hidden">
     <div class="interstitial-content">
@@ -199,8 +210,8 @@
 
   <!-- Scorecard Sidebar -->
   <div id="sidebar" onclick="closeSidebar(event)">
-    <div id="scorecard">
-    <button id="scorecard-close" onclick="event.stopPropagation();document.getElementById('sidebar').classList.remove('mobile-visible')">&times;</button>
+    <div id="scorecard" onclick="closeSidebar(event)">
+    <button id="scorecard-close" onclick="event.stopPropagation();document.getElementById('sidebar').classList.remove('mobile-visible')">&#x2715;</button>
     <h3>Scorecard</h3>
     <table id="scorecard-table">
       <thead>
@@ -239,7 +250,7 @@
       <button id="btn-add-note" class="action-btn scorecard-action-btn" onclick="event.stopPropagation();addGameNote()">Add Note</button>
       <button id="btn-export-log" class="action-btn scorecard-action-btn" onclick="event.stopPropagation()">Export Log</button>
     </div>
-    <div class="scorecard-version">02-24-2026 v14</div>
+    <div class="scorecard-version">02-25-2026 v17</div>
     </div>
     <div id="ai-commentary"></div>
   </div>
@@ -461,11 +472,19 @@
   </script>
 
   <script src="js/sound.js"></script>
+  <script src="js/telemetry.js"></script>
   <script src="js/kapow.js"></script>
   <script>
     // Register service worker for offline/PWA support
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(function() {});
+    }
+
+    // Close scorecard sidebar on tap (mobile overlay)
+    function closeSidebar(e) {
+      // Don't close if tapping buttons or interactive elements
+      if (e.target.closest('button') || e.target.closest('a') || e.target.closest('select') || e.target.closest('input')) return;
+      document.getElementById('sidebar').classList.remove('mobile-visible');
     }
 
     // Prevent iOS Safari rubber-band bounce scrolling
