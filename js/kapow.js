@@ -4154,6 +4154,16 @@ function refreshUI() {
     turnCounterEl.textContent = 'Round ' + gameState.round + ' \u2014 Turn ' + gameState.turnNumber;
   }
 
+  // Mobile score bar — cumulative scores + current round
+  var mobileRound = document.getElementById('mobile-round');
+  if (mobileRound) mobileRound.textContent = 'Round ' + gameState.round;
+  var mobilePlayerScore = document.getElementById('mobile-player-score');
+  if (mobilePlayerScore) mobilePlayerScore.textContent = gameState.players[0].totalScore;
+  var mobileAiScore = document.getElementById('mobile-ai-score');
+  if (mobileAiScore) mobileAiScore.textContent = gameState.players[1].totalScore;
+  var mobilePlayerLabel = document.getElementById('mobile-player-label');
+  if (mobilePlayerLabel) mobilePlayerLabel.textContent = gameState.players[0].name;
+
   // Scorecard sidebar
   renderScorecard(gameState);
 
@@ -4749,10 +4759,50 @@ function showGameOver() {
   scores.innerHTML = html;
   screen.classList.remove('hidden');
 
+  // Save game to history
+  saveGameToHistory(gameState, winnerIndex);
+
   // Prompt leaderboard submit if player won
   if (winnerIndex === 0 && typeof promptLeaderboardSubmit === 'function') {
     setTimeout(promptLeaderboardSubmit, 1500);
   }
+}
+
+// ── Game History (localStorage) ────────────────
+var GAME_HISTORY_KEY = 'kapow-game-history';
+var GAME_HISTORY_MAX = 50;
+
+function saveGameToHistory(state, winnerIndex) {
+  try {
+    var player = state.players[0];
+    var kai = state.players[1];
+    var entry = {
+      date: new Date().toISOString(),
+      playerName: player.name,
+      playerScore: player.totalScore,
+      kaiScore: kai.totalScore,
+      winner: winnerIndex === 0 ? 'player' : 'kai',
+      rounds: state.round,
+      roundScores: { player: player.roundScores, kai: kai.roundScores },
+      notes: (typeof gameNotes !== 'undefined' && gameNotes.length > 0) ? gameNotes.slice() : [],
+      playerId: (typeof KapowTelemetry !== 'undefined') ? KapowTelemetry.getPlayerId() : ''
+    };
+    var history = getGameHistory();
+    history.push(entry);
+    // Cap at max entries
+    if (history.length > GAME_HISTORY_MAX) {
+      history = history.slice(history.length - GAME_HISTORY_MAX);
+    }
+    localStorage.setItem(GAME_HISTORY_KEY, JSON.stringify(history));
+  } catch(e) {}
+}
+
+function getGameHistory() {
+  try {
+    var raw = localStorage.getItem(GAME_HISTORY_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return [];
 }
 
 // AI Turn — multi-step sequence with educational visibility

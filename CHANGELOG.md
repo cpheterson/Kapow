@@ -51,6 +51,8 @@
 - Export: includes player notes in exported game log
 - Toast notification system (replaces alert dialogs)
 - Notes cleared on new game start
+- Game history: completed games saved to localStorage (last 50), includes scores, rounds, notes, player ID — for future stats/history UI
+- Fix: mobile score bar now updates live — shows cumulative scores and current round number (was stuck on "Round 1 You 0 Kai 0")
 
 **v16 [Eric]** Telemetry system, analytics dashboard, scoreboard UX fix.
 - Game telemetry (telemetry.js): anonymous stats collection via Google Form → Sheet pipeline, player consent flow, abandonment tracking, GA4 events
