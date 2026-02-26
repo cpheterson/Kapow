@@ -4000,13 +4000,6 @@ function init() {
 }
 
 function startGameWithName() {
-  // Show privacy banner on first game if not yet decided
-  try {
-    var consent = localStorage.getItem('kapow-telemetry-consent');
-    if (!consent) {
-      document.getElementById('privacy-banner').classList.remove('hidden');
-    }
-  } catch(e) {}
 
   var input = document.getElementById('player-name-input');
   var name = input.value.trim();

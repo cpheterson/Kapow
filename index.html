@@ -57,11 +57,14 @@
     </div>
   </div>
 
-  <!-- Privacy Notice -->
-  <div id="privacy-banner" class="hidden">
-    <div class="privacy-banner-content">
-      <p>KAPOW! collects anonymous game stats to improve the game. No personal info is stored.</p>
-      <button class="action-btn" onclick="document.getElementById('privacy-banner').classList.add('hidden')">Got it</button>
+  <!-- Privacy Modal -->
+  <div id="privacy-modal" class="hidden" onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="privacy-modal-content">
+      <button class="buy-modal-close" onclick="document.getElementById('privacy-modal').classList.add('hidden')">&times;</button>
+      <h2>Privacy</h2>
+      <p>KAPOW! collects anonymous game stats (scores, rounds, session length) to improve the game. No personal info is stored unless you voluntarily share your email.</p>
+      <p style="margin-top:12px;opacity:0.6;font-size:13px;">You can opt out anytime — just tap below.</p>
+      <button class="action-btn" style="margin-top:12px;" onclick="KapowTelemetry.revokeConsent();this.textContent='Opted out';this.disabled=true">Opt Out of Stats</button>
     </div>
   </div>
 
@@ -246,8 +249,13 @@
       </div>
       <button id="btn-add-note" class="action-btn scorecard-action-btn" onclick="event.stopPropagation();addGameNote()">Add Note</button>
       <button id="btn-export-log" class="action-btn scorecard-action-btn" onclick="event.stopPropagation()">Export Log</button>
+      <div class="scorecard-links">
+        <a href="#" onclick="event.preventDefault();event.stopPropagation();showFeedbackModal()">Feedback</a>
+        <span class="footer-sep">·</span>
+        <a href="#" onclick="event.preventDefault();event.stopPropagation();document.getElementById('privacy-modal').classList.remove('hidden')">Privacy</a>
+      </div>
     </div>
-    <div class="scorecard-version">02-25-2026 v19</div>
+    <div class="scorecard-version">02-25-2026 v22</div>
     </div>
     <div id="ai-commentary"></div>
   </div>
@@ -331,6 +339,8 @@
     <a id="footer-buy-link" href="#" onclick="event.preventDefault();showBuyModal()" class="footer-buy">Get the Card Game &rarr;</a>
     <span class="footer-sep">·</span>
     <a href="#" class="footer-feedback" onclick="event.preventDefault();showFeedbackModal()">Feedback</a>
+    <span class="footer-sep">·</span>
+    <a href="#" class="footer-feedback" onclick="event.preventDefault();document.getElementById('privacy-modal').classList.remove('hidden')">Privacy</a>
   </div>
 
   <!-- Help / Rules Modal -->
