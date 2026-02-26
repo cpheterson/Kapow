@@ -18,6 +18,7 @@
 - AI → Kai: all user-facing game messages and "Understand Move" explanations now say "Kai" instead of "AI"
 - Mobile center strip: fixed height prevents button growth from shifting card hands
 - Round-end screen: shows winner announcement ("You win the round!" / "Kai wins!" / "Tie!") with colored text
+- Telemetry: on by default (was opt-in, blocking all data collection). Simple "Got it" notice replaces two-button consent banner
 
 **v16 [Eric]** Telemetry system, analytics dashboard, scoreboard UX fix.
 - Game telemetry (telemetry.js): anonymous stats collection via Google Form → Sheet pipeline, player consent flow, abandonment tracking, GA4 events

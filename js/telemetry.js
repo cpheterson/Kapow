@@ -277,7 +277,8 @@ var KapowTelemetry = (function() {
   var PRIVACY_CONSENT_KEY = 'kapow-telemetry-consent';
 
   function hasConsent() {
-    try { return localStorage.getItem(PRIVACY_CONSENT_KEY) === 'yes'; } catch(e) { return false; }
+    // Default to yes — telemetry is on unless explicitly opted out
+    try { return localStorage.getItem(PRIVACY_CONSENT_KEY) !== 'no'; } catch(e) { return true; }
   }
 
   function giveConsent() {

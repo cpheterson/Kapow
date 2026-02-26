@@ -57,14 +57,11 @@
     </div>
   </div>
 
-  <!-- Privacy Consent Banner -->
+  <!-- Privacy Notice -->
   <div id="privacy-banner" class="hidden">
     <div class="privacy-banner-content">
-      <p>KAPOW! collects anonymous game stats (scores, rounds played) to improve the game. No personal info is collected unless you've shared your email.</p>
-      <div class="privacy-banner-buttons">
-        <button class="action-btn" onclick="KapowTelemetry.giveConsent();document.getElementById('privacy-banner').classList.add('hidden')">That's fine</button>
-        <button class="link-btn" onclick="KapowTelemetry.revokeConsent();document.getElementById('privacy-banner').classList.add('hidden')">No thanks</button>
-      </div>
+      <p>KAPOW! collects anonymous game stats to improve the game. No personal info is stored.</p>
+      <button class="action-btn" onclick="document.getElementById('privacy-banner').classList.add('hidden')">Got it</button>
     </div>
   </div>
 
@@ -250,7 +247,7 @@
       <button id="btn-add-note" class="action-btn scorecard-action-btn" onclick="event.stopPropagation();addGameNote()">Add Note</button>
       <button id="btn-export-log" class="action-btn scorecard-action-btn" onclick="event.stopPropagation()">Export Log</button>
     </div>
-    <div class="scorecard-version">02-25-2026 v18</div>
+    <div class="scorecard-version">02-25-2026 v19</div>
     </div>
     <div id="ai-commentary"></div>
   </div>
