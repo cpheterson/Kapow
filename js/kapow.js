@@ -4041,6 +4041,10 @@ function bindGameEvents() {
   document.getElementById('btn-export-log').addEventListener('click', exportLog);
   document.getElementById('btn-understand-move').addEventListener('click', onUnderstandMove);
   document.getElementById('btn-close-explain').addEventListener('click', onCloseExplain);
+
+  // Mobile secondary action buttons (mirror desktop)
+  var mobileUnderstand = document.getElementById('mobile-understand-btn');
+  if (mobileUnderstand) mobileUnderstand.addEventListener('click', onUnderstandMove);
 }
 
 function onEndTurn() {
@@ -4210,10 +4214,11 @@ function refreshUI() {
   }
 
   // Understand AI's Move button: enabled when it's human's turn and explanation exists
+  var understandEnabled = isHumanTurn && aiMoveExplanation;
   var understandBtn = document.getElementById('btn-understand-move');
-  if (understandBtn) {
-    understandBtn.disabled = !(isHumanTurn && aiMoveExplanation);
-  }
+  if (understandBtn) understandBtn.disabled = !understandEnabled;
+  var mobileUnderstandBtn = document.getElementById('mobile-understand-btn');
+  if (mobileUnderstandBtn) mobileUnderstandBtn.disabled = !understandEnabled;
 
   // Phase screens
   if (phase === 'scoring') {

@@ -1166,12 +1166,17 @@ body::before {
 .mute-btn {
   background: none;
   border: none;
-  font-size: 14px;
+  font-size: 16px;
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 4px 8px;
   line-height: 1;
   opacity: 0.5;
   transition: opacity 0.15s ease;
+  min-width: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mute-btn:hover {
@@ -1186,6 +1191,19 @@ body::before {
 /* ---- Mobile Score Bar (hidden on desktop) ---- */
 #mobile-score-bar {
   display: none;
+}
+
+/* ---- Mobile Secondary Actions (hidden on desktop) ---- */
+#mobile-secondary-actions {
+  display: none;
+}
+
+/* ---- Desktop Secondary Actions (shown on desktop, hidden on mobile) ---- */
+#desktop-secondary-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ---- Mobile Banter (hidden on desktop) ---- */
@@ -1272,8 +1290,17 @@ body::before {
   }
 
   #mobile-score-bar,
-  #mobile-banter {
+  #mobile-banter,
+  #mobile-secondary-actions {
     display: none !important;
+  }
+
+  /* Desktop: show Hint + Understand in center strip */
+  #desktop-secondary-actions {
+    display: flex !important;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
   }
 
   /* --- Center strip: stacked message above buttons ---
@@ -1464,12 +1491,12 @@ body::before {
     align-items: center;
     gap: 10px;
     padding: 0;
-    height: 32px;
+    height: 40px;
     font-weight: 700;
     background: rgba(0, 0, 0, 0.45);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    border-radius: 10px;
+    border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     margin-bottom: 2px;
     flex-shrink: 0;
@@ -1477,33 +1504,76 @@ body::before {
 
   /* Top bar button style (? and Score) — match center strip bg */
   .top-bar-btn {
-    height: 32px;
+    height: 40px;
     background: rgba(0, 0, 0, 0.45);
     border: 1px solid rgba(255, 255, 255, 0.08);
     color: rgba(255, 255, 255, 0.7);
     font-family: var(--font-body);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
     cursor: pointer;
-    padding: 0 12px;
+    padding: 0 14px;
     flex-shrink: 0;
+    min-width: 44px;
   }
 
   #mobile-help-btn {
-    border-radius: 10px 0 0 10px;
-    width: 36px;
+    border-radius: 12px 0 0 12px;
+    width: 44px;
     padding: 0;
-    font-size: 15px;
+    font-size: 17px;
     border-right: none;
   }
 
   #sidebar-toggle {
     display: block;
-    border-radius: 0 10px 10px 0;
+    border-radius: 0 12px 12px 0;
     color: var(--color-accent);
     letter-spacing: 0.5px;
     margin-left: auto;
     border-left: none;
+  }
+
+  /* Mobile secondary actions: Hint + Understand below score bar */
+  #mobile-secondary-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 2px 0;
+  }
+
+  .secondary-action-btn {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    min-height: 32px;
+    transition: all 0.2s ease;
+  }
+
+  .secondary-action-btn:disabled {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+
+  .secondary-action-btn:not(:disabled):active {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  .secondary-action-btn.understand-btn:not(:disabled) {
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Hide desktop secondary actions on mobile */
+  #desktop-secondary-actions {
+    display: none !important;
   }
 
   .top-bar-btn:active {
@@ -1536,19 +1606,19 @@ body::before {
 
   #mobile-score-bar .score-label {
     color: rgba(255, 255, 255, 0.6);
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 600;
   }
 
   #mobile-score-bar .score-value {
     color: var(--color-accent);
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 700;
   }
 
   #mobile-score-bar .round-info {
     color: rgba(255, 255, 255, 0.5);
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 600;
     display: flex;
     align-items: center;
@@ -1849,17 +1919,18 @@ body::before {
 
   #mobile-score-bar {
     gap: 6px;
-    height: 28px;
+    height: 36px;
   }
 
   .top-bar-btn {
-    height: 28px;
-    font-size: 11px;
-    padding: 0 8px;
+    height: 36px;
+    font-size: 12px;
+    padding: 0 10px;
+    min-width: 40px;
   }
 
   #mobile-help-btn {
-    width: 30px;
+    width: 36px;
   }
 
 }

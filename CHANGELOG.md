@@ -53,6 +53,12 @@
 - Notes cleared on new game start
 - Game history: completed games saved to localStorage (last 50), includes scores, rounds, notes, player ID — for future stats/history UI
 - Fix: mobile score bar now updates live — shows cumulative scores and current round number (was stuck on "Round 1 You 0 Kai 0")
+- Mobile layout: moved Hint + Understand Kai's Move out of center strip into secondary bar below score bar
+- Center strip now just game message + End Turn — less cramped, no more accidental Understand taps
+- Score bar enlarged (40px height, larger fonts) for better tap targets on mobile
+- Removed extra divider between ? button and Round indicator
+- All tap targets meet 36px+ minimum for mobile accessibility
+- Desktop layout unchanged — Hint + Understand stay in center strip on wide screens
 
 **v16 [Eric]** Telemetry system, analytics dashboard, scoreboard UX fix.
 - Game telemetry (telemetry.js): anonymous stats collection via Google Form → Sheet pipeline, player consent flow, abandonment tracking, GA4 events

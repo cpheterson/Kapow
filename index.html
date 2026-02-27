@@ -105,7 +105,6 @@
     <!-- Mobile top bar: unified row with all controls -->
     <div id="mobile-score-bar">
       <button id="mobile-help-btn" class="top-bar-btn" onclick="document.getElementById('help-modal').classList.remove('hidden')">?</button>
-      <span class="score-bar-sep"></span>
       <span class="round-info" id="mobile-round">Round 1</span>
       <span class="score-bar-sep"></span>
       <span><span class="score-label" id="mobile-player-label">You</span> <span class="score-value" id="mobile-player-score">0</span></span>
@@ -113,6 +112,12 @@
       <span class="score-bar-sep"></span>
       <button id="btn-mute" class="mute-btn" title="Mute sounds" onclick="KapowSounds.toggleMute()">&#x1F50A;</button>
       <button id="sidebar-toggle" class="top-bar-btn" onclick="document.getElementById('sidebar').classList.toggle('mobile-visible')">Score</button>
+    </div>
+
+    <!-- Mobile secondary actions: Hint + Understand (below score bar, above AI hand) -->
+    <div id="mobile-secondary-actions">
+      <button id="mobile-hint-btn" class="secondary-action-btn hint-btn" disabled>Hint</button>
+      <button id="mobile-understand-btn" class="secondary-action-btn understand-btn" disabled>Understand Kai's Move</button>
     </div>
 
     <!-- Mobile AI banter (above AI hand) -->
@@ -139,14 +144,17 @@
           <div id="ai-hand" class="hand-grid"></div>
         </section>
 
-        <!-- Center strip: Message + Buttons + Understand AI -->
+        <!-- Center strip: Message + End Turn only (Hint + Understand moved to mobile secondary bar) -->
         <div id="center-strip">
           <div id="game-message">Welcome to KAPOW!</div>
           <div id="action-controls">
-            <button id="btn-hint" class="action-btn hint-btn" disabled>Hint</button>
             <button id="btn-end-turn" class="action-btn" disabled>End Turn</button>
           </div>
-          <button id="btn-understand-move" class="action-btn understand-btn" disabled>Understand Kai's Move</button>
+          <!-- Desktop-only: Hint + Understand stay in center strip on wide screens -->
+          <div id="desktop-secondary-actions">
+            <button id="btn-hint" class="action-btn hint-btn" disabled>Hint</button>
+            <button id="btn-understand-move" class="action-btn understand-btn" disabled>Understand Kai's Move</button>
+          </div>
         </div>
 
         <!-- Player Hand Area -->
@@ -259,7 +267,7 @@
         <a href="#" class="scorecard-deck-link footer-buy" onclick="event.preventDefault();event.stopPropagation();showBuyModal()">Get the Card Game &rarr;</a>
       </div>
     </div>
-    <div class="scorecard-version">02-26-2026 v6</div>
+    <div class="scorecard-version">02-27-2026 v1</div>
     </div>
     <div id="ai-commentary"></div>
   </div>
