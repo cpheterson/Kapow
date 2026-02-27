@@ -59,6 +59,8 @@
 - Removed extra divider between ? button and Round indicator
 - All tap targets meet 36px+ minimum for mobile accessibility
 - Desktop layout unchanged — Hint + Understand stay in center strip on wide screens
+- Restored Hint button: uses AI scoring engine (`aiScorePlacement`) to suggest best moves — context-aware for reveal, draw, placement, and KAPOW swap phases
+- Restored lightbulb takeaway tips in "Understand Kai's Move" modal — contextual coaching after each AI turn (discard strategy, triad progress, power card modifiers, etc.)
 
 **v16 [Eric]** Telemetry system, analytics dashboard, scoreboard UX fix.
 - Game telemetry (telemetry.js): anonymous stats collection via Google Form → Sheet pipeline, player consent flow, abandonment tracking, GA4 events

@@ -1575,7 +1575,59 @@ function buildAiExplanation(gameState, drawnCard, drawChoice, action) {
     lines.push('<p class="explain-step"><span class="explain-label">Status:</span> Kai has discarded ' + discardedCount + ' of 4 triads. Remaining hand score is approximately ' + handEval.knownScore + ' points (plus unknowns).</p>');
   }
 
+  // Lightbulb takeaway — contextual tip for the player
+  var tip = generateTakeawayTip(gameState, drawnCard, drawChoice, action, discardedCount);
+  if (tip) {
+    lines.push('<div class="explain-takeaway"><span class="explain-takeaway-icon">💡</span> <span class="explain-takeaway-text">' + tip + '</span></div>');
+  }
+
   aiMoveExplanation = lines.join('\n');
+}
+
+function generateTakeawayTip(state, drawnCard, drawChoice, action, aiTriadsCompleted) {
+  var tips = [];
+  var playerHand = state.players[0].hand;
+  var playerEval = aiEvaluateHand(playerHand);
+
+  if (drawChoice === 'discard') {
+    tips.push('The AI grabbed from the discard pile — it saw exactly what it needed. Watch what you discard: if it completes an obvious pattern, the AI will pounce.');
+  }
+
+  if (action && action.type === 'replace') {
+    var aiTriad = state.players[1].hand.triads[action.triadIndex];
+    if (aiTriad && aiTriad.isDiscarded) {
+      tips.push('AI just completed a triad for 0 points. Focus on building your own triads — even partial progress (two matching cards) puts you one draw away from clearing a column.');
+    }
+  }
+
+  if (playerEval.unrevealedCount >= 6) {
+    tips.push('You still have ' + playerEval.unrevealedCount + ' face-down cards. Revealing cards gives you information to plan triads — consider replacing unknowns with low cards even if they don\'t complete anything yet.');
+  }
+
+  if (action && action.type === 'discard' && drawnCard) {
+    var discardVal = drawnCard.type === 'fixed' ? drawnCard.faceValue : -1;
+    if (discardVal >= 0 && discardVal <= 4) {
+      tips.push('AI just discarded a low card (' + discardVal + '). Low cards in the discard pile can be valuable — grab them if they fit your triads.');
+    }
+  }
+
+  if (aiTriadsCompleted >= 2 && playerEval.unrevealedCount > 2) {
+    tips.push('The AI has cleared ' + aiTriadsCompleted + ' triads already. Prioritize completing at least one triad soon — those 0-point columns are how you stay competitive.');
+  }
+
+  if (drawnCard && drawnCard.type === 'kapow') {
+    tips.push('KAPOW! cards are wild but cost 25 points if unused. The AI placed one strategically — if you draw one, get it into a near-complete triad quickly.');
+  }
+
+  if (action && (action.type === 'powerset-on-power' || action.type === 'modifier-on-card')) {
+    tips.push('Power card modifiers can create negative values — a -2 modifier on a 0 card = -2 points. Look for stacking opportunities in your own hand.');
+  }
+
+  if (playerEval.knownScore > 30 && state.turnNumber > 4) {
+    tips.push('Your visible score is ' + playerEval.knownScore + ' points. Try to complete a high-value triad to shed points fast — targeting columns with 8+ cards gives the biggest payoff.');
+  }
+
+  return tips.length > 0 ? tips[tips.length - 1] : null;
 }
 
 function aiDecideDraw(gameState) {
@@ -4041,10 +4093,13 @@ function bindGameEvents() {
   document.getElementById('btn-export-log').addEventListener('click', exportLog);
   document.getElementById('btn-understand-move').addEventListener('click', onUnderstandMove);
   document.getElementById('btn-close-explain').addEventListener('click', onCloseExplain);
+  document.getElementById('btn-hint').addEventListener('click', onHint);
 
   // Mobile secondary action buttons (mirror desktop)
   var mobileUnderstand = document.getElementById('mobile-understand-btn');
   if (mobileUnderstand) mobileUnderstand.addEventListener('click', onUnderstandMove);
+  var mobileHint = document.getElementById('mobile-hint-btn');
+  if (mobileHint) mobileHint.addEventListener('click', onHint);
 }
 
 function onEndTurn() {
@@ -4085,6 +4140,86 @@ function onUnderstandMove() {
 
 function onCloseExplain() {
   document.getElementById('explain-modal').classList.add('hidden');
+}
+
+function onHint() {
+  if (!gameState || !gameState.players[gameState.currentPlayer].isHuman) return;
+  var hint = generateHint();
+  if (hint) {
+    var msgEl = document.getElementById('game-message');
+    msgEl.innerHTML = '<span class="hint-message">💡 ' + hint + '</span>';
+  }
+}
+
+function generateHint() {
+  var hand = gameState.players[0].hand;
+  var needsReveal = gameState.needsFirstReveal && gameState.needsFirstReveal[gameState.currentPlayer];
+  var phase = gameState.phase;
+
+  // First turn: reveal advice
+  if (needsReveal) {
+    return 'Reveal 2 cards to see what you\'re working with. Corners are popular picks — they show you two different triads at once.';
+  }
+
+  // Draw phase: no drawn card yet
+  if (!gameState.drawnCard && (phase === 'playing' || phase === 'finalTurns')) {
+    if (gameState.discardPile.length > 0) {
+      var topDiscard = gameState.discardPile[gameState.discardPile.length - 1];
+      var bestDiscardScore = -999;
+      for (var t = 0; t < hand.triads.length; t++) {
+        if (hand.triads[t].isDiscarded) continue;
+        var positions = ['top', 'middle', 'bottom'];
+        for (var p = 0; p < positions.length; p++) {
+          var ps = aiScorePlacement(hand, topDiscard, t, positions[p]);
+          if (ps > bestDiscardScore) bestDiscardScore = ps;
+        }
+      }
+      if (bestDiscardScore >= 15) {
+        return 'The ' + cardDescription(topDiscard) + ' in the discard pile looks useful for your hand. Consider grabbing it!';
+      } else if (bestDiscardScore >= 5) {
+        return 'The ' + cardDescription(topDiscard) + ' could fit your hand. But drawing from the deck might find something better.';
+      }
+    }
+    return 'Draw from the deck for a surprise, or grab the discard if it fits a triad you\'re building.';
+  }
+
+  // Place phase: player has a drawn card
+  if (gameState.drawnCard) {
+    var drawnCard = gameState.drawnCard;
+    var bestScore = -999;
+    var bestAction = null;
+
+    for (var t = 0; t < hand.triads.length; t++) {
+      if (hand.triads[t].isDiscarded) continue;
+      var positions = ['top', 'middle', 'bottom'];
+      for (var p = 0; p < positions.length; p++) {
+        var ps = aiScorePlacement(hand, drawnCard, t, positions[p]);
+        if (ps > bestScore) {
+          bestScore = ps;
+          bestAction = { triadIndex: t, position: positions[p], score: ps };
+        }
+      }
+    }
+
+    if (bestScore >= 100) {
+      return 'Place it in Triad ' + (bestAction.triadIndex + 1) + ' (' + bestAction.position + ') — it completes the triad!';
+    } else if (bestScore >= 15) {
+      return 'Triad ' + (bestAction.triadIndex + 1) + ' (' + bestAction.position + ') looks strong — it builds toward completion.';
+    } else if (bestScore >= 3) {
+      return 'Best spot: Triad ' + (bestAction.triadIndex + 1) + ' (' + bestAction.position + '). It\'s a small improvement, but every point counts.';
+    } else if (!gameState.drawnFromDiscard) {
+      return 'This card doesn\'t fit well anywhere. Consider discarding it and revealing a face-down card instead.';
+    } else {
+      return 'Tough draw from discard. Look for the position where this card does the least damage.';
+    }
+  }
+
+  // KAPOW swap phase
+  if (gameState.awaitingKapowSwap) {
+    return 'You can swap a free KAPOW! card to a better position, or click End Turn to skip.';
+  }
+
+  return null;
 }
 
 function refreshUI() {
@@ -4219,6 +4354,13 @@ function refreshUI() {
   if (understandBtn) understandBtn.disabled = !understandEnabled;
   var mobileUnderstandBtn = document.getElementById('mobile-understand-btn');
   if (mobileUnderstandBtn) mobileUnderstandBtn.disabled = !understandEnabled;
+
+  // Hint button: enabled when it's human's turn and in a phase where hints make sense
+  var hintEnabled = isHumanTurn && (phase === 'playing' || phase === 'finalTurns' || needsReveal);
+  var hintBtn = document.getElementById('btn-hint');
+  if (hintBtn) hintBtn.disabled = !hintEnabled;
+  var mobileHintBtn = document.getElementById('mobile-hint-btn');
+  if (mobileHintBtn) mobileHintBtn.disabled = !hintEnabled;
 
   // Phase screens
   if (phase === 'scoring') {
