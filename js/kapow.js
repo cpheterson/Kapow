@@ -4377,7 +4377,7 @@ function refreshUI() {
   if (phase === 'scoring' && !roundEndAcknowledged) {
     // Show "Round Over: Continue" button so player can see the final board state
     endTurnBtn.disabled = false;
-    endTurnBtn.textContent = 'Round Over: Continue';
+    endTurnBtn.textContent = 'Continue';
     endTurnBtn.classList.add('end-turn-glow');
     endTurnBtn.classList.remove('release-card-glow');
   } else if (phase === 'scoring' && roundEndAcknowledged) {

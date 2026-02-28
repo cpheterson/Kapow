@@ -6,6 +6,8 @@
 
 ### 02-28-2026
 
+**v8 [Chuck]** Shorten round-end button text to "Continue".
+
 **v7 [Chuck]** Fix FIXED label displaced to bottom-right on mobile — keep all card type labels centered at top.
 
 **v6 [Chuck]** Fix POWERSET label running off right edge on mobile — center it horizontally on the card.
