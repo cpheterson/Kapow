@@ -4,6 +4,23 @@
 
 ## Version History
 
+### 02-28-2026
+
+**[Chuck]** Merge game logic from master branch (AI + KAPOW swap improvements).
+- AI offensive strategy: recognize KAPOW-swap triad completions when evaluating placements
+- Steepen discard safety formula to prevent gifting triad-completing cards to opponent
+- Fix: KAPOW-swap completion bonus was inflated by placed card's value
+- Strengthen discard safety scoring with two-segment formula
+- KAPOW-aware `aiCountFutureCompletions` for 3-revealed triads
+- Within-triad KAPOW swap: single swap (no loop), exempt top-position penalty on completion
+- Validate within-triad KAPOW swaps keep triad complete after swap
+- Fix: within-triad KAPOW swaps not detecting KAPOW in powersets
+- Fix: AI within-triad KAPOW swaps not triggering on placement completion
+- Fix: AI hang — clear `aiTurnInProgress` in `completeWithinTriadSwap`
+- Fix: hang after AI within-triad KAPOW swap (missing `refreshUI` in else branch)
+- Fix: human within-triad KAPOW swap hang after swap
+- Fix: AI not triggering after within-triad swap discard animation
+
 ### 02-25-2026
 
 **v17 [Eric]** Desktop UX & card redesign — Chuck's feedback.
