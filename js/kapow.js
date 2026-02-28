@@ -4048,6 +4048,7 @@ var gameState = null;
 var playerName = 'Player';
 var aiTurnInProgress = false;
 var triadAnimationInProgress = false;
+var roundEndAcknowledged = false;
 
 function init() {
   // Show name entry screen
@@ -4106,6 +4107,13 @@ function bindGameEvents() {
 }
 
 function onEndTurn() {
+  // Round Over: Continue — let the player acknowledge before showing splash
+  if (gameState.phase === 'scoring' && !roundEndAcknowledged) {
+    roundEndAcknowledged = true;
+    refreshUI();
+    return;
+  }
+
   if (!gameState.players[gameState.currentPlayer].isHuman) return;
 
   // Within-triad KAPOW swap mode: discard the completed triad and end turn
@@ -4366,7 +4374,13 @@ function refreshUI() {
   if (mobileHintBtn) mobileHintBtn.disabled = !hintEnabled;
 
   // Phase screens
-  if (phase === 'scoring') {
+  if (phase === 'scoring' && !roundEndAcknowledged) {
+    // Show "Round Over: Continue" button so player can see the final board state
+    endTurnBtn.disabled = false;
+    endTurnBtn.textContent = 'Round Over: Continue';
+    endTurnBtn.classList.add('end-turn-glow');
+    endTurnBtn.classList.remove('release-card-glow');
+  } else if (phase === 'scoring' && roundEndAcknowledged) {
     showRoundEnd();
   } else if (phase === 'gameOver') {
     showGameOver();
@@ -4806,6 +4820,7 @@ function onDiscard() {
 
 function onNextRound() {
   document.getElementById('round-end-screen').classList.add('hidden');
+  roundEndAcknowledged = false;
   aiTurnInProgress = false;
   advanceRound(gameState);
   refreshUI();

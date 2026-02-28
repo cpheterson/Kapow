@@ -39,6 +39,9 @@ The living document. Updated in real-time throughout every session.
 - [x] Set up dev environment: npm install, git hooks, local server
 - [x] Status line configured (project / branch / model + context %)
 - [x] CHANGELOG updated with master branch AI improvements
+- [x] Delay round-end splash until player clicks "Round Over: Continue" button
+  - Added `roundEndAcknowledged` flag, gated `showRoundEnd()` in `refreshUI()`, handled click in `onEndTurn()`, reset in `onNextRound()`
+- [x] Fix POWERSET label not centered on mobile — conflicting `left`/`right`/`transform` in 480px breakpoint
 
 ### In Progress
 - [ ] Power card face redesign: minus/plus signs flanking center value, POWER label stays at top

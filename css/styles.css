@@ -1896,6 +1896,17 @@ body::before {
     font-size: 7px;
     bottom: 2px;
     right: 3px;
+    left: auto;
+    transform: none;
+    top: auto;
+  }
+
+  .has-powerset .card-type-label {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    top: 3px;
+    bottom: auto;
   }
 
   .card-back-text {
