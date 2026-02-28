@@ -8,7 +8,7 @@ KAPOW! is an original rummy-style card game (2-player, 10 rounds, lowest score w
 
 ```bash
 npm install                          # Install Vitest
-git config core.hooksPath hooks      # Enable pre-commit hooks
+git config core.hooksPath hooks      # Enable pre-commit hooks (REQUIRED after every clone)
 python3 -m http.server 8000          # Serve at http://localhost:8000
 ```
 
@@ -47,7 +47,7 @@ Separate ES module files exist for **testing only** and are not loaded by the ga
 - `js/telemetry.js` - GA4 events, player consent, analytics pipeline
 - `js/ui.js` - DOM rendering helpers, modals, animations
 - `css/styles.css` - All styles, mobile-first with `@media (min-width: 768px)` for desktop
-- `sw.js` - Service worker for offline caching (bump `CACHE_VERSION` to bust cache)
+- `sw.js` - Service worker for offline caching (bump `CACHE_NAME` to bust cache)
 - `dashboard.html` - Analytics dashboard with Chart.js
 
 ## Game Mechanics (need-to-know)
@@ -68,6 +68,8 @@ Runs automatically on `git commit` (requires `git config core.hooksPath hooks`):
 3. Blocks if CHANGELOG.md wasn't updated (skip with `--no-verify`)
 4. Syncs "Latest Version" footer in CHANGELOG.md
 
+**IMPORTANT:** After cloning, you MUST run `git config core.hooksPath hooks` or the hook won't run. This is easy to forget and means versions won't auto-bump and tests won't gate commits.
+
 ## Conventions
 
 - **JS style**: camelCase functions/variables, no classes, pure functions for game logic
@@ -75,14 +77,34 @@ Runs automatically on `git commit` (requires `git config core.hooksPath hooks`):
 - **Tests**: `tests/{module}.test.js` mirrors `js/{module}.js`, Vitest with `describe`/`test`/`expect`
 - **CSS**: Mobile-first, single breakpoint at 768px
 - **Versioning**: `MM-DD-YYYY vN` format, auto-bumped by pre-commit hook
+- **CHANGELOG**: Every commit needs a CHANGELOG.md entry (hook enforces this). Tag entries with `[Eric]` or `[Chuck]` to indicate contributor.
 
 ## Deployment
 
-GitHub Pages auto-deploys on push to `main`. Live at https://epheterson.github.io/Kapow/. No build step - serves `index.html` directly. Live within ~60 seconds of push.
+GitHub Pages auto-deploys on push to `main`. Live at https://cpheterson.github.io/Kapow/. No build step - serves `index.html` directly. Live within ~60 seconds of push.
 
 ## PLAN.md
 
 **Read `PLAN.md` at the start of every session. Update it live throughout — every request, decision, change, and shipped item gets logged as it happens.**
+
+## Common Mistakes to Avoid
+
+1. **Forgetting `git config core.hooksPath hooks`** — without this, commits skip tests and don't auto-bump versions. Run it once after every fresh clone.
+2. **Editing modular files but not kapow.js (or vice versa)** — the game loads `kapow.js`, tests load the modular files. They must stay in sync for game logic changes.
+3. **Manually bumping the version in index.html** — the pre-commit hook does this. Manual bumps can cause conflicts between contributors.
+4. **Forgetting to update CHANGELOG.md** — the hook will block your commit. Add an entry describing what changed.
+5. **Not bumping `CACHE_NAME` in sw.js** — when shipping significant changes, bump it so returning users get the new version. This is NOT auto-bumped.
+6. **Testing only on desktop** — this is a mobile-first game. Always check mobile viewport (375px width) after UI changes. Add to iPhone home screen for true PWA testing.
+7. **Breaking the AI explanation modal** — `buildAiExplanation()` in kapow.js builds HTML that shows in the "Understand Kai's Move" modal. If you change AI logic, make sure the explanation still makes sense.
+
+## Two Contributors, One Repo
+
+Chuck and Eric both push to this repo. To avoid conflicts:
+
+- **Always `git pull` before starting work** — the other person may have pushed since your last session.
+- **Always `git push` when done** — don't leave unpushed commits sitting locally.
+- **CHANGELOG entries tagged `[Eric]` or `[Chuck]`** — so we know who did what.
+- **Version bumps handle conflicts automatically** — the pre-commit hook compares against `origin/main` and picks the higher version number.
 
 ## Recovery
 

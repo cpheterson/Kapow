@@ -6,8 +6,8 @@ The living document. Updated in real-time throughout every session.
 
 ## Current State (02-28-2026)
 
-**Live at:** epheterson.github.io/Kapow/ (Eric's fork, GitHub Pages)
-**Canonical:** github.com/cpheterson/Kapow (Chuck's repo — now synced, single `main` branch)
+**Live at:** cpheterson.github.io/Kapow/ (GitHub Pages, auto-deploys on push to `main`)
+**Repo:** github.com/cpheterson/Kapow (single `main` branch, both contributors push here)
 **Version:** 02-28-2026 v1
 
 ### What's Working

@@ -6,6 +6,11 @@
 
 ### 02-28-2026
 
+**v10 [Eric]** Docs cleanup — all URLs now point to cpheterson/Kapow as canonical repo.
+- README, CONTRIBUTING, CLAUDE.md, PLAN.md updated with correct clone/deploy URLs
+- CONTRIBUTING: added Common Gotchas section, hook setup emphasis, repo history updated to reflect completed merge
+- CLAUDE.md: added Common Mistakes to Avoid, two-contributor workflow guidance, service worker cache reminder
+
 **v8 [Chuck]** Shorten round-end button text to "Continue".
 
 **v7 [Chuck]** Fix FIXED label displaced to bottom-right on mobile — keep all card type labels centered at top.

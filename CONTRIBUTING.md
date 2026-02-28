@@ -3,7 +3,7 @@
 ## Quick Start
 
 ```bash
-git clone https://github.com/epheterson/Kapow.git
+git clone https://github.com/cpheterson/Kapow.git
 cd Kapow
 npm install                          # Install test runner (Vitest)
 git config core.hooksPath hooks      # Enable pre-commit hooks
@@ -16,7 +16,7 @@ No build tools. No bundler. Edit → refresh → test → commit.
 
 **Hosted on GitHub Pages** — auto-deploys on push to `main`.
 
-Live at: **https://epheterson.github.io/Kapow/**
+Live at: **https://cpheterson.github.io/Kapow/**
 
 There's no build step. GitHub Pages serves `index.html` directly. Push to `main` and it's live within ~60 seconds.
 
@@ -64,6 +64,16 @@ The hook runs automatically on every `git commit` (after running `git config cor
 
 You don't need to manually bump versions. The hook handles it.
 
+### Hook Setup (important!)
+
+After cloning, you **must** run this once:
+
+```bash
+git config core.hooksPath hooks
+```
+
+Without this, git won't find the pre-commit hook and commits will skip tests + version bumping. If your commits aren't auto-bumping versions, this is why.
+
 ## Making Changes
 
 ### Game Logic
@@ -76,7 +86,7 @@ The production AI lives in `js/kapow.js` starting around line 1945 ("AI OPPONENT
 All CSS is in `css/styles.css`. Mobile-first with a `@media (min-width: 768px)` breakpoint for desktop.
 
 ### Service Worker
-`sw.js` caches assets for offline play. Bump the `CACHE_VERSION` constant when you want returning users to get a fresh version.
+`sw.js` caches assets for offline play. Bump the `CACHE_VERSION` constant when you want returning users to get a fresh version. This is **not** auto-bumped — do it manually when shipping significant changes.
 
 ## Versioning
 
@@ -117,11 +127,20 @@ typeof gtag === 'function'  # should be true
 
 **Implementation:** gtag snippet in `index.html` `<head>`, `trackEvent()` helper called from `js/kapow.js`. Events are no-ops if gtag fails to load (ad blockers, offline).
 
+## Common Gotchas
+
+1. **Pre-commit hook not running?** Run `git config core.hooksPath hooks` — must be done once after cloning.
+2. **CHANGELOG.md not updated?** The hook blocks commits without a CHANGELOG entry. Add one, or skip with `--no-verify` for docs-only changes.
+3. **Version didn't bump?** The hook compares against `origin/main`. If your remote is out of date, run `git fetch origin` first.
+4. **Service worker caching old version?** Bump `CACHE_NAME` in `sw.js`. Users on old versions need a hard refresh (Cmd+Shift+R / Ctrl+Shift+R).
+5. **Tests fail but game works?** The modular files (`js/deck.js`, etc.) may be out of sync with `kapow.js`. Update both when changing game logic.
+6. **Game logic changed in kapow.js but tests don't cover it?** The modular `js/ai.js` is a simplified subset (~300 lines) of the full AI (~1,600 lines). Some AI behaviors only exist in the production bundle.
+
 ## Repo History
 
-| Repo | Role |
-|------|------|
-| [cpheterson/Kapow](https://github.com/cpheterson/Kapow) | Chuck's original — game design + AI engine |
-| [epheterson/Kapow](https://github.com/epheterson/Kapow) | Eric's fork — mobile UI, sounds, animations, tutorial, PWA, monetization |
+This is the canonical repo. Eric's fork ([epheterson/Kapow](https://github.com/epheterson/Kapow)) was merged into this repo on 02-28-2026 and is now archived.
 
-Plan: merge Eric's fork back into Chuck's canonical repo as the single source of truth.
+| Contributor | Role |
+|-------------|------|
+| **Chuck** (cpheterson) | Game design, full AI engine, game logic |
+| **Eric** (epheterson) | Mobile UI, animations, sounds, tutorial, PWA, monetization, telemetry |
