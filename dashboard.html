@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KAPOW! Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+/* ---- Design Tokens (matched to KAPOW! game) ---- */
+:root {
+  --bg: #0a2912;
+  --bg-card: #0f3d1c;
+  --bg-felt: #17572a;
+  --text: #f0f0f0;
+  --text-dim: #8aab8a;
+  --accent: #fbbf24;
+  --accent-glow: rgba(251, 191, 36, 0.25);
+  --red: #ef4444;
+  --red-glow: rgba(239, 68, 68, 0.25);
+  --blue: #1a5490;
+  --power: #d4920a;
+  --success: #22c55e;
+  --font-display: 'Bangers', cursive;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --radius: 12px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.4);
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Felt texture background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: -50px;
+  background:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse at 50% 20%, #1a6b2a 0%, var(--bg) 70%);
+  z-index: -1;
+}
+
+/* ---- Header ---- */
+.header {
+  text-align: center;
+  padding: 2rem 1rem 1rem;
+  position: relative;
+}
+.header h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  color: var(--accent);
+  text-shadow: 2px 2px 0 #000, 0 0 20px var(--accent-glow);
+  letter-spacing: 2px;
+  line-height: 1;
+}
+.header h1 span {
+  color: var(--red);
+  text-shadow: 2px 2px 0 #000, 0 0 20px var(--red-glow);
+}
+.header .subtitle {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-top: 0.25rem;
+  font-weight: 500;
+}
+
+/* ---- Loading / Error ---- */
+.loading {
+  text-align: center;
+  padding: 4rem 1rem;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  color: var(--accent);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.error {
+  text-align: center;
+  padding: 2rem;
+  color: var(--red);
+  background: var(--red-glow);
+  border-radius: var(--radius);
+  margin: 1rem;
+}
+
+/* ---- Dashboard Grid ---- */
+.dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem 2rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+/* ---- Stat Cards (top row) ---- */
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+  animation: cardIn 0.4s ease-out both;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent);
+}
+.stat-card.red::before { background: var(--red); }
+.stat-card.blue::before { background: var(--blue); }
+.stat-card.green::before { background: var(--success); }
+
+.stat-card .label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  font-weight: 700;
+}
+.stat-card .value {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  color: var(--text);
+  line-height: 1.1;
+  margin-top: 0.25rem;
+}
+.stat-card .detail {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-top: 0.25rem;
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- Chart Panels ---- */
+.panel {
+  background: var(--bg-card);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  box-shadow: var(--shadow);
+  animation: cardIn 0.5s ease-out both;
+}
+.panel h2 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--accent);
+  letter-spacing: 1px;
+  margin-bottom: 1rem;
+}
+.panel.span-2 { grid-column: span 2; }
+.panel.span-4 { grid-column: span 4; }
+
+/* ---- Recent Games Table ---- */
+.games-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.games-table th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 2px solid rgba(255,255,255,0.1);
+  color: var(--text-dim);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+  letter-spacing: 1px;
+}
+.games-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.games-table tr:hover td {
+  background: rgba(255,255,255,0.03);
+}
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.badge.win { background: rgba(34,197,94,0.2); color: var(--success); }
+.badge.loss { background: rgba(239,68,68,0.2); color: var(--red); }
+.badge.abandoned { background: rgba(251,191,36,0.2); color: var(--accent); }
+
+/* ---- Empty State ---- */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  grid-column: 1 / -1;
+}
+.empty-state h2 {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+/* ---- Data Import ---- */
+.import-bar {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.import-btn {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-dim);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.import-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+.import-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+.data-source-label {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+.import-panel {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem 1rem;
+  display: none;
+}
+.import-panel.show { display: block; }
+.import-panel textarea {
+  width: 100%;
+  min-height: 120px;
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 0.75rem;
+  resize: vertical;
+}
+.import-panel textarea::placeholder { color: var(--text-dim); }
+.import-panel .import-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  align-items: center;
+}
+.import-panel .load-btn {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.2rem;
+  cursor: pointer;
+}
+.import-panel .load-btn:hover { background: #e5ab1d; }
+.import-panel .hint {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+  .dashboard { grid-template-columns: repeat(2, 1fr); }
+  .panel.span-4 { grid-column: span 2; }
+}
+@media (max-width: 500px) {
+  .dashboard { grid-template-columns: 1fr; }
+  .panel.span-2, .panel.span-4 { grid-column: span 1; }
+  .stat-card .value { font-size: 1.8rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>KAPOW<span>!</span> Analytics</h1>
+  <div class="subtitle">Game telemetry dashboard</div>
+</div>
+
+<div class="import-bar">
+  <button class="import-btn" id="import-toggle" onclick="toggleImport()">Import Data</button>
+  <span class="data-source-label" id="data-source"></span>
+</div>
+<div class="import-panel" id="import-panel">
+  <textarea id="import-data" placeholder='Paste JSON from the Google Sheet here. Each row&#39;s column B contains a JSON object — paste one or more, one per line.&#10;&#10;Example: {"game_id":"g_abc123","player_name":"Eric","status":"completed",...}'></textarea>
+  <div class="import-actions">
+    <button class="load-btn" onclick="loadPastedData()">Load Data</button>
+    <span class="hint">Copy column B from the <a href="https://docs.google.com/spreadsheets/d/1IE8w_uIHwlGlI3D3SZY3TzR0Hlfl4tfVZjfl69dsu8E/edit" target="_blank" style="color:var(--accent)">Telemetry Sheet</a></span>
+  </div>
+</div>
+
+<div id="app">
+  <div class="loading" id="loading">Dealing the data...</div>
+</div>
+
+<script>
+// ========================================
+// KAPOW! Analytics Dashboard
+// ========================================
+
+// Apps Script web app URL — serves JSON from the telemetry sheet
+// Once deployed, replace with your actual URL:
+var DATA_URL = 'https://script.google.com/macros/s/AKfycbx9duQ_lbLI-5Tow2hxf011qkshJ70aJZ4Alxf3D2mrJ32Va93hnDEzvR7B4OPjvm8X/exec';
+
+var DEMO_DATA = [{
+  game_id:'g_test001', session_id:'sess_test001', player_id:'kapow_testcurl',
+  player_name:'TestPlayer', status:'completed', timestamp:'2026-02-25T12:00:00.000Z',
+  rounds_played:5, player_score:42, kai_score:67, winner:'player',
+  game_duration_sec:180, kapow_grabs:3, kapow_busts:1, triads_completed:4,
+  power_stacks:2, discard_draws_pct:35, went_out_first:2, penalties_taken:1, action_count:47
+}];
+
+// ---- Import UI ----
+function toggleImport() {
+  var panel = document.getElementById('import-panel');
+  var btn = document.getElementById('import-toggle');
+  var showing = panel.classList.toggle('show');
+  btn.classList.toggle('active', showing);
+}
+
+function loadPastedData() {
+  var raw = document.getElementById('import-data').value.trim();
+  if (!raw) return;
+
+  var games = [];
+  // Try parsing as a JSON array first
+  try {
+    var parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) { games = parsed; }
+    else { games = [parsed]; }
+  } catch(e) {
+    // Try line-by-line (each line is a JSON object from column B)
+    var lines = raw.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line) continue;
+      try { games.push(JSON.parse(line)); } catch(e2) {}
+    }
+  }
+
+  if (games.length === 0) {
+    document.getElementById('data-source').textContent = 'Could not parse any game data';
+    document.getElementById('data-source').style.color = 'var(--red)';
+    return;
+  }
+
+  document.getElementById('data-source').textContent = 'Loaded ' + games.length + ' game(s) from paste';
+  document.getElementById('data-source').style.color = 'var(--success)';
+  document.getElementById('import-panel').classList.remove('show');
+  document.getElementById('import-toggle').classList.remove('active');
+  render(games);
+}
+
+// ---- Fetch & Render ----
+function init() {
+  var srcLabel = document.getElementById('data-source');
+
+  if (DATA_URL.indexOf('PASTE') !== -1) {
+    srcLabel.textContent = 'Showing demo data — click Import Data to load real games';
+    render(DEMO_DATA);
+    return;
+  }
+
+  fetch(DATA_URL)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      document.getElementById('loading').style.display = 'none';
+      if (!data.length) {
+        document.getElementById('app').innerHTML =
+          '<div class="empty-state"><h2>No Games Yet</h2><p>Play some KAPOW! to see analytics here.</p></div>';
+        return;
+      }
+      srcLabel.textContent = 'Live data — ' + data.length + ' game(s)';
+      render(data);
+    })
+    .catch(function(err) {
+      document.getElementById('loading').style.display = 'none';
+      srcLabel.textContent = 'API fetch failed — use Import Data instead';
+      srcLabel.style.color = 'var(--red)';
+      render(DEMO_DATA);
+    });
+}
+
+function render(games) {
+  document.getElementById('loading').style.display = 'none';
+
+  var completed = games.filter(function(g) { return g.status === 'completed'; });
+  var abandoned = games.filter(function(g) { return g.status === 'abandoned'; });
+  var uniquePlayers = {};
+  games.forEach(function(g) { uniquePlayers[g.player_id] = true; });
+
+  var totalGames = games.length;
+  var completedCount = completed.length;
+  var abandonedCount = abandoned.length;
+  var completionRate = totalGames > 0 ? Math.round((completedCount / totalGames) * 100) : 0;
+
+  var avgDuration = 0;
+  if (completed.length) {
+    var totalSec = 0;
+    completed.forEach(function(g) { totalSec += (g.game_duration_sec || 0); });
+    avgDuration = Math.round(totalSec / completed.length);
+  }
+
+  var playerWins = 0;
+  completed.forEach(function(g) { if (g.winner === 'player') playerWins++; });
+  var winRate = completedCount > 0 ? Math.round((playerWins / completedCount) * 100) : 0;
+
+  var avgKapow = 0, avgTriads = 0;
+  if (completed.length) {
+    var tK = 0, tT = 0;
+    completed.forEach(function(g) { tK += (g.kapow_grabs || 0); tT += (g.triads_completed || 0); });
+    avgKapow = (tK / completed.length).toFixed(1);
+    avgTriads = (tT / completed.length).toFixed(1);
+  }
+
+  // Score margin
+  var margins = [];
+  completed.forEach(function(g) {
+    if (g.player_score != null && g.kai_score != null) {
+      margins.push(g.kai_score - g.player_score);
+    }
+  });
+
+  // Round distribution for abandonment
+  var abandonByRound = {};
+  abandoned.forEach(function(g) {
+    var r = g.rounds_played || g.current_round || 1;
+    abandonByRound[r] = (abandonByRound[r] || 0) + 1;
+  });
+
+  // Duration buckets
+  var durBuckets = { '0-1m': 0, '1-3m': 0, '3-5m': 0, '5-10m': 0, '10m+': 0 };
+  completed.forEach(function(g) {
+    var s = g.game_duration_sec || 0;
+    if (s < 60) durBuckets['0-1m']++;
+    else if (s < 180) durBuckets['1-3m']++;
+    else if (s < 300) durBuckets['3-5m']++;
+    else if (s < 600) durBuckets['5-10m']++;
+    else durBuckets['10m+']++;
+  });
+
+  var formatDuration = function(sec) {
+    var m = Math.floor(sec / 60);
+    var s = sec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  };
+
+  // Build HTML
+  var html = '<div class="dashboard">';
+
+  // Stat cards
+  html += statCard('Total Games', totalGames, completedCount + ' completed, ' + abandonedCount + ' abandoned', '', 1);
+  html += statCard('Unique Players', Object.keys(uniquePlayers).length, '', 'blue', 2);
+  html += statCard('Completion Rate', completionRate + '%', abandonedCount + ' abandoned', completionRate >= 70 ? 'green' : 'red', 3);
+  html += statCard('Avg Duration', formatDuration(avgDuration), 'per completed game', '', 4);
+
+  // Win rate + KAPOW stats
+  html += statCard('Player Win Rate', winRate + '%', playerWins + ' of ' + completedCount + ' games', winRate >= 50 ? 'green' : 'red', 5);
+  html += statCard('Avg KAPOW! Grabs', avgKapow, 'per game', 'red', 6);
+  html += statCard('Avg Triads', avgTriads, 'completed per game', 'blue', 7);
+  html += statCard('Avg Discard Draw', completed.length ? Math.round(completed.reduce(function(a,g){return a+(g.discard_draws_pct||0);},0)/completed.length) + '%' : '—', 'draws from discard pile', '', 8);
+
+  // Charts row
+  html += '<div class="panel span-2" style="animation-delay:0.3s"><h2>Game Duration Distribution</h2><canvas id="chart-duration"></canvas></div>';
+  html += '<div class="panel span-2" style="animation-delay:0.35s"><h2>Win Rate Breakdown</h2><canvas id="chart-wins"></canvas></div>';
+
+  // Recent games
+  html += '<div class="panel span-4" style="animation-delay:0.4s"><h2>Recent Games</h2>';
+  html += '<table class="games-table"><thead><tr>';
+  html += '<th>Player</th><th>Status</th><th>Rounds</th><th>Score</th><th>Kai Score</th><th>Duration</th><th>KAPOW!</th><th>Triads</th>';
+  html += '</tr></thead><tbody>';
+
+  var recent = games.slice().reverse().slice(0, 20);
+  recent.forEach(function(g) {
+    var statusBadge = g.status === 'completed'
+      ? (g.winner === 'player' ? '<span class="badge win">Win</span>' : '<span class="badge loss">Loss</span>')
+      : '<span class="badge abandoned">Left</span>';
+    html += '<tr>';
+    html += '<td>' + (g.player_name || '—') + '</td>';
+    html += '<td>' + statusBadge + '</td>';
+    html += '<td>' + (g.rounds_played || '—') + '</td>';
+    html += '<td>' + (g.player_score != null ? g.player_score : '—') + '</td>';
+    html += '<td>' + (g.kai_score != null ? g.kai_score : '—') + '</td>';
+    html += '<td>' + formatDuration(g.game_duration_sec || 0) + '</td>';
+    html += '<td>' + (g.kapow_grabs || 0) + '</td>';
+    html += '<td>' + (g.triads_completed || 0) + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+
+  html += '</div>';
+  document.getElementById('app').innerHTML = html;
+
+  // ---- Charts ----
+  var chartDefaults = {
+    color: '#8aab8a',
+    borderColor: 'rgba(255,255,255,0.06)',
+  };
+  Chart.defaults.color = chartDefaults.color;
+  Chart.defaults.borderColor = chartDefaults.borderColor;
+
+  // Duration chart
+  new Chart(document.getElementById('chart-duration'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(durBuckets),
+      datasets: [{
+        data: Object.values(durBuckets),
+        backgroundColor: ['#fbbf24', '#d4920a', '#22c55e', '#1a5490', '#ef4444'],
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'DM Sans' } } },
+        x: { ticks: { font: { family: 'DM Sans' } } }
+      }
+    }
+  });
+
+  // Win rate doughnut
+  new Chart(document.getElementById('chart-wins'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Player Wins', 'Kai Wins', 'Abandoned'],
+      datasets: [{
+        data: [playerWins, completedCount - playerWins, abandonedCount],
+        backgroundColor: ['#22c55e', '#ef4444', '#fbbf24'],
+        borderWidth: 0,
+        spacing: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: '65%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { padding: 16, font: { family: 'DM Sans', size: 12 } }
+        }
+      }
+    }
+  });
+}
+
+function statCard(label, value, detail, color, idx) {
+  return '<div class="stat-card ' + (color || '') + '" style="animation-delay:' + (idx * 0.05) + 's">' +
+    '<div class="label">' + label + '</div>' +
+    '<div class="value">' + value + '</div>' +
+    (detail ? '<div class="detail">' + detail + '</div>' : '') +
+    '</div>';
+}
+
+init();
+</script>
+</body>
+</html>

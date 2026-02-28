@@ -2,9 +2,43 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>KAPOW! Card Game</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1b5e20">
+
+  <!-- iOS Web App -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="KAPOW!">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="KAPOW! Card Game">
+  <meta property="og:description" content="An original card game — play against Kai, the built-in opponent">
+  <meta property="og:type" content="website">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="css/styles.css">
+
+  <!-- Google Analytics (GA4) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-G9DW4L5Y5X"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-G9DW4L5Y5X');
+    // Custom event helper — no-op if gtag not loaded
+    function trackEvent(name, params) {
+      if (typeof gtag === 'function') gtag('event', name, params || {});
+    }
+  </script>
 </head>
 <body>
   <!-- Name Entry Screen -->
@@ -13,17 +47,86 @@
       <h1>KAPOW!</h1>
       <p>Enter your name to begin:</p>
       <input type="text" id="player-name-input" placeholder="Your name" maxlength="20" autofocus>
-      <button id="btn-start-game" class="action-btn">Start Game</button>
+      <button id="btn-resume-game" class="action-btn resume-btn hidden">Resume Game</button>
+      <button id="btn-start-game" class="action-btn">Play</button>
+      <div class="name-screen-secondary">
+        <button id="btn-how-to-play" class="link-btn" onclick="document.getElementById('help-modal').classList.remove('hidden')">How to Play</button>
+        <button class="link-btn" onclick="showLeaderboard()">Leaderboard</button>
+      </div>
+      <div id="name-screen-cta"></div>
     </div>
   </div>
+
+  <!-- Privacy Modal -->
+  <div id="privacy-modal" class="hidden" onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="privacy-modal-content">
+      <button class="buy-modal-close" onclick="document.getElementById('privacy-modal').classList.add('hidden')">&times;</button>
+      <h2>Privacy</h2>
+      <p>We collect game stats to improve the game, and email if provided.</p>
+      <button class="link-btn" id="privacy-toggle-btn" style="margin-top:12px;opacity:0.6;" onclick="togglePrivacy(this)">Opt out of stats</button>
+    </div>
+  </div>
+
+  <!-- Buy Interstitial (shown before game for engaged players) -->
+  <div id="kapow-interstitial" class="hidden">
+    <div class="interstitial-content">
+      <h2>KAPOW!</h2>
+      <p class="interstitial-text"></p>
+      <div class="interstitial-buttons">
+        <button class="action-btn interstitial-show">Show Me</button>
+        <button class="action-btn interstitial-later">Maybe Later</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Email Capture Modal (pre-sales) -->
+  <div id="kapow-buy-modal" class="hidden" onclick="if(event.target===this)hideBuyModal()">
+    <div class="buy-modal-content">
+      <button class="buy-modal-close" onclick="hideBuyModal()">&times;</button>
+      <h2>Get the Real Deck</h2>
+      <p>KAPOW! physical decks are almost here. Leave your email and we'll let you know the moment they're available to order.</p>
+      <form id="kapow-email-form" action="https://docs.google.com/forms/d/1sOwXtDq9HZpbuwt5C_7qWD6LCOEWSIreNdwBboE_S3A/formResponse" method="POST" target="kapow-email-hidden" onsubmit="try{var e=this.querySelector('input[type=email]');if(e&&e.value){localStorage.setItem('kapow-email',e.value);if(typeof trackEvent==='function')trackEvent('email_submit',{source:'buy_modal'})}}catch(x){}setTimeout(function(){document.getElementById('kapow-email-thanks').classList.remove('hidden');document.getElementById('kapow-email-form').classList.add('hidden')},500)">
+        <input type="email" name="entry.1116097858" placeholder="your@email.com" required class="buy-modal-input">
+        <button type="submit" class="action-btn kapow-buy-btn">Notify Me</button>
+      </form>
+      <div id="kapow-email-thanks" class="hidden">
+        <p>You're on the list! We'll email you when decks are ready to ship.</p>
+      </div>
+      <iframe name="kapow-email-hidden" style="display:none"></iframe>
+    </div>
+  </div>
+
+  <!-- Help button (always visible during game, desktop only — mobile uses top bar) -->
+  <button id="help-toggle" onclick="document.getElementById('help-modal').classList.remove('hidden')">?</button>
 
   <div id="page-layout" class="hidden">
   <div id="game-container">
 
+    <!-- Mobile top bar: unified row with all controls -->
+    <div id="mobile-score-bar">
+      <button id="mobile-help-btn" class="top-bar-btn" onclick="document.getElementById('help-modal').classList.remove('hidden')">?</button>
+      <span class="round-info" id="mobile-round">Round 1</span>
+      <span class="score-bar-sep"></span>
+      <span><span class="score-label" id="mobile-player-label">You</span> <span class="score-value" id="mobile-player-score">0</span></span>
+      <span><span class="score-label">Kai</span> <span class="score-value" id="mobile-ai-score">0</span></span>
+      <span class="score-bar-sep"></span>
+      <button id="btn-mute" class="mute-btn" title="Mute sounds" onclick="KapowSounds.toggleMute()">&#x1F50A;</button>
+      <button id="sidebar-toggle" class="top-bar-btn" onclick="document.getElementById('sidebar').classList.toggle('mobile-visible')">Score</button>
+    </div>
+
+    <!-- Mobile secondary actions: Hint + Understand (below score bar, above AI hand) -->
+    <div id="mobile-secondary-actions">
+      <button id="mobile-hint-btn" class="secondary-action-btn hint-btn" disabled>Hint</button>
+      <button id="mobile-understand-btn" class="secondary-action-btn understand-btn" disabled>Understand Kai's Move</button>
+    </div>
+
+    <!-- Mobile AI banter (above AI hand) -->
+    <div id="mobile-banter"></div>
+
     <!-- Main Play Area: Piles flanking hands -->
     <div id="play-area">
 
-      <!-- Left: Draw Pile + Understand Button -->
+      <!-- Left: Draw Pile -->
       <div id="left-column">
         <div id="draw-pile" class="pile">
           <div id="turn-counter">Round 1 &mdash; Turn 1</div>
@@ -31,22 +134,26 @@
           <div class="pile-label">Draw</div>
           <div id="draw-count" class="pile-count"></div>
         </div>
-        <button id="btn-understand-move" class="action-btn understand-btn" disabled>Understand<br>AI's Move</button>
       </div>
 
       <!-- Center: Hands stacked vertically -->
       <div id="hands-column">
         <!-- AI Hand Area -->
         <section id="ai-area">
-          <h2>AI Opponent</h2>
+          <h2>Kai</h2>
           <div id="ai-hand" class="hand-grid"></div>
         </section>
 
-        <!-- Center strip: Message + Buttons -->
+        <!-- Center strip: Message + End Turn only (Hint + Understand moved to mobile secondary bar) -->
         <div id="center-strip">
           <div id="game-message">Welcome to KAPOW!</div>
           <div id="action-controls">
             <button id="btn-end-turn" class="action-btn" disabled>End Turn</button>
+          </div>
+          <!-- Desktop-only: Hint + Understand stay in center strip on wide screens -->
+          <div id="desktop-secondary-actions">
+            <button id="btn-hint" class="action-btn hint-btn" disabled>Hint</button>
+            <button id="btn-understand-move" class="action-btn understand-btn" disabled>Understand Kai's Move</button>
           </div>
         </div>
 
@@ -74,9 +181,9 @@
     <button id="btn-discard" class="hidden" disabled></button>
 
     <!-- AI Move Explanation Modal -->
-    <div id="explain-modal" class="hidden">
+    <div id="explain-modal" class="hidden" onclick="if(event.target===this)this.classList.add('hidden')">
       <div class="explain-modal-content">
-        <h3>Understanding AI's Move</h3>
+        <h3>Understanding Kai's Move</h3>
         <div id="explain-text"></div>
         <button id="btn-close-explain" class="action-btn">Close</button>
       </div>
@@ -86,6 +193,7 @@
     <div id="power-modal" class="hidden">
       <div class="modal-content">
         <div id="power-modal-title" class="modal-title"></div>
+        <div id="power-modal-detail" class="modal-detail"></div>
         <div id="power-modal-buttons" class="modal-buttons"></div>
       </div>
     </div>
@@ -96,6 +204,7 @@
         <h1 id="game-over-title">Game Over!</h1>
         <div id="final-scores"></div>
         <button id="btn-new-game" class="action-btn">New Game</button>
+        <a href="#" class="game-over-feedback" onclick="event.preventDefault();showFeedbackModal()">Send Feedback</a>
       </div>
     </div>
 
@@ -110,15 +219,16 @@
   </div>
 
   <!-- Scorecard Sidebar -->
-  <div id="sidebar">
-    <div id="scorecard">
+  <div id="sidebar" onclick="closeSidebar(event)">
+    <div id="scorecard" onclick="closeSidebar(event)">
+    <button id="scorecard-close" onclick="event.stopPropagation();document.getElementById('sidebar').classList.remove('mobile-visible')">&#x2715;</button>
     <h3>Scorecard</h3>
     <table id="scorecard-table">
       <thead>
         <tr>
-          <th>Round</th>
+          <th class="sc-round-col">#</th>
           <th id="sc-player-name">You</th>
-          <th id="sc-ai-name">AI</th>
+          <th id="sc-ai-name">Kai</th>
         </tr>
       </thead>
       <tbody id="scorecard-body">
@@ -141,12 +251,518 @@
         </tr>
       </tfoot>
     </table>
+    <div id="scorecard-notes"></div>
+    <div class="scorecard-actions">
+      <button class="action-btn scorecard-action-btn" onclick="event.stopPropagation();showLeaderboard()">Leaderboard</button>
+      <button id="btn-add-note" class="action-btn scorecard-action-btn" onclick="event.stopPropagation();addGameNote()">Add Note</button>
+      <div class="scorecard-actions-row">
+        <button id="btn-export-log" class="action-btn scorecard-action-btn" onclick="event.stopPropagation()">Export</button>
+        <button id="btn-share-game" class="action-btn scorecard-action-btn" onclick="event.stopPropagation();shareGameResults()">Share</button>
+      </div>
+      <div class="scorecard-links">
+        <a href="#" onclick="event.preventDefault();event.stopPropagation();showFeedbackModal()">Feedback</a>
+        <span class="footer-sep">·</span>
+        <a href="#" onclick="event.preventDefault();event.stopPropagation();document.getElementById('privacy-modal').classList.remove('hidden')">Privacy</a>
+        <span class="footer-sep scorecard-deck-link">·</span>
+        <a href="#" class="scorecard-deck-link footer-buy" onclick="event.preventDefault();event.stopPropagation();showBuyModal()">Get the Card Game &rarr;</a>
+      </div>
+    </div>
+    <div class="scorecard-version">02-27-2026 v2</div>
     </div>
     <div id="ai-commentary"></div>
-    <button id="btn-export-log" class="action-btn save-log-btn">Export Log</button>
   </div>
   </div>
 
+  <!-- Feedback Modal -->
+  <div id="feedback-modal" class="hidden" onclick="if(event.target===this)hideFeedbackModal()">
+    <div class="feedback-modal-content">
+      <button class="buy-modal-close" onclick="hideFeedbackModal()">&times;</button>
+      <h2>Send Feedback</h2>
+      <p class="feedback-subtext">Bug? Suggestion? Just want to say hi? We read everything.</p>
+      <form id="feedback-form" action="https://docs.google.com/forms/d/1du6KdHXiqiBiX0TLkgu83lnk3Kmo1JeWjdKPSSeNTDg/formResponse" method="POST" target="feedback-hidden" onsubmit="prepareFeedback();setTimeout(function(){document.getElementById('feedback-thanks').classList.remove('hidden');document.getElementById('feedback-form').classList.add('hidden')},500)">
+        <div class="feedback-form">
+          <select id="feedback-type" name="entry.997995687">
+            <option value="Suggestion">Suggestion</option>
+            <option value="Bug Report">Bug Report</option>
+            <option value="Love It!">Love It!</option>
+            <option value="Something Confusing">Something Confusing</option>
+            <option value="Other">Other</option>
+          </select>
+          <input type="email" id="feedback-email" name="entry.1350535275" placeholder="Email (optional)" class="buy-modal-input">
+          <textarea id="feedback-text" name="entry.331886633" placeholder="What's on your mind?" rows="4" maxlength="1000" required></textarea>
+          <input type="hidden" id="feedback-gamelog" name="entry.153587725">
+          <input type="hidden" id="feedback-context" name="entry.954163830">
+          <button type="submit" class="action-btn kapow-buy-btn">Send</button>
+        </div>
+      </form>
+      <div id="feedback-thanks" class="hidden">
+        <p>Thanks! Your feedback means a lot.</p>
+      </div>
+      <iframe name="feedback-hidden" style="display:none"></iframe>
+    </div>
+  </div>
+
+  <!-- Leaderboard Modal -->
+  <div id="leaderboard-modal" class="hidden" onclick="hideLeaderboard()">
+    <div class="leaderboard-modal-content">
+      <button class="buy-modal-close" onclick="hideLeaderboard()">&times;</button>
+      <h2>Leaderboard</h2>
+      <p class="leaderboard-subtitle">Top 25 &mdash; Lowest Score Wins</p>
+      <table class="leaderboard-table">
+        <thead>
+          <tr>
+            <th class="lb-rank">#</th>
+            <th class="lb-name">Player</th>
+            <th class="lb-score">Score</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboard-body">
+          <tr><td colspan="3" style="text-align:center; padding:20px; opacity:0.5;">Loading...</td></tr>
+        </tbody>
+      </table>
+      <div class="leaderboard-promo">
+        <p>Want to crush your friends in person?</p>
+        <a href="#" onclick="event.preventDefault();showBuyModal();hideLeaderboard()" class="kapow-buy-btn kapow-buy-btn-warm" style="display:inline-block;padding:10px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;">Get the Card Deck</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaderboard Submit Confirmation Modal -->
+  <div id="leaderboard-submit-modal" class="hidden" onclick="if(event.target===this)hideLeaderboardSubmit()">
+    <div class="lb-submit-content">
+      <button class="buy-modal-close" onclick="hideLeaderboardSubmit()">&times;</button>
+      <h2>Join the Leaderboard!</h2>
+      <p class="lb-submit-subtitle">Your score: <strong id="lb-submit-score">0</strong> points</p>
+      <div id="lb-submit-form-wrap" class="lb-submit-form">
+        <input type="text" id="lb-submit-name" placeholder="Your name" maxlength="20" class="buy-modal-input">
+        <input type="email" id="lb-submit-email" placeholder="Email (for leaderboard ID)" class="buy-modal-input">
+        <p class="lb-submit-note">Email is used to track your best score &mdash; not shared publicly.</p>
+        <button class="action-btn kapow-buy-btn" onclick="confirmLeaderboardSubmit()">Submit Score</button>
+        <button class="link-btn lb-submit-skip" onclick="hideLeaderboardSubmit()">Skip</button>
+      </div>
+      <div id="lb-submit-thanks" class="hidden">
+        <p style="color: var(--color-success); font-weight: 600;">You're on the board! &#127942;</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Desktop footer — buy link only, version lives in scorecard -->
+  <div id="revision-footer">
+    <a href="#" class="footer-feedback" onclick="event.preventDefault();showFeedbackModal()">Feedback</a>
+    <span class="footer-sep">·</span>
+    <a href="#" class="footer-feedback" onclick="event.preventDefault();document.getElementById('privacy-modal').classList.remove('hidden')">Privacy</a>
+    <span class="footer-sep">·</span>
+    <a id="footer-buy-link" href="#" onclick="event.preventDefault();showBuyModal()" class="footer-buy">Get the Card Game &rarr;</a>
+  </div>
+
+  <!-- Help / Rules Modal -->
+  <div id="help-modal" class="hidden" onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="help-modal-content">
+      <button class="help-close" onclick="document.getElementById('help-modal').classList.add('hidden')">&times;</button>
+      <h2>How to Play</h2>
+
+      <!-- Tab navigation -->
+      <div class="help-tabs">
+        <button class="help-tab active" onclick="showHelpTab('basics',this)">Basics</button>
+        <button class="help-tab" onclick="showHelpTab('cards',this)">Cards</button>
+        <button class="help-tab" onclick="showHelpTab('turns',this)">Turns</button>
+        <button class="help-tab" onclick="showHelpTab('scoring',this)">Scoring</button>
+        <button class="help-tab" onclick="showHelpTab('strategy',this)">Tips</button>
+      </div>
+
+      <!-- Tab: Basics -->
+      <div id="help-basics" class="help-panel active">
+        <h3>Goal</h3>
+        <p>Have the <strong>fewest points</strong> after 10 rounds. Cards in your hand count against you &mdash; get rid of them by completing triads.</p>
+
+        <h3>Setup</h3>
+        <p>Each player gets <strong>12 cards face-down</strong> arranged in 4 columns of 3 (called <em>triads</em>). The remaining cards form a draw pile, with one card face-up starting the discard pile.</p>
+
+        <h3>What's a Triad?</h3>
+        <p>Each column of 3 cards is a triad. Complete a triad and it gets <strong>discarded for 0 points</strong>. A triad is complete when it contains:</p>
+        <ul>
+          <li><strong>Three of a kind</strong> &mdash; same value in all 3 positions (e.g. 7, 7, 7)</li>
+          <li><strong>A run</strong> &mdash; three consecutive values (e.g. 5, 6, 7 or 10, 11, 12)</li>
+        </ul>
+
+        <div class="help-video">
+          <a href="https://youtu.be/xAY-B_t0T34" target="_blank" rel="noopener">Watch video tutorial &rarr;</a>
+        </div>
+        <button class="action-btn" style="margin-top: 12px; width: 100%;" onclick="resetTutorial()">Replay Interactive Tutorial</button>
+      </div>
+
+      <!-- Tab: Cards -->
+      <div id="help-cards" class="help-panel">
+        <h3>The Deck (118 cards)</h3>
+
+        <div class="help-card-type">
+          <div class="help-card-badge help-badge-fixed">5</div>
+          <div>
+            <strong>Fixed Cards (96)</strong><br>
+            Values 0&ndash;12. Eight of each (except 1 and 2 which have four each). Simple &mdash; the number on the card is its value.
+          </div>
+        </div>
+
+        <div class="help-card-type">
+          <div class="help-card-badge help-badge-power">P</div>
+          <div>
+            <strong>Power Cards (16)</strong><br>
+            Have a face value (1 or 2) <em>plus</em> modifier values (&plusmn;1 or &plusmn;2). Play them alone for face value, or <strong>stack under another card</strong> to modify that position's value. Stacked cards form a <em>powerset</em> &mdash; they move as a unit.
+          </div>
+        </div>
+
+        <div class="help-card-type">
+          <div class="help-card-badge help-badge-kapow">K!</div>
+          <div>
+            <strong>KAPOW! Cards (6)</strong><br>
+            Wild cards (value 0&ndash;12). Worth <strong>+25 points</strong> until used in a triad. Once placed, you can <strong>swap their position</strong> with any other card. When a KAPOW! card completes a triad, it locks in place and can no longer be moved.
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Turns -->
+      <div id="help-turns" class="help-panel">
+        <h3>First Turn</h3>
+        <p><strong>Reveal any 2 cards</strong> in your hand (click them). Then draw a card and play it.</p>
+
+        <h3>Each Turn After</h3>
+        <ol>
+          <li><strong>Draw</strong> &mdash; click the draw pile or discard pile to pick up a card</li>
+          <li><strong>Play it</strong> &mdash; either:
+            <ul>
+              <li><strong>Discard it</strong> &mdash; click the discard pile</li>
+              <li><strong>Replace a card</strong> &mdash; click any card in your hand (the old card goes to discard)</li>
+              <li><strong>Create a powerset</strong> &mdash; stack it on a face-up power card</li>
+            </ul>
+          </li>
+          <li>Any completed triads are <strong>automatically discarded</strong></li>
+          <li>You may <strong>swap a free KAPOW! card</strong> with another card in your hand</li>
+        </ol>
+
+        <h3>Going Out</h3>
+        <p>When all your cards are revealed or discarded, the round ends. Each other player gets <strong>one final turn</strong> (all hidden cards are revealed first).</p>
+      </div>
+
+      <!-- Tab: Scoring -->
+      <div id="help-scoring" class="help-panel">
+        <h3>Round Scoring</h3>
+        <ul>
+          <li><strong>Completed triads</strong> = 0 points (already discarded)</li>
+          <li><strong>Incomplete triads</strong> = sum of card values in each position</li>
+          <li><strong>Unused KAPOW!</strong> = +25 points each</li>
+          <li><strong>KAPOW! in a powerset</strong> = value of the powerset, not 25</li>
+          <li>Power cards in a powerset use their modifier values</li>
+        </ul>
+
+        <h3>Going-Out Penalty</h3>
+        <p>If you go out first but <strong>don't have the lowest score</strong>, your score for that round is <strong>doubled</strong>. Going out is risky &mdash; make sure you're actually winning!</p>
+
+        <h3>After 10 Rounds</h3>
+        <p>Lowest total score wins.</p>
+      </div>
+
+      <!-- Tab: Strategy -->
+      <div id="help-strategy" class="help-panel">
+        <h3>Quick Tips</h3>
+        <ul>
+          <li><strong>Complete high-value triads first</strong> &mdash; getting rid of 12s early is better than perfecting 3s</li>
+          <li><strong>Build triads with multiple outs</strong> &mdash; a triad with 9, 9, and 11 can be completed by drawing 9, 10, or a KAPOW!</li>
+          <li><strong>Power cards can make negative values</strong> &mdash; a -2 power under a 0 = -2 points. Keep those!</li>
+          <li><strong>Watch the discard pile</strong> &mdash; when you complete a triad, its top card becomes available to your opponent</li>
+          <li><strong>Don't go out too early</strong> &mdash; if Kai has a lower score, yours gets doubled</li>
+          <li><strong>KAPOW! cards are flexible</strong> &mdash; swap them around to where they're needed most, but once they complete a triad they lock in place</li>
+        </ul>
+
+        <h3>Use "Understand Kai's Move"</h3>
+        <p>After Kai plays, click the <strong>Understand Kai's Move</strong> button to see the reasoning. Great way to learn advanced strategy.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showHelpTab(tabName, btn) {
+      var panels = document.querySelectorAll('.help-panel');
+      var tabs = document.querySelectorAll('.help-tab');
+      for (var i = 0; i < panels.length; i++) panels[i].classList.remove('active');
+      for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+      document.getElementById('help-' + tabName).classList.add('active');
+      btn.classList.add('active');
+    }
+  </script>
+
+  <script src="js/sound.js"></script>
+  <script src="js/telemetry.js"></script>
   <script src="js/kapow.js"></script>
+  <script>
+    // Register service worker for offline/PWA support
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(function() {});
+    }
+
+    // Modal show/hide helpers
+    function showBuyModal() { document.getElementById('kapow-buy-modal').classList.remove('hidden'); }
+    function hideBuyModal() { document.getElementById('kapow-buy-modal').classList.add('hidden'); }
+    function showLeaderboard() { document.getElementById('leaderboard-modal').classList.remove('hidden'); fetchLeaderboard(); }
+    function hideLeaderboard() { document.getElementById('leaderboard-modal').classList.add('hidden'); }
+    function hideLeaderboardSubmit() {
+      document.getElementById('leaderboard-submit-modal').classList.add('hidden');
+      // Reset form for next use
+      document.getElementById('lb-submit-form-wrap').classList.remove('hidden');
+      document.getElementById('lb-submit-thanks').classList.add('hidden');
+    }
+
+    // ── Leaderboard ──────────────────────────
+    var LEADERBOARD_API = 'https://script.google.com/macros/s/AKfycbx9duQ_lbLI-5Tow2hxf011qkshJ70aJZ4Alxf3D2mrJ32Va93hnDEzvR7B4OPjvm8X/exec';
+    var leaderboardCache = null;
+
+    function fetchLeaderboard() {
+      var tbody = document.getElementById('leaderboard-body');
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;"><div class="loading-cards"><span></span><span></span><span></span></div></td></tr>';
+
+      fetch(LEADERBOARD_API)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          // Filter completed games, find best (lowest) score per player
+          var bestScores = {};
+          for (var i = 0; i < data.length; i++) {
+            var g = data[i];
+            if (g.status !== 'completed' || g.winner !== 'player') continue;
+            var key = (g.player_email || g.player_id || '').toLowerCase();
+            var name = g.player_name || 'Anonymous';
+            var score = parseInt(g.player_score);
+            if (isNaN(score)) continue;
+            if (!bestScores[key] || score < bestScores[key].score) {
+              bestScores[key] = { name: name, score: score };
+            }
+          }
+          // Sort by score ascending (lowest = best)
+          var entries = [];
+          for (var k in bestScores) entries.push(bestScores[k]);
+          entries.sort(function(a, b) { return a.score - b.score; });
+          leaderboardCache = entries.slice(0, 25);
+          renderLeaderboardRows(leaderboardCache);
+        })
+        .catch(function() {
+          tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;opacity:0.5;">Could not load leaderboard</td></tr>';
+        });
+    }
+
+    function renderLeaderboardRows(entries) {
+      var tbody = document.getElementById('leaderboard-body');
+      if (!entries.length) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;opacity:0.5;">No scores yet — be the first!</td></tr>';
+        return;
+      }
+      var html = '';
+      for (var i = 0; i < entries.length; i++) {
+        var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+        html += '<tr><td class="lb-rank">' + medal + '</td><td class="lb-name">' +
+          escapeHtml(entries[i].name) + '</td><td class="lb-score">' + entries[i].score + '</td></tr>';
+      }
+      tbody.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+      var div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // Prompt leaderboard submit after game over (if player won)
+    function promptLeaderboardSubmit() {
+      if (!gameState || gameState.phase !== 'gameOver') return;
+      var playerScore = gameState.players[0].totalScore;
+      var kaiScore = gameState.players[1].totalScore;
+      if (playerScore >= kaiScore) return; // Only winners
+      document.getElementById('lb-submit-score').textContent = playerScore;
+      document.getElementById('lb-submit-name').value = gameState.players[0].name || '';
+      var savedEmail = '';
+      try { savedEmail = localStorage.getItem('kapow-email') || ''; } catch(e) {}
+      document.getElementById('lb-submit-email').value = savedEmail;
+      document.getElementById('lb-submit-form-wrap').classList.remove('hidden');
+      document.getElementById('lb-submit-thanks').classList.add('hidden');
+      document.getElementById('leaderboard-submit-modal').classList.remove('hidden');
+    }
+
+    function confirmLeaderboardSubmit() {
+      var name = document.getElementById('lb-submit-name').value.trim();
+      var email = document.getElementById('lb-submit-email').value.trim();
+      if (!name) { document.getElementById('lb-submit-name').focus(); return; }
+      // Save email for future use
+      if (email) { try { localStorage.setItem('kapow-email', email); } catch(e) {} }
+      // Submit via telemetry form (same pipeline, marked as leaderboard entry)
+      var score = parseInt(document.getElementById('lb-submit-score').textContent);
+      var payload = {
+        game_id: 'lb_' + Date.now(),
+        session_id: 'leaderboard',
+        player_id: KapowTelemetry.getPlayerId(),
+        player_email: email,
+        player_name: name,
+        status: 'completed',
+        timestamp: new Date().toISOString(),
+        rounds_played: gameState ? gameState.round : 0,
+        player_score: score,
+        kai_score: gameState ? gameState.players[1].totalScore : 0,
+        winner: 'player',
+        round_scores: gameState ? JSON.stringify({ player: gameState.players[0].roundScores, kai: gameState.players[1].roundScores }) : '{}',
+        game_duration_sec: 0,
+        leaderboard_submit: true
+      };
+      // Send to the same Google Form
+      var formData = new FormData();
+      formData.append('entry.67486629', JSON.stringify(payload));
+      fetch('https://docs.google.com/forms/d/1loyHdfBTCz4bLtX01aNWB6u6e4rZzh6ZEHpz-e6SKiY/formResponse', {
+        method: 'POST', body: formData, mode: 'no-cors'
+      });
+      // Show success
+      document.getElementById('lb-submit-form-wrap').classList.add('hidden');
+      document.getElementById('lb-submit-thanks').classList.remove('hidden');
+      setTimeout(function() { hideLeaderboardSubmit(); }, 2000);
+    }
+
+    // ── Add Game Note ────────────────────────
+    var gameNotes = [];
+
+    function addGameNote() {
+      if (!gameState) return;
+      var container = document.getElementById('scorecard-notes');
+      // If input already open, focus it
+      var existing = container.querySelector('.note-input');
+      if (existing) { existing.focus(); return; }
+      // Create inline input
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'margin-top:8px;display:flex;gap:6px;';
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'note-input';
+      input.placeholder = 'Add a note...';
+      input.maxLength = 100;
+      input.style.cssText = 'flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:6px 10px;color:#fff;font-size:12px;outline:none;';
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') saveNote(input, wrap);
+        if (e.key === 'Escape') wrap.remove();
+        e.stopPropagation();
+      });
+      var btn = document.createElement('button');
+      btn.textContent = 'Save';
+      btn.className = 'action-btn';
+      btn.style.cssText = 'font-size:11px;padding:4px 10px;min-width:0;';
+      btn.addEventListener('click', function(e) { e.stopPropagation(); saveNote(input, wrap); });
+      wrap.appendChild(input);
+      wrap.appendChild(btn);
+      container.appendChild(wrap);
+      input.focus();
+    }
+
+    function saveNote(input, wrap) {
+      var text = input.value.trim();
+      if (!text) { wrap.remove(); return; }
+      var roundLabel = gameState.phase === 'gameOver' ? 'End' : 'R' + gameState.round;
+      gameNotes.push({ round: roundLabel, text: text });
+      wrap.remove();
+      renderGameNotes();
+    }
+
+    function renderGameNotes() {
+      var container = document.getElementById('scorecard-notes');
+      if (!container || gameNotes.length === 0) return;
+      var html = '';
+      for (var i = 0; i < gameNotes.length; i++) {
+        html += '<div class="scorecard-note"><span class="note-round">' +
+          escapeHtml(gameNotes[i].round) + '</span> ' +
+          escapeHtml(gameNotes[i].text) + '</div>';
+      }
+      container.innerHTML = html;
+    }
+
+    // ── Share Game Results ───────────────────
+    function shareGameResults() {
+      if (!gameState) return;
+      var p = gameState.players[0];
+      var k = gameState.players[1];
+      var isOver = gameState.phase === 'gameOver';
+      var winner = p.totalScore < k.totalScore ? p.name : 'Kai';
+      var status = isOver ? (winner + ' wins!') : ('Round ' + gameState.round);
+      var text = 'KAPOW! ' + status + '\n' +
+        p.name + ': ' + p.totalScore + ' · Kai: ' + k.totalScore + '\n';
+      if (isOver) {
+        text += 'Rounds: ' + gameState.round + '\n';
+      }
+      text += 'https://epheterson.github.io/Kapow/';
+
+      if (navigator.share) {
+        navigator.share({ title: 'KAPOW! Card Game', text: text }).catch(function() {});
+      } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(function() {
+          showToast('Results copied to clipboard!');
+        }).catch(function() {
+          fallbackCopy(text);
+        });
+      } else {
+        fallbackCopy(text);
+      }
+    }
+
+    function fallbackCopy(text) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('Results copied to clipboard!');
+    }
+
+    function showToast(msg) {
+      var toast = document.createElement('div');
+      toast.textContent = msg;
+      toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:999;pointer-events:none;opacity:0;transition:opacity 0.3s;';
+      document.body.appendChild(toast);
+      requestAnimationFrame(function() { toast.style.opacity = '1'; });
+      setTimeout(function() {
+        toast.style.opacity = '0';
+        setTimeout(function() { document.body.removeChild(toast); }, 300);
+      }, 2000);
+    }
+
+    // ── Privacy toggle ──────────────────────
+    function togglePrivacy(btn) {
+      if (KapowTelemetry.hasConsent()) {
+        KapowTelemetry.revokeConsent();
+        btn.textContent = 'Opted out · Tap to opt back in';
+      } else {
+        KapowTelemetry.giveConsent();
+        btn.textContent = 'Opt out of stats';
+      }
+    }
+    // Update privacy button state when modal opens
+    document.addEventListener('click', function() {
+      var btn = document.getElementById('privacy-toggle-btn');
+      if (btn && typeof KapowTelemetry !== 'undefined') {
+        btn.textContent = KapowTelemetry.hasConsent() ? 'Opt out of stats' : 'Opted out · Tap to opt back in';
+      }
+    });
+
+    // Close scorecard sidebar on tap (mobile overlay)
+    function closeSidebar(e) {
+      // Don't close if tapping buttons or interactive elements
+      if (e.target.closest('button') || e.target.closest('a') || e.target.closest('select') || e.target.closest('input')) return;
+      document.getElementById('sidebar').classList.remove('mobile-visible');
+    }
+
+    // Prevent iOS Safari rubber-band bounce scrolling (portrait only)
+    document.addEventListener('touchmove', function(e) {
+      // Allow scrolling in landscape (content overflows)
+      if (window.innerWidth > window.innerHeight) return;
+      // Allow scrolling inside modals and sidebar
+      if (e.target.closest('.help-modal-content') || e.target.closest('.explain-modal-content') || e.target.closest('#sidebar #scorecard')) return;
+      e.preventDefault();
+    }, { passive: false });
+
+    // Prevent double-tap zoom
+    document.addEventListener('dblclick', function(e) { e.preventDefault(); });
+  </script>
 </body>
 </html>

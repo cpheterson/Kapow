@@ -1,0 +1,97 @@
+#!/bin/bash
+# KAPOW pre-commit hook: tests + version bump + changelog check
+#
+# Install: git config core.hooksPath hooks
+# (Already configured — Chuck just needs to run the command above after cloning)
+
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+
+# ── 1. Run tests ──────────────────────────────
+echo "Running tests..."
+if ! npm test --prefix "$ROOT"; then
+  echo "FAIL: Tests failed. Fix them before committing."
+  exit 1
+fi
+echo "OK: All tests passed."
+
+# ── 2. Auto-bump version ─────────────────────
+# Version format: MM-DD-YYYY vN in index.html scorecard-version div
+# Compares against origin/main to avoid version conflicts between contributors
+HTML="$ROOT/index.html"
+TODAY=$(date +"%m-%d-%Y")
+
+if [ -f "$HTML" ]; then
+  # Get version from remote main (fall back to local if remote unavailable)
+  REMOTE_VERSION=""
+  if git rev-parse --verify origin/main >/dev/null 2>&1; then
+    REMOTE_VERSION=$(git show origin/main:index.html 2>/dev/null | sed -n 's/.*scorecard-version">\([0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9] v[0-9]*\).*/\1/p' | head -1 || echo "")
+  fi
+
+  # Fall back to local version if remote isn't available
+  CURRENT=$(sed -n 's/.*scorecard-version">\([0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9] v[0-9]*\).*/\1/p' "$HTML" | head -1)
+
+  # Use whichever version is higher (remote or local)
+  BASE_VERSION="${REMOTE_VERSION:-$CURRENT}"
+  if [ -n "$REMOTE_VERSION" ] && [ -n "$CURRENT" ]; then
+    REMOTE_DATE=$(echo "$REMOTE_VERSION" | cut -d' ' -f1)
+    REMOTE_V=$(echo "$REMOTE_VERSION" | sed 's/.*v//')
+    LOCAL_DATE=$(echo "$CURRENT" | cut -d' ' -f1)
+    LOCAL_V=$(echo "$CURRENT" | sed 's/.*v//')
+
+    # If same date, use the higher version number
+    if [ "$REMOTE_DATE" = "$LOCAL_DATE" ] && [ "$LOCAL_V" -gt "$REMOTE_V" ] 2>/dev/null; then
+      BASE_VERSION="$CURRENT"
+    elif [ "$REMOTE_DATE" != "$LOCAL_DATE" ] && [ "$LOCAL_DATE" = "$TODAY" ]; then
+      # Local is today but remote is older date — use local
+      BASE_VERSION="$CURRENT"
+    fi
+  fi
+
+  if [ -n "$BASE_VERSION" ]; then
+    BASE_DATE=$(echo "$BASE_VERSION" | cut -d' ' -f1)
+    BASE_V=$(echo "$BASE_VERSION" | sed 's/.*v//')
+
+    if [ "$BASE_DATE" = "$TODAY" ]; then
+      NEW_V=$((BASE_V + 1))
+    else
+      NEW_V=1
+    fi
+
+    NEW_VERSION="$TODAY v$NEW_V"
+
+    # Only bump if the version wasn't already manually updated in this commit
+    STAGED_VERSION=$(git diff --cached -- "$HTML" | grep '^+' | sed -n 's/.*scorecard-version">\([0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9] v[0-9]*\).*/\1/p' | tail -1 || echo "")
+
+    if [ -z "$STAGED_VERSION" ] || [ "$STAGED_VERSION" = "$CURRENT" ]; then
+      sed -i '' "s|scorecard-version\">$CURRENT|scorecard-version\">$NEW_VERSION|" "$HTML"
+      git add "$HTML"
+      echo "Version bumped: $CURRENT -> $NEW_VERSION (base: $BASE_VERSION)"
+    else
+      echo "Version already updated in staging: $STAGED_VERSION"
+    fi
+  fi
+fi
+
+# ── 3. Changelog check ──────────────────────
+CHANGELOG="$ROOT/CHANGELOG.md"
+if [ -f "$CHANGELOG" ]; then
+  if ! git diff --cached --name-only | grep -q "CHANGELOG.md"; then
+    echo ""
+    echo "FAIL: CHANGELOG.md not updated. Add an entry before committing."
+    echo "  (skip with: git commit --no-verify)"
+    echo ""
+    exit 1
+  fi
+fi
+
+# Update the "Latest Version" line in CHANGELOG to match
+if [ -n "$NEW_VERSION" ] && [ -f "$CHANGELOG" ]; then
+  if grep -q "^## Latest Version:" "$CHANGELOG"; then
+    sed -i '' "s|^## Latest Version:.*|## Latest Version: $NEW_VERSION|" "$CHANGELOG"
+    git add "$CHANGELOG"
+  fi
+fi
+
+exit 0
