@@ -6,7 +6,9 @@
 
 ### 02-28-2026
 
-**[Chuck]** Merge game logic from master branch (AI + KAPOW swap improvements).
+**v2 [Chuck]** Refresh PLAN.md, add PLAN.md workflow rule to CLAUDE.md, master branch recovery info.
+
+**v1 [Chuck]** Merge game logic from master branch (AI + KAPOW swap improvements).
 - AI offensive strategy: recognize KAPOW-swap triad completions when evaluating placements
 - Steepen discard safety formula to prevent gifting triad-completing cards to opponent
 - Fix: KAPOW-swap completion bonus was inflated by placed card's value

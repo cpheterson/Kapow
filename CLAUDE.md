@@ -80,6 +80,14 @@ Runs automatically on `git commit` (requires `git config core.hooksPath hooks`):
 
 GitHub Pages auto-deploys on push to `main`. Live at https://epheterson.github.io/Kapow/. No build step - serves `index.html` directly. Live within ~60 seconds of push.
 
+## PLAN.md
+
+**Read `PLAN.md` at the start of every session. Update it live throughout — every request, decision, change, and shipped item gets logged as it happens.**
+
+## Recovery
+
+- Deleted `master` branch (02-28-2026): restore with `git push origin d59e5b8:refs/heads/master`
+
 ## Contributors
 
 - **Chuck** (cpheterson) - Game design + full AI engine
