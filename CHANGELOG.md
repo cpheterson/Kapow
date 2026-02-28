@@ -6,6 +6,8 @@
 
 ### 02-28-2026
 
+**v7 [Chuck]** Fix FIXED label displaced to bottom-right on mobile — keep all card type labels centered at top.
+
 **v6 [Chuck]** Fix POWERSET label running off right edge on mobile — center it horizontally on the card.
 
 **v5 [Chuck]** Delay round-end splash until player clicks "Round Over: Continue" — lets you see the final board state before scores appear.
