@@ -329,15 +329,32 @@ body::before {
   transform: none;
 }
 
+.card-power-face-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
 .card-power-face-value {
   font-size: 42px;
   font-weight: 700;
   font-family: var(--font-body);
   letter-spacing: -1px;
-  margin-top: auto;
-  padding-bottom: 12px;
 }
 
+.power-sign {
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.power-sign-minus {
+  color: #dc2626;
+}
+
+.power-sign-plus {
+  color: #166534;
+}
 
 .modifier-positive {
   color: #166534;
@@ -1899,13 +1916,16 @@ body::before {
     font-size: 8px;
   }
 
-  .card-power-face-value {
-    font-size: clamp(16px, 3svh, 24px);
-    padding-bottom: 3px;
+  .card-power-face-row {
+    gap: 2px;
   }
 
-  .card-power-modifiers {
-    font-size: clamp(9px, 1.8svh, 12px);
+  .card-power-face-value {
+    font-size: clamp(16px, 3svh, 24px);
+  }
+
+  .power-sign {
+    font-size: clamp(12px, 2.4svh, 18px);
   }
 
   .card-power .card-type-label {

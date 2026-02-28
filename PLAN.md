@@ -41,6 +41,7 @@ The living document. Updated in real-time throughout every session.
 - [x] CHANGELOG updated with master branch AI improvements
 
 ### In Progress
+- [ ] Power card face redesign: minus/plus signs flanking center value, POWER label stays at top
 
 ### Blocked
 

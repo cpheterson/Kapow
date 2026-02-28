@@ -3828,13 +3828,15 @@ function renderCardHTML(card, faceDown, clickable, powersetValue) {
     if (hasPowerset) {
       html += '<span class="card-type-label">Powerset</span>';
     } else {
-      html += '<span class="modifier-negative">' + card.modifiers[0] + '</span>' +
-        '<span class="card-type-label">Power</span>' +
-        '<span class="modifier-positive">+' + card.modifiers[1] + '</span>';
+      html += '<span class="card-type-label">Power</span>';
     }
 
     html += '</div>' +
-      '<span class="card-power-face-value">' + card.faceValue + '</span>';
+      '<div class="card-power-face-row">' +
+      '<span class="power-sign power-sign-minus">&minus;</span>' +
+      '<span class="card-power-face-value">' + card.faceValue + '</span>' +
+      '<span class="power-sign power-sign-plus">+</span>' +
+      '</div>';
 
     if (hasPowerset) {
       html += '<span class="powerset-total">' + powersetValue + '</span>';
@@ -3978,10 +3980,11 @@ function renderDiscardPile(discardPile, drawnCard, drawnFromDiscard) {
     container.classList.add('card-power');
     container.innerHTML =
       '<div class="card-power-header">' +
-      '<span class="modifier-negative">' + topCard.modifiers[0] + '</span>' +
-      '<span class="card-type-label">Power</span>' +
-      '<span class="modifier-positive">+' + topCard.modifiers[1] + '</span></div>' +
-      '<span class="card-power-face-value">' + topCard.faceValue + '</span>';
+      '<span class="card-type-label">Power</span></div>' +
+      '<div class="card-power-face-row">' +
+      '<span class="power-sign power-sign-minus">&minus;</span>' +
+      '<span class="card-power-face-value">' + topCard.faceValue + '</span>' +
+      '<span class="power-sign power-sign-plus">+</span></div>';
   } else if (topCard.type === 'kapow') {
     container.classList.add('card-kapow');
     container.innerHTML =

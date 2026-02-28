@@ -6,6 +6,8 @@
 
 ### 02-28-2026
 
+**v4 [Chuck]** Power card face redesign: bold red minus and green plus signs flank the centered face value; POWER label stays at top.
+
 **v2 [Chuck]** Refresh PLAN.md, add PLAN.md workflow rule to CLAUDE.md, master branch recovery info.
 
 **v1 [Chuck]** Merge game logic from master branch (AI + KAPOW swap improvements).
