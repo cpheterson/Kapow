@@ -3443,7 +3443,7 @@ function aiShouldGoOutWithScore(gameState, aiScore) {
   // A flat "-3" estimate is dangerously naive when the opponent has near-complete triads.
   var opponentFinalEst = opponentEval.estimatedScore;
   if (opponentEval.unrevealedCount > 0) {
-    opponentFinalEst = Math.max(0, opponentFinalEst - 3);
+    opponentFinalEst = Math.max(0, opponentFinalEst - 5);
   }
   // Scan opponent's triads for near-complete ones (2 revealed with completion paths).
   // Each near-complete triad represents a realistic chance of the opponent shedding
@@ -3508,16 +3508,16 @@ function aiShouldGoOutWithScore(gameState, aiScore) {
     }
 
     // Even if cumulative is close, don't go out if round score doubles to a lot
-    if (doubledScore > 30) {
+    if (doubledScore > 20) {
       return { shouldGoOut: false, reason: 'doubled score too high (' + doubledScore + ')' };
     }
   }
 
   // HIGH SCORE CAUTION: Even if estimates say we're winning, going out with a high
-  // score (20+) is risky when the margin is thin. Doubling 20+ points is catastrophic
+  // score is risky when the margin is thin. Doubling 15+ points is painful
   // if the estimate is wrong. Only block if the margin is slim (within 10 points of
   // estimated opponent score) AND opponent still has unknowns that could swing things.
-  if (aiScore >= 20 && opponentEval.unrevealedCount > 0 &&
+  if (aiScore >= 15 && opponentEval.unrevealedCount > 0 &&
       aiScore >= opponentFinalEst - 10) {
     return { shouldGoOut: false, reason: 'score too high with uncertain margin (' + aiScore + ' vs est. ' + opponentFinalEst + ')' };
   }
@@ -3528,9 +3528,11 @@ function aiShouldGoOutWithScore(gameState, aiScore) {
     return { shouldGoOut: true, reason: 'score advantage, going out' };
   }
 
-  // In late/end game, be more aggressive about going out with low scores
-  var threshold = context.isEndGame ? 25 : (context.isLateGame ? 18 : 12);
-  if (aiScore <= threshold && aiScore <= opponentFinalEst + 5) {
+  // In late/end game, be more aggressive about going out with low scores.
+  // In early/mid game, only go out if strictly ahead of opponent estimate.
+  var threshold = context.isEndGame ? 25 : (context.isLateGame ? 18 : 10);
+  var margin = context.isEndGame ? 5 : (context.isLateGame ? 3 : 0);
+  if (aiScore <= threshold && aiScore <= opponentFinalEst + margin) {
     return { shouldGoOut: true, reason: 'low score, acceptable risk' };
   }
 
@@ -4191,7 +4193,7 @@ function generateHint() {
         return 'The ' + cardDescription(topDiscard) + ' could fit your hand. But drawing from the deck might find something better.';
       }
     }
-    return 'Draw from the deck for a surprise, or grab the discard if it fits a triad you\'re building.';
+    return 'For a surprise choose a card from the Draw pile, or select a known card from the Discard pile if it helps you to build a triad toward completion.';
   }
 
   // Place phase: player has a drawn card

@@ -6,6 +6,12 @@
 
 ### 02-28-2026
 
+**v13 [Chuck]** Make AI go-out decision more conservative.
+- Doubled-score cap lowered from 30 to 20
+- High-score caution threshold lowered from 20 to 15
+- Opponent final-turn improvement estimate increased from 3 to 5
+- Early/mid game: AI must be strictly ahead to go out (no +5 margin)
+
 **v12 [Chuck]** Update PLAN.md with 03-01-2026 session log.
 
 **v11 [Chuck]** Rewrite How to Play modal text + switch headers from Bangers to DM Sans for readability.
