@@ -6,6 +6,13 @@
 
 ### 03-01-2026
 
+**v17 [Chuck]** AI: cross-triad KAPOW swap lookahead for placement decisions.
+- AI now considers swapping a KAPOW from another triad to complete the target triad after placement
+- Fixed `aiFindBeneficialSwap()` to check face-down targets for triad completion (AI knows its own cards)
+- Updated modular `triad.js` to handle KAPOW wildcards in `isTriadComplete()` (was missing)
+- Updated modular `ai.js` with matching cross-triad + within-triad swap lookahead
+- Added 2 regression tests (cross-triad and within-triad KAPOW swap completion)
+
 **v16 [Chuck]** Update PLAN.md session log.
 
 **v15 [Chuck]** Redesign turn counter above draw pile.

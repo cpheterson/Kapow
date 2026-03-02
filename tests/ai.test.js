@@ -127,6 +127,39 @@ describe('aiDecideAction', () => {
     expect(action.position).toBe('bottom'); // replace the 9
   });
 
+  test('places card to enable cross-triad KAPOW swap completion', () => {
+    // Reproduces R2T18: AI has T3[fd(8), 5, fd(5)] and T4[fd(5), K!, 3].
+    // Drawing a 6: placing in T3 top gives [6, 5, fd(5)], then swapping
+    // K! from T4 into T3 completes it as [6, 5, K!=4] descending run.
+    // AI should prefer T3 placement over T4 (which doesn't complete anything).
+    const aiTriads = [
+      { ...makeTriad(fc(8, false), fc(5), fc(5, false)), isDiscarded: true },  // T1 discarded
+      { ...makeTriad(fc(3, false), fc(4, false), fc(2, false)), isDiscarded: true },  // T2 discarded
+      makeTriad(fc(8, false), fc(5), fc(5, false)),  // T3: [fd(8), 5, fd(5)]
+      makeTriad(fc(5, false), kapowCard(), fc(3)),    // T4: [fd(5), K!, 3]
+    ];
+    const state = makeAiState(aiTriads);
+    const action = aiDecideAction(state, fc(6));
+
+    expect(action.type).toBe('replace');
+    expect(action.triadIndex).toBe(2); // T3, not T4
+    expect(action.position).toBe('top'); // replace the fd(8)
+  });
+
+  test('places card to enable within-triad KAPOW swap completion', () => {
+    // AI has T1[fd(8), K!, 5]. Drawing a 6: placing in T1 top gives [6, K!, 5].
+    // Swapping K! within T1 to bottom gives [6, 5, K!=4] descending run. Complete!
+    const aiTriads = [
+      makeTriad(fc(8, false), kapowCard(), fc(5)),  // [fd(8), K!, 5]
+    ];
+    const state = makeAiState(aiTriads);
+    const action = aiDecideAction(state, fc(6));
+
+    expect(action.type).toBe('replace');
+    expect(action.triadIndex).toBe(0);
+    expect(action.position).toBe('top'); // replace the fd(8), enabling K! swap
+  });
+
   test('replaces highest value position with low card', () => {
     const aiTriads = [
       makeTriad(2, 11, 3),

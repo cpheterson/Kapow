@@ -198,11 +198,14 @@ function wouldHelpCompleteTriad(hand, card) {
 }
 
 function findTriadCompletionSpot(hand, card) {
+  const positions = ['top', 'middle', 'bottom'];
+
+  // Direct completion: placing the card completes the triad
   for (let t = 0; t < hand.triads.length; t++) {
     const triad = hand.triads[t];
     if (triad.isDiscarded) continue;
 
-    for (const pos of ['top', 'middle', 'bottom']) {
+    for (const pos of positions) {
       const origCards = triad[pos];
       triad[pos] = [{ ...card, isRevealed: true }];
       const complete = isTriadComplete(triad);
@@ -213,6 +216,83 @@ function findTriadCompletionSpot(hand, card) {
       }
     }
   }
+
+  // KAPOW swap completion: placing the card, then swapping a KAPOW from
+  // another triad into this one would complete it (cross-triad lookahead).
+  for (let t = 0; t < hand.triads.length; t++) {
+    const triad = hand.triads[t];
+    if (triad.isDiscarded) continue;
+
+    for (const pos of positions) {
+      const origCards = triad[pos];
+      triad[pos] = [{ ...card, isRevealed: true }];
+
+      // Temporarily reveal face-down cards in this triad (AI knows its own cards)
+      const revealedForSim = [];
+      for (let i = 0; i < 3; i++) {
+        const slot = triad[positions[i]];
+        if (slot.length > 0 && !slot[0].isRevealed) {
+          slot[0].isRevealed = true;
+          revealedForSim.push(i);
+        }
+      }
+
+      let completesViaSwap = false;
+
+      // Check cross-triad: KAPOW in another triad swapped into this one
+      for (let xt = 0; xt < hand.triads.length && !completesViaSwap; xt++) {
+        if (xt === t) continue;
+        const xTriad = hand.triads[xt];
+        if (xTriad.isDiscarded || isTriadComplete(xTriad)) continue;
+        for (let xp = 0; xp < 3 && !completesViaSwap; xp++) {
+          const xSlot = xTriad[positions[xp]];
+          if (xSlot.length === 0 || xSlot[0].type !== 'kapow' || !xSlot[0].isRevealed) continue;
+          for (let tp = 0; tp < 3; tp++) {
+            const targetSlot = triad[positions[tp]];
+            if (targetSlot.length === 0) continue;
+            const savedTarget = triad[positions[tp]];
+            const savedSource = xTriad[positions[xp]];
+            triad[positions[tp]] = savedSource;
+            xTriad[positions[xp]] = savedTarget;
+            if (isTriadComplete(triad)) completesViaSwap = true;
+            triad[positions[tp]] = savedTarget;
+            xTriad[positions[xp]] = savedSource;
+            if (completesViaSwap) break;
+          }
+        }
+      }
+
+      // Also check within-triad KAPOW swaps
+      if (!completesViaSwap) {
+        for (let kp = 0; kp < 3 && !completesViaSwap; kp++) {
+          const kSlot = triad[positions[kp]];
+          if (kSlot.length === 0 || kSlot[0].type !== 'kapow') continue;
+          for (let kt = 0; kt < 3; kt++) {
+            if (kt === kp) continue;
+            const savedFrom = triad[positions[kp]];
+            const savedTo = triad[positions[kt]];
+            triad[positions[kp]] = savedTo;
+            triad[positions[kt]] = savedFrom;
+            if (isTriadComplete(triad)) completesViaSwap = true;
+            triad[positions[kt]] = savedTo;
+            triad[positions[kp]] = savedFrom;
+            if (completesViaSwap) break;
+          }
+        }
+      }
+
+      // Restore face-down state
+      for (const idx of revealedForSim) {
+        triad[positions[idx]][0].isRevealed = false;
+      }
+      triad[pos] = origCards;
+
+      if (completesViaSwap) {
+        return { triadIndex: t, position: pos };
+      }
+    }
+  }
+
   return null;
 }
 

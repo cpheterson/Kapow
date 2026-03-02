@@ -16,13 +16,63 @@ export function isTriadComplete(triad) {
   if (triad.isDiscarded) return false;
 
   // All positions must have at least one revealed card
-  for (const pos of ['top', 'middle', 'bottom']) {
+  const positions = ['top', 'middle', 'bottom'];
+  for (const pos of positions) {
     if (triad[pos].length === 0) return false;
     if (!triad[pos][0].isRevealed) return false;
   }
 
-  const values = getEffectiveValues(triad);
-  return isSet(values) || isAscendingRun(values) || isDescendingRun(values);
+  // Check for KAPOW wildcards
+  const kapowPositions = [];
+  for (let i = 0; i < 3; i++) {
+    if (triad[positions[i]][0].type === 'kapow') {
+      kapowPositions.push(i);
+    }
+  }
+
+  if (kapowPositions.length === 0) {
+    // No KAPOW — simple value check
+    const values = getEffectiveValues(triad);
+    return isSet(values) || isAscendingRun(values) || isDescendingRun(values);
+  }
+
+  // Has KAPOW — try all possible values 0-12 for each
+  const baseValues = [null, null, null];
+  for (let i = 0; i < 3; i++) {
+    if (triad[positions[i]][0].type !== 'kapow') {
+      baseValues[i] = getPositionValue(triad[positions[i]]);
+    }
+  }
+
+  if (kapowPositions.length === 1) {
+    const ki = kapowPositions[0];
+    for (let v = 0; v <= 12; v++) {
+      const testValues = baseValues.slice();
+      testValues[ki] = v;
+      if (isSet(testValues) || isAscendingRun(testValues) || isDescendingRun(testValues)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Multiple KAPOWs — try all combinations
+  if (kapowPositions.length === 2) {
+    for (let v1 = 0; v1 <= 12; v1++) {
+      for (let v2 = 0; v2 <= 12; v2++) {
+        const testValues = baseValues.slice();
+        testValues[kapowPositions[0]] = v1;
+        testValues[kapowPositions[1]] = v2;
+        if (isSet(testValues) || isAscendingRun(testValues) || isDescendingRun(testValues)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // 3 KAPOWs — always completes (e.g., all set to 0)
+  return true;
 }
 
 /**

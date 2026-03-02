@@ -2809,52 +2809,91 @@ function aiScorePlacement(hand, card, triadIndex, position) {
 
   var placementCompletesTriad = isTriadComplete(triad);
 
-  // Check if a single within-triad KAPOW swap (after this placement) would complete the triad.
-  // This is one-step lookahead: place card, then swap KAPOW to any other position, check completion.
-  // No deep lookahead needed — just simulate each possible KAPOW swap within the triad.
+  // Check if a KAPOW swap (after this placement) would complete the triad.
+  // One-step lookahead: place card, then swap a KAPOW to any position, check completion.
+  // Checks both within-triad and cross-triad KAPOW swaps.
   var placementCompletesViaKapowSwap = false;
   var kapowSwapExistingPoints = 0;
   if (!placementCompletesTriad) {
-    // All 3 positions must be revealed for a within-triad swap to complete
-    var allRevealed = true;
+    // Temporarily mark all face-down cards in this triad as revealed so
+    // isTriadComplete() can evaluate them (AI knows its own cards).
+    var revealedForSim = [];
     for (var ksi = 0; ksi < 3; ksi++) {
       var ksCards = triad[positions[ksi]];
-      if (ksCards.length === 0 || !ksCards[0].isRevealed) { allRevealed = false; break; }
+      if (ksCards.length > 0 && !ksCards[0].isRevealed) {
+        ksCards[0].isRevealed = true;
+        revealedForSim.push(ksi);
+      }
     }
-    if (allRevealed) {
-      // Find any KAPOW in the triad
-      for (var ksp = 0; ksp < 3; ksp++) {
-        var ksSlot = triad[positions[ksp]];
-        if (ksSlot.length > 0 && ksSlot[0].type === 'kapow' && !ksSlot[0].isFrozen) {
-          // Try swapping this KAPOW to each other position
-          for (var kst = 0; kst < 3; kst++) {
-            if (kst === ksp) continue;
-            // Simulate swap
-            var savedFrom = triad[positions[ksp]];
-            var savedTo   = triad[positions[kst]];
-            triad[positions[ksp]] = savedTo;
-            triad[positions[kst]] = savedFrom;
-            var swapCompletes = isTriadComplete(triad);
+
+    // Within-triad: find any KAPOW already in this triad
+    for (var ksp = 0; ksp < 3; ksp++) {
+      var ksSlot = triad[positions[ksp]];
+      if (ksSlot.length > 0 && ksSlot[0].type === 'kapow') {
+        for (var kst = 0; kst < 3; kst++) {
+          if (kst === ksp) continue;
+          var savedFrom = triad[positions[ksp]];
+          var savedTo   = triad[positions[kst]];
+          triad[positions[ksp]] = savedTo;
+          triad[positions[kst]] = savedFrom;
+          var swapCompletes = isTriadComplete(triad);
+          triad[positions[kst]] = savedTo;
+          triad[positions[ksp]] = savedFrom;
+          if (swapCompletes) {
+            placementCompletesViaKapowSwap = true;
+            kapowSwapExistingPoints = 0;
+            for (var kse = 0; kse < 3; kse++) {
+              if (kse === posIdx) continue;
+              kapowSwapExistingPoints += getPositionValue(triad[positions[kse]]);
+            }
+            break;
+          }
+        }
+      }
+      if (placementCompletesViaKapowSwap) break;
+    }
+
+    // Cross-triad: find KAPOW cards in other triads and try swapping into this one
+    if (!placementCompletesViaKapowSwap) {
+      for (var xt = 0; xt < hand.triads.length; xt++) {
+        if (xt === triadIndex) continue;
+        var xTriad = hand.triads[xt];
+        if (xTriad.isDiscarded || isTriadComplete(xTriad)) continue;
+        for (var xp = 0; xp < 3; xp++) {
+          var xSlot = xTriad[positions[xp]];
+          if (xSlot.length === 0 || xSlot[0].type !== 'kapow' || !xSlot[0].isRevealed) continue;
+          // Try swapping this KAPOW into each position of the target triad
+          for (var xtp = 0; xtp < 3; xtp++) {
+            var targetSlot = triad[positions[xtp]];
+            if (targetSlot.length === 0) continue;
+            // Simulate: KAPOW goes to target triad, displaced card goes to source triad
+            var savedTarget = triad[positions[xtp]];
+            var savedSource = xTriad[positions[xp]];
+            triad[positions[xtp]] = savedSource;
+            xTriad[positions[xp]] = savedTarget;
+            var xSwapCompletes = isTriadComplete(triad);
             // Restore
-            triad[positions[kst]] = savedTo;
-            triad[positions[ksp]] = savedFrom;
-            if (swapCompletes) {
+            triad[positions[xtp]] = savedTarget;
+            xTriad[positions[xp]] = savedSource;
+            if (xSwapCompletes) {
               placementCompletesViaKapowSwap = true;
-              // Compute existing points — skip the placed slot (posIdx), matching how
-              // direct completion's existingPoints is calculated. Including the placed
-              // card inflates the bonus (e.g., KAPOW=25 makes swap look better than
-              // direct completion at a different position that correctly excludes it).
               kapowSwapExistingPoints = 0;
               for (var kse = 0; kse < 3; kse++) {
-                if (kse === posIdx) continue; // skip the slot we placed into
+                if (kse === posIdx) continue;
                 kapowSwapExistingPoints += getPositionValue(triad[positions[kse]]);
               }
               break;
             }
           }
+          if (placementCompletesViaKapowSwap) break;
         }
         if (placementCompletesViaKapowSwap) break;
       }
+    }
+
+    // Restore face-down cards that were temporarily revealed
+    for (var rsi = 0; rsi < revealedForSim.length; rsi++) {
+      triad[positions[revealedForSim[rsi]]][0].isRevealed = false;
     }
   }
 
@@ -5287,19 +5326,29 @@ function aiFindBeneficialSwap(hand, swapHistory) {
       var targetCards = hand.triads[target.triadIndex][target.position];
       var targetIsRevealed = targetCards.length > 0 && targetCards[0].isRevealed;
 
-      // Face-down target: AI can't evaluate the unknown card, but on final turns
-      // swapping KAPOW (25 pts) with an unknown card (expected ~6 pts) is almost always beneficial
+      // Face-down target: AI knows its own cards, so check if swapping would
+      // complete a triad (highest priority). For non-completion moves, only
+      // swap with face-down on final turns (score shedding).
       if (!targetIsRevealed) {
+        // Temporarily reveal to check triad completion
+        targetCards[0].isRevealed = true;
+        hand.triads[kapow.triadIndex][kapow.position] = targetCards;
+        hand.triads[target.triadIndex][target.position] = sourceCards;
+        var fdCompletesTriad = isTriadComplete(hand.triads[kapow.triadIndex]) ||
+                               isTriadComplete(hand.triads[target.triadIndex]);
+        hand.triads[kapow.triadIndex][kapow.position] = sourceCards;
+        hand.triads[target.triadIndex][target.position] = targetCards;
+        targetCards[0].isRevealed = false;
+        if (fdCompletesTriad) {
+          return { from: kapow, to: target };
+        }
         if (isFinalTurn) {
-          // On final turns, always swap KAPOW with face-down to shed 25 pts
-          // Prefer this over other face-down swaps but not over triad completions
-          var fdImprovement = 15; // Expected: 25 - ~6 = ~19, but discount for uncertainty
+          var fdImprovement = 15;
           if (fdImprovement > bestImprovement) {
             bestImprovement = fdImprovement;
             bestSwap = { from: kapow, to: target };
           }
         }
-        // On non-final turns, skip face-down targets — too risky without knowing the card
         continue;
       }
 
