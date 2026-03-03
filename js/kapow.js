@@ -905,7 +905,9 @@ function advanceToNextPlayer(state) {
     state.currentPlayer = (state.currentPlayer + 1) % state.players.length;
   }
 
-  logSystem(state, '--- Turn ' + state.turnNumber + ': ' + state.players[state.currentPlayer].name + ' ---');
+  var turnDiscardTop = state.discardPile.length > 0 ? state.discardPile[state.discardPile.length - 1] : null;
+  var turnDiscardDesc = turnDiscardTop ? ' (discard: ' + cardDescription(turnDiscardTop) + ')' : '';
+  logSystem(state, '--- Turn ' + state.turnNumber + ': ' + state.players[state.currentPlayer].name + ' ---' + turnDiscardDesc);
 
   // On a player's final turn, reveal all their remaining face-down cards
   if (state.phase === 'finalTurns') {
@@ -1374,6 +1376,8 @@ function buildAiExplanation(gameState, drawnCard, drawChoice, action) {
       lines.push('Kai saw a strong use for this specific card in its hand.</p>');
     } else if (lastDrawReason === 'low card improves hand') {
       lines.push('This is a low-value card that reduces Kai\'s score.</p>');
+    } else if (lastDrawReason === 'final turn — guaranteed improvement') {
+      lines.push('On the final turn, Kai grabbed a guaranteed score improvement rather than risking an unknown draw.</p>');
     } else {
       lines.push('</p>');
     }
@@ -3443,6 +3447,33 @@ function aiEvaluateDrawFromDiscard(gameState) {
     if (!goOutCheck.shouldGoOut) {
       return { shouldDraw: false, reason: 'drawing would force going out with bad score (' + simulatedGoOutScore + ' pts)' };
     }
+  }
+
+  // Also evaluate power card modifier opportunities (stacking beneath face cards)
+  if (discardTop.type === 'power') {
+    for (var mt = 0; mt < aiHand.triads.length; mt++) {
+      var mTriad = aiHand.triads[mt];
+      if (mTriad.isDiscarded) continue;
+      var mPositions = ['top', 'middle', 'bottom'];
+      for (var mp = 0; mp < mPositions.length; mp++) {
+        var mPosCards = mTriad[mPositions[mp]];
+        if (mPosCards.length === 0 || !mPosCards[0].isRevealed) continue;
+        if (mPosCards[0].type === 'kapow') continue;
+        if (mPosCards.length > 1) continue; // already has a modifier
+        var mCurrentValue = getPositionValue(mPosCards);
+        for (var mmi = 0; mmi < discardTop.modifiers.length; mmi++) {
+          var modImprovement = -discardTop.modifiers[mmi]; // negative modifier = positive improvement
+          if (modImprovement > bestPlacementScore) bestPlacementScore = modImprovement;
+        }
+      }
+    }
+  }
+
+  // On final turns, any guaranteed score improvement is worth drawing from discard.
+  // Every point matters — a known improvement beats a random deck draw.
+  var isFinalTurnDraw = gameState && gameState.phase === 'finalTurns';
+  if (isFinalTurnDraw && bestPlacementScore > 0) {
+    return { shouldDraw: true, reason: 'final turn — guaranteed improvement' };
   }
 
   // Draw if the best placement gives meaningful improvement (> threshold)

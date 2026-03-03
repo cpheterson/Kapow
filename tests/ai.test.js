@@ -426,3 +426,34 @@ describe('aiConsiderKapowSwap', () => {
     expect(swap).toBeNull();
   });
 });
+
+describe('aiDecideDraw — final turn', () => {
+  test('R3T34: draws P2 from discard on final turn for modifier improvement', () => {
+    // AI hand: [3,4,4], opponent went out with 10 pts
+    // Discard has P2 (modifiers [-2,+2]). Using -2 on the 3 makes it 1, saving 2 pts.
+    // AI should draw from discard since any guaranteed improvement matters on final turn.
+    const p2 = powerCard(2, [-2, 2]);
+    const aiTriads = [
+      makeTriad(3, 4, 4),
+    ];
+    const state = makeAiState(aiTriads, {
+      discardPile: [p2],
+      phase: 'finalTurns',
+    });
+    const decision = aiDecideDraw(state);
+    expect(decision).toBe('discard');
+  });
+
+  test('does not draw from discard on final turn when no improvement possible', () => {
+    // AI hand: [1,0,0], discard has a 5. No replacement or modifier improves score.
+    const aiTriads = [
+      makeTriad(1, 0, 0),
+    ];
+    const state = makeAiState(aiTriads, {
+      discardPile: [fc(5)],
+      phase: 'finalTurns',
+    });
+    const decision = aiDecideDraw(state);
+    expect(decision).toBe('deck');
+  });
+});

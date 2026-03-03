@@ -55,6 +55,14 @@ The living document. Updated in real-time throughout every session.
   - Within-triad KAPOW swap now requires KAPOW to be revealed (both production and modular)
   - Principle: the AI should never use information a human player wouldn't have
   - All 140 tests pass (R2T18 cross-triad test still works — KAPOW replacing a face-down creates all-revealed triad)
+- [x] AI draws from discard on final turn when guaranteed improvement exists (R3T34)
+  - `aiEvaluateDrawFromDiscard()` now evaluates power card modifier opportunities (not just face-value replacement)
+  - On final turns, any positive score improvement triggers drawing from discard
+  - Fixes: AI ignored P2 on discard that could reduce hand [3,4,4] to [1,4,4] via -2 modifier, missing the chance to force opponent's score doubling
+  - Updated modular `ai.js` with matching logic
+  - 2 regression tests added (R3T34 scenario + no-improvement guard)
+- [x] Show discard pile top card in game log turn headers
+  - Format: `--- Turn N: Player --- (discard: P2)` — log is now self-contained for analysis
 
 ### In Progress
 - [ ] Power card face redesign: minus/plus signs flanking center value, POWER label stays at top

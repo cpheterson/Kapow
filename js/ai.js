@@ -58,6 +58,46 @@ export function aiDecideDraw(gameState) {
     }
   }
 
+  // On final turns, any guaranteed improvement is worth drawing from discard.
+  // Evaluate both position replacement and power card modifier opportunities.
+  if (gameState.phase === 'finalTurns') {
+    let bestImprovement = 0;
+
+    // Check position replacements
+    for (let t = 0; t < aiHand.triads.length; t++) {
+      const triad = aiHand.triads[t];
+      if (triad.isDiscarded) continue;
+      for (const pos of ['top', 'middle', 'bottom']) {
+        if (triad[pos].length > 0 && triad[pos][0].isRevealed) {
+          const currentValue = getPositionValue(triad[pos]);
+          const newValue = discardTop.type === 'kapow' ? 25 : discardTop.faceValue;
+          const improvement = currentValue - newValue;
+          if (improvement > bestImprovement) bestImprovement = improvement;
+        }
+      }
+    }
+
+    // Check power card modifier opportunities
+    if (discardTop.type === 'power') {
+      for (let t = 0; t < aiHand.triads.length; t++) {
+        const triad = aiHand.triads[t];
+        if (triad.isDiscarded) continue;
+        for (const pos of ['top', 'middle', 'bottom']) {
+          const posCards = triad[pos];
+          if (posCards.length === 0 || !posCards[0].isRevealed) continue;
+          if (posCards[0].type === 'kapow') continue;
+          if (posCards.length > 1) continue; // already has a modifier
+          for (const mod of discardTop.modifiers) {
+            const modImprovement = -mod; // negative modifier = positive improvement
+            if (modImprovement > bestImprovement) bestImprovement = modImprovement;
+          }
+        }
+      }
+    }
+
+    if (bestImprovement > 0) return 'discard';
+  }
+
   return 'deck';
 }
 
