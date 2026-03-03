@@ -360,22 +360,43 @@ function findUnrevealedPosition(hand) {
 }
 
 function findBestPowersetSpot(hand, powerCard) {
-  // Find a revealed card with high value where the negative modifier would help
+  // Try BOTH modifiers: one that reduces score AND one that might complete a triad.
+  // E.g., P1(-1/+1) on a 6 in [7,6,7]: -1 gives 5 but +1 gives 7 (completes set).
   let bestSpot = null;
-  let bestReduction = 0;
-
-  const negMod = powerCard.modifiers[0]; // e.g., -1 or -2
+  let bestScore = 0;
+  const positions = ['top', 'middle', 'bottom'];
 
   for (let t = 0; t < hand.triads.length; t++) {
     const triad = hand.triads[t];
     if (triad.isDiscarded) continue;
 
-    for (const pos of ['top', 'middle', 'bottom']) {
-      if (triad[pos].length > 0 && triad[pos][0].isRevealed) {
-        const currentValue = getPositionValue(triad[pos]);
-        if (currentValue > 5 && Math.abs(negMod) > bestReduction) {
-          bestSpot = { triadIndex: t, position: pos };
-          bestReduction = Math.abs(negMod);
+    for (const pos of positions) {
+      if (triad[pos].length === 0 || !triad[pos][0].isRevealed) continue;
+      if (triad[pos][0].type === 'kapow') continue;
+      if (triad[pos].length > 1) continue; // already has a modifier
+
+      const currentValue = getPositionValue(triad[pos]);
+
+      for (let mi = 0; mi < 2; mi++) {
+        const mod = powerCard.modifiers[mi];
+        const modValue = currentValue + mod;
+        const usePositive = mi === 1;
+        const improvement = currentValue - modValue;
+
+        // Simulate powerset and check triad completion
+        const origCards = triad[pos];
+        const simCard = { ...powerCard, isRevealed: true, activeModifier: mod };
+        triad[pos] = [origCards[0], simCard];
+        const complete = isTriadComplete(triad);
+        triad[pos] = origCards;
+
+        let score = improvement;
+        if (complete) score += 80; // triad completion is highest priority
+        else if (currentValue <= 5) continue; // only apply non-completing modifier to high-value cards
+
+        if (score > bestScore && score > 0) {
+          bestScore = score;
+          bestSpot = { triadIndex: t, position: pos, usePositive };
         }
       }
     }

@@ -6,6 +6,12 @@
 
 ### 03-01-2026
 
+**v21 [Chuck]** AI: evaluate both positive and negative modifiers for power card placement.
+- `aiFindModifierOpportunity()` now loops over both modifiers instead of always picking the lowest value
+- Fixes cases where +modifier completes a triad (e.g., P1 +1 on 6 in [7,6,7] → [7,7,7] set)
+- Updated modular `ai.js` `findBestPowersetSpot()` with matching both-modifier logic
+- Added regression test reproducing R3T17 scenario
+
 **v20 [Chuck]** Update PLAN.md session log.
 
 **v19 [Chuck]** AI: fix final-turn scoring to maximize point shedding.

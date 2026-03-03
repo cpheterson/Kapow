@@ -208,6 +208,22 @@ describe('aiDecideAction', () => {
     expect(action.position).toBe('middle'); // 6 > 5 threshold
   });
 
+  test('uses positive modifier to complete triad instead of negative for score (R3T17)', () => {
+    // Reproduces R3T17: AI has T3=[7,6,7]. Drew P1(-1/+1).
+    // Using -1 modifier on 6 gives 5 (lower score but no completion).
+    // Using +1 modifier on 6 gives 7, completing [7,7,7] set — eliminates all points.
+    // AI must prefer +1 modifier for triad completion.
+    const aiTriads = [
+      makeTriad(7, 6, 7),
+    ];
+    const state = makeAiState(aiTriads);
+    const action = aiDecideAction(state, powerCard(1, [-1, 1]));
+
+    expect(action.type).toBe('powerset');
+    expect(action.triadIndex).toBe(0);
+    expect(action.position).toBe('middle'); // +1 on the 6 to make 7, completing [7,7,7]
+  });
+
   test('replaces known high card over unrevealed card', () => {
     // Drawn 3, hand has [8, 2, hidden(4)].
     // Strategy 3: faceValue 3 <= 4 and 8 > 3+2=5, so replace the 8.

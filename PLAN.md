@@ -4,11 +4,11 @@ The living document. Updated in real-time throughout every session.
 
 ---
 
-## Current State (03-01-2026)
+## Current State (03-02-2026)
 
 **Live at:** cpheterson.github.io/Kapow/ (GitHub Pages, auto-deploys on push to `main`)
 **Repo:** github.com/cpheterson/Kapow (single `main` branch, both contributors push here)
-**Version:** 03-01-2026 v10
+**Version:** 03-02-2026 v21
 
 ### What's Working
 - Full 2-player game vs Kai (AI opponent)
@@ -44,6 +44,15 @@ The living document. Updated in real-time throughout every session.
   - Modifier/powerset bonuses stripped on final turns (pure point reduction only)
   - Triad completion compared against best replacement by actual points saved
   - 2 regression tests added (R6T26 powerset vs replacement, R4T32 completion vs replacement)
+
+## Session Log (03-02-2026)
+
+### Shipped
+- [x] AI evaluates both positive and negative modifiers for power card placement
+  - `aiFindModifierOpportunity()` now loops over both modifiers instead of always picking the lowest
+  - Fixes cases where +modifier completes a triad (e.g., P1 +1 on 6 in [7,6,7] → [7,7,7])
+  - Updated modular `ai.js` with matching logic
+  - 1 regression test added (R3T17 scenario)
 
 ### In Progress
 - [ ] Power card face redesign: minus/plus signs flanking center value, POWER label stays at top
@@ -100,7 +109,8 @@ The living document. Updated in real-time throughout every session.
 - [x] **Tighter go-out decision** — factor opponent's estimated score + round number more aggressively (shipped 03-01-2026)
 - [x] **Cross-triad KAPOW swap lookahead** — AI considers KAPOW swaps from other triads when evaluating placement (shipped 03-01-2026)
 - [x] **Final-turn point shedding** — strip powerset/modifier bonuses on last turn, compare all options by actual points saved (shipped 03-01-2026)
+- [x] **Both-modifier evaluation** — try both positive and negative modifiers for triad completion (shipped 03-02-2026)
 
 ---
 
-*Last updated: 03-01-2026*
+*Last updated: 03-02-2026*

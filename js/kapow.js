@@ -3605,91 +3605,84 @@ function aiFindModifierOpportunity(hand, drawnCard) {
 
       var currentValue = getPositionValue(posCards);
 
-      // Try negative modifier
-      var withNeg = currentValue + drawnCard.modifiers[0];
-      // Try positive modifier
-      var withPos = currentValue + drawnCard.modifiers[1];
+      // Try BOTH modifiers — the one that reduces score most AND the one that
+      // might complete a triad. E.g., P1(-1/+1) on a 6 in [7,6,7]: -1 gives 5
+      // (lower score) but +1 gives 7 (completes the set). Must check both.
+      var modOptions = [
+        { value: currentValue + drawnCard.modifiers[0], usePositive: false, activeModifier: drawnCard.modifiers[0] },
+        { value: currentValue + drawnCard.modifiers[1], usePositive: true, activeModifier: drawnCard.modifiers[1] }
+      ];
 
-      // Pick whichever is lower
-      var bestMod = withNeg < withPos ? withNeg : withPos;
-      var usePositive = withPos <= withNeg;
-      var improvement = currentValue - bestMod;
-
-      // Check if applying modifier would DESTROY existing synergy.
-      // If this triad has another revealed card that MATCHES this card's value (set potential),
-      // applying a modifier changes the value and destroys the matched pair.
-      // E.g., [12,12,?] → applying P2(-2) makes it [10,12,?] — kills the 12-12-12 set path.
-      var synergyDestroyPenalty = 0;
-      var otherRevealed = [];
-      for (var sp = 0; sp < 3; sp++) {
-        if (sp === p) continue; // skip the position we're modifying
-        var spCards = triad[positions[sp]];
-        if (spCards.length > 0 && spCards[0].isRevealed) {
-          otherRevealed.push(getPositionValue(spCards));
-        }
-      }
-      if (otherRevealed.length > 0) {
-        // Check synergy BEFORE modifier
-        var synergyBeforeMod = 0;
-        for (var sr = 0; sr < otherRevealed.length; sr++) {
-          if (otherRevealed[sr] === currentValue) synergyBeforeMod += 3; // matched pair = set potential
-          if (Math.abs(otherRevealed[sr] - currentValue) <= 2) synergyBeforeMod += 1; // run adjacent
-        }
-        // Check synergy AFTER modifier
-        var synergyAfterMod = 0;
-        for (var sr2 = 0; sr2 < otherRevealed.length; sr2++) {
-          if (otherRevealed[sr2] === bestMod) synergyAfterMod += 3;
-          if (Math.abs(otherRevealed[sr2] - bestMod) <= 2) synergyAfterMod += 1;
-        }
-        if (synergyAfterMod < synergyBeforeMod) {
-          // Modifier destroys existing synergy — heavy penalty
-          synergyDestroyPenalty = -(10 + (synergyBeforeMod - synergyAfterMod) * 5);
-        }
-      }
-
-      // Simulate the powerset and check triad building
       var origCards = triad[positions[p]];
-      var simCard = { id: drawnCard.id, type: 'power', faceValue: drawnCard.faceValue,
-        modifiers: drawnCard.modifiers, isRevealed: true, isFrozen: false,
-        activeModifier: usePositive ? drawnCard.modifiers[1] : drawnCard.modifiers[0] };
-      triad[positions[p]] = [origCards[0], simCard];
-
       var isFinalTurnMod = gameState && gameState.phase === 'finalTurns';
-      var triadBonus = 0;
 
-      if (isFinalTurnMod) {
-        // Final turn: score modifier by actual points saved, directly comparable
-        // to placement scores (which use pure currentValue - newValue).
-        // Completing a triad zeroes it out — the bonus is the sum of the
-        // original triad values (what we'd otherwise be stuck with).
-        if (isTriadComplete(triad)) {
-          var triadOrigPoints = 0;
-          for (var mti = 0; mti < 3; mti++) {
-            var mtOrig = (positions[mti] === positions[p]) ? origCards : triad[positions[mti]];
-            if (mtOrig.length > 0) triadOrigPoints += getPositionValue(mtOrig);
+      for (var mi = 0; mi < modOptions.length; mi++) {
+        var modOpt = modOptions[mi];
+        var bestMod = modOpt.value;
+        var usePositive = modOpt.usePositive;
+        var improvement = currentValue - bestMod;
+
+        // Check if applying modifier would DESTROY existing synergy.
+        var synergyDestroyPenalty = 0;
+        var otherRevealed = [];
+        for (var sp = 0; sp < 3; sp++) {
+          if (sp === p) continue;
+          var spCards = triad[positions[sp]];
+          if (spCards.length > 0 && spCards[0].isRevealed) {
+            otherRevealed.push(getPositionValue(spCards));
           }
-          // triadOrigPoints is the total we save by completing. The `improvement`
-          // variable already counted the single-position delta, so subtract it
-          // to avoid double-counting, then add the full triad savings.
-          triadBonus = triadOrigPoints - improvement;
         }
-        synergyDestroyPenalty = 0; // irrelevant on final turn
-      } else {
-        var analysis = aiAnalyzeTriad(triad);
-        if (analysis.isNearComplete && (analysis.completionPaths > 0 || analysis.powerModifierPaths > 0)) {
-          triadBonus = 10 + (analysis.completionPaths * 2) + analysis.powerModifierPaths;
-          if (analysis.kapowBoost) triadBonus += 1;
+        if (otherRevealed.length > 0 && !isFinalTurnMod) {
+          var synergyBeforeMod = 0;
+          for (var sr = 0; sr < otherRevealed.length; sr++) {
+            if (otherRevealed[sr] === currentValue) synergyBeforeMod += 3;
+            if (Math.abs(otherRevealed[sr] - currentValue) <= 2) synergyBeforeMod += 1;
+          }
+          var synergyAfterMod = 0;
+          for (var sr2 = 0; sr2 < otherRevealed.length; sr2++) {
+            if (otherRevealed[sr2] === bestMod) synergyAfterMod += 3;
+            if (Math.abs(otherRevealed[sr2] - bestMod) <= 2) synergyAfterMod += 1;
+          }
+          if (synergyAfterMod < synergyBeforeMod) {
+            synergyDestroyPenalty = -(10 + (synergyBeforeMod - synergyAfterMod) * 5);
+          }
         }
-        if (isTriadComplete(triad)) triadBonus = 80;
-      }
 
-      triad[positions[p]] = origCards; // restore
+        // Simulate the powerset and check triad building
+        var simCard = { id: drawnCard.id, type: 'power', faceValue: drawnCard.faceValue,
+          modifiers: drawnCard.modifiers, isRevealed: true, isFrozen: false,
+          activeModifier: modOpt.activeModifier };
+        triad[positions[p]] = [origCards[0], simCard];
 
-      var totalScore = improvement + triadBonus + synergyDestroyPenalty;
-      if (totalScore > bestScore && totalScore > 0) {
-        bestScore = totalScore;
-        best = { type: 'add-powerset', triadIndex: t, position: positions[p],
-          usePositive: usePositive, score: totalScore };
+        var triadBonus = 0;
+
+        if (isFinalTurnMod) {
+          if (isTriadComplete(triad)) {
+            var triadOrigPoints = 0;
+            for (var mti = 0; mti < 3; mti++) {
+              var mtOrig = (positions[mti] === positions[p]) ? origCards : triad[positions[mti]];
+              if (mtOrig.length > 0) triadOrigPoints += getPositionValue(mtOrig);
+            }
+            triadBonus = triadOrigPoints - improvement;
+          }
+          synergyDestroyPenalty = 0;
+        } else {
+          var analysis = aiAnalyzeTriad(triad);
+          if (analysis.isNearComplete && (analysis.completionPaths > 0 || analysis.powerModifierPaths > 0)) {
+            triadBonus = 10 + (analysis.completionPaths * 2) + analysis.powerModifierPaths;
+            if (analysis.kapowBoost) triadBonus += 1;
+          }
+          if (isTriadComplete(triad)) triadBonus = 80;
+        }
+
+        triad[positions[p]] = origCards; // restore
+
+        var totalScore = improvement + triadBonus + synergyDestroyPenalty;
+        if (totalScore > bestScore && totalScore > 0) {
+          bestScore = totalScore;
+          best = { type: 'add-powerset', triadIndex: t, position: positions[p],
+            usePositive: usePositive, score: totalScore };
+        }
       }
     }
   }
