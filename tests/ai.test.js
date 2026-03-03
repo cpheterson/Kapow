@@ -201,6 +201,20 @@ describe('aiDecideAction', () => {
     expect(action.type).toBe('discard');
   });
 
+  test('discards rather than breaking a matched pair in a set start (R1T24)', () => {
+    // Reproduces R1T24: AI has T1=[K!(fd), 7, 7] — a strong set start.
+    // Drew 9. Placing 9 in T1 middle breaks the [7,7] pair for [K!(fd), 9, 7].
+    // Even though KAPOW swap could complete [9, K!(8), 7] run, the existing
+    // pair was already completable as [K!(7), 7, 7]. AI should discard the 9.
+    const aiTriads = [
+      makeTriad(kapowCard(false), fc(7), fc(7)),  // T1: [K!(fd), 7, 7]
+    ];
+    const state = makeAiState(aiTriads);
+    const action = aiDecideAction(state, fc(9));
+
+    expect(action.type).toBe('discard');
+  });
+
   test('prefers replacing high card over powerset when face value is low', () => {
     // Power card faceValue=1 is a low card (<=4), so Strategy 3 fires:
     // replace highest position (8) with the 1. Net -7 > powerset -1.

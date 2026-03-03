@@ -257,16 +257,9 @@ function findTriadCompletionSpot(hand, card) {
       const origCards = triad[pos];
       triad[pos] = [{ ...card, isRevealed: true }];
 
-      // Temporarily reveal face-down cards in this triad (AI knows its own cards)
-      const revealedForSim = [];
-      for (let i = 0; i < 3; i++) {
-        const slot = triad[positions[i]];
-        if (slot.length > 0 && !slot[0].isRevealed) {
-          slot[0].isRevealed = true;
-          revealedForSim.push(i);
-        }
-      }
-
+      // KAPOW swap lookahead: only considers REVEALED cards. The AI does not
+      // peek at face-down cards — it plays fair with the same information a
+      // human player would have.
       let completesViaSwap = false;
 
       // Check cross-triad: KAPOW in another triad swapped into this one
@@ -292,11 +285,11 @@ function findTriadCompletionSpot(hand, card) {
         }
       }
 
-      // Also check within-triad KAPOW swaps
+      // Also check within-triad KAPOW swaps (only revealed KAPOWs)
       if (!completesViaSwap) {
         for (let kp = 0; kp < 3 && !completesViaSwap; kp++) {
           const kSlot = triad[positions[kp]];
-          if (kSlot.length === 0 || kSlot[0].type !== 'kapow') continue;
+          if (kSlot.length === 0 || kSlot[0].type !== 'kapow' || !kSlot[0].isRevealed) continue;
           for (let kt = 0; kt < 3; kt++) {
             if (kt === kp) continue;
             const savedFrom = triad[positions[kp]];
@@ -311,14 +304,42 @@ function findTriadCompletionSpot(hand, card) {
         }
       }
 
-      // Restore face-down state
-      for (const idx of revealedForSim) {
-        triad[positions[idx]][0].isRevealed = false;
-      }
       triad[pos] = origCards;
 
       if (completesViaSwap) {
-        return { triadIndex: t, position: pos };
+        // Don't count swap completion if it destroys an existing synergy pair.
+        // When replacing a revealed card in a 2-revealed triad, check if the
+        // existing pair already forms a set/run start. If so, the swap is just
+        // restructuring existing completion potential, not adding new value.
+        let destroysSynergy = false;
+        if (origCards.length > 0 && origCards[0].isRevealed) {
+          const posIdx = positions.indexOf(pos);
+          const otherRevealed = [];
+          for (let i = 0; i < 3; i++) {
+            if (i === posIdx) continue;
+            const slot = triad[positions[i]];
+            if (slot.length > 0 && slot[0].isRevealed) {
+              otherRevealed.push({ posIdx: i, cards: slot });
+            }
+          }
+          if (otherRevealed.length === 1) {
+            // 2-revealed triad: check if existing pair had completion paths
+            const missingIdx = 3 - posIdx - otherRevealed[0].posIdx;
+            for (let v = 0; v <= 12; v++) {
+              const testTriad = { top: [], middle: [], bottom: [] };
+              testTriad[positions[posIdx]] = origCards;
+              testTriad[positions[otherRevealed[0].posIdx]] = otherRevealed[0].cards;
+              testTriad[positions[missingIdx]] = [{ type: 'fixed', faceValue: v, isRevealed: true, modifiers: null, assignedValue: null }];
+              if (isTriadComplete(testTriad)) {
+                destroysSynergy = true;
+                break;
+              }
+            }
+          }
+        }
+        if (!destroysSynergy) {
+          return { triadIndex: t, position: pos };
+        }
       }
     }
   }

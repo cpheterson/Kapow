@@ -2818,21 +2818,14 @@ function aiScorePlacement(hand, card, triadIndex, position) {
   var placementCompletesViaKapowSwap = false;
   var kapowSwapExistingPoints = 0;
   if (!placementCompletesTriad) {
-    // Temporarily mark all face-down cards in this triad as revealed so
-    // isTriadComplete() can evaluate them (AI knows its own cards).
-    var revealedForSim = [];
-    for (var ksi = 0; ksi < 3; ksi++) {
-      var ksCards = triad[positions[ksi]];
-      if (ksCards.length > 0 && !ksCards[0].isRevealed) {
-        ksCards[0].isRevealed = true;
-        revealedForSim.push(ksi);
-      }
-    }
+    // KAPOW swap lookahead: only considers REVEALED cards. The AI does not
+    // peek at face-down cards — it plays fair with the same information a
+    // human player would have.
 
-    // Within-triad: find any KAPOW already in this triad
+    // Within-triad: find any revealed KAPOW already in this triad
     for (var ksp = 0; ksp < 3; ksp++) {
       var ksSlot = triad[positions[ksp]];
-      if (ksSlot.length > 0 && ksSlot[0].type === 'kapow') {
+      if (ksSlot.length > 0 && ksSlot[0].type === 'kapow' && ksSlot[0].isRevealed) {
         for (var kst = 0; kst < 3; kst++) {
           if (kst === ksp) continue;
           var savedFrom = triad[positions[ksp]];
@@ -2894,10 +2887,6 @@ function aiScorePlacement(hand, card, triadIndex, position) {
       }
     }
 
-    // Restore face-down cards that were temporarily revealed
-    for (var rsi = 0; rsi < revealedForSim.length; rsi++) {
-      triad[positions[revealedForSim[rsi]]][0].isRevealed = false;
-    }
   }
 
   if (placementCompletesTriad) {
@@ -2923,8 +2912,18 @@ function aiScorePlacement(hand, card, triadIndex, position) {
     // One within-triad KAPOW swap after this placement would complete the triad.
     // Treat this almost like direct completion — slightly discounted because it
     // requires the swap step, but still overwhelmingly the best move.
-    score -= existingSynergyPenalty; // undo — triad will be discarded
-    score += 80 + kapowSwapExistingPoints;
+    score -= existingSynergyPenalty; // undo face-down synergy penalty — triad will be discarded
+    var swapBonus = 80 + kapowSwapExistingPoints;
+    // When replacing a revealed card in a 2-revealed triad that already had synergy
+    // (set/run start), the KAPOW swap completion is not adding new value — it's
+    // restructuring existing completion potential. The face-down KAPOW that enables
+    // the swap was already available to complete the triad via the original path.
+    // E.g., [K!(fd), 7, 7]: already completable as [7,7,7]. Replacing a 7 with 9
+    // and swapping K! for [9, K!(8), 7] run isn't an improvement.
+    if (!isUnrevealed && synergyBefore > 0) {
+      swapBonus = 0;
+    }
+    score += swapBonus;
   } else {
     // Analyze the triad AFTER placement
     var analysis = aiAnalyzeTriad(triad);
@@ -5347,22 +5346,10 @@ function aiFindBeneficialSwap(hand, swapHistory) {
       var targetCards = hand.triads[target.triadIndex][target.position];
       var targetIsRevealed = targetCards.length > 0 && targetCards[0].isRevealed;
 
-      // Face-down target: AI knows its own cards, so check if swapping would
-      // complete a triad (highest priority). For non-completion moves, only
-      // swap with face-down on final turns (score shedding).
+      // Face-down target: AI cannot peek at hidden cards. On final turns,
+      // swapping a KAPOW with a face-down is still worth considering for
+      // score shedding (estimated improvement heuristic).
       if (!targetIsRevealed) {
-        // Temporarily reveal to check triad completion
-        targetCards[0].isRevealed = true;
-        hand.triads[kapow.triadIndex][kapow.position] = targetCards;
-        hand.triads[target.triadIndex][target.position] = sourceCards;
-        var fdCompletesTriad = isTriadComplete(hand.triads[kapow.triadIndex]) ||
-                               isTriadComplete(hand.triads[target.triadIndex]);
-        hand.triads[kapow.triadIndex][kapow.position] = sourceCards;
-        hand.triads[target.triadIndex][target.position] = targetCards;
-        targetCards[0].isRevealed = false;
-        if (fdCompletesTriad) {
-          return { from: kapow, to: target };
-        }
         if (isFinalTurn) {
           var fdImprovement = 15;
           if (fdImprovement > bestImprovement) {

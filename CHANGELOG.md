@@ -4,6 +4,20 @@
 
 ## Version History
 
+### 03-03-2026
+
+**v24 [Chuck]** AI: remove face-down card peeking — AI plays fair.
+- `aiScorePlacement()` KAPOW swap lookahead no longer temporarily reveals face-down cards
+- `aiFindBeneficialSwap()` no longer peeks at face-down targets for completion checks (keeps final-turn heuristic)
+- Modular `ai.js` `findTriadCompletionSpot()` updated with matching no-peek logic
+- Within-triad KAPOW swap now requires KAPOW to be revealed (both production and modular)
+- Principle: the AI should never use information a human player wouldn't have
+
+**v23 [Chuck]** AI: protect matched pairs from KAPOW swap destruction (R1T24).
+- When KAPOW swap completion replaces a revealed card in a 2-revealed triad that already had set/run synergy, the swap bonus is zeroed out
+- Prevents AI from breaking [7,7,fd] set start to create [9,K!(8),7] run via face-down peek
+- Added R1T24 regression test
+
 ### 03-01-2026
 
 **v22 [Chuck]** AI: undo face-down synergy penalty when placement completes a triad.

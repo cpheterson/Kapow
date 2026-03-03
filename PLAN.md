@@ -4,11 +4,11 @@ The living document. Updated in real-time throughout every session.
 
 ---
 
-## Current State (03-02-2026)
+## Current State (03-03-2026)
 
 **Live at:** cpheterson.github.io/Kapow/ (GitHub Pages, auto-deploys on push to `main`)
 **Repo:** github.com/cpheterson/Kapow (single `main` branch, both contributors push here)
-**Version:** 03-02-2026 v21
+**Version:** 03-03-2026 v24
 
 ### What's Working
 - Full 2-player game vs Kai (AI opponent)
@@ -45,6 +45,26 @@ The living document. Updated in real-time throughout every session.
   - Triad completion compared against best replacement by actual points saved
   - 2 regression tests added (R6T26 powerset vs replacement, R4T32 completion vs replacement)
 
+## Session Log (03-03-2026)
+
+### Shipped
+- [x] Remove face-down card peeking from AI — AI plays fair
+  - KAPOW swap lookahead in `aiScorePlacement()` no longer temporarily reveals face-down cards
+  - `aiFindBeneficialSwap()` no longer peeks at face-down targets for completion checks (keeps final-turn heuristic)
+  - Modular `ai.js` `findTriadCompletionSpot()` updated with matching no-peek logic
+  - Within-triad KAPOW swap now requires KAPOW to be revealed (both production and modular)
+  - Principle: the AI should never use information a human player wouldn't have
+  - All 140 tests pass (R2T18 cross-triad test still works — KAPOW replacing a face-down creates all-revealed triad)
+
+### In Progress
+- [ ] Power card face redesign: minus/plus signs flanking center value, POWER label stays at top
+
+### Blocked
+
+### Next Up
+
+---
+
 ## Session Log (03-02-2026)
 
 ### Shipped
@@ -58,13 +78,10 @@ The living document. Updated in real-time throughout every session.
   - Penalty is now undone when completion is detected — triad is being discarded, synergy is irrelevant
   - Also applies to KAPOW-swap completions
   - 1 regression test added (R7T8: high-value triad completion preferred over low-value)
-
-### In Progress
-- [ ] Power card face redesign: minus/plus signs flanking center value, POWER label stays at top
-
-### Blocked
-
-### Next Up
+- [x] Protect matched pairs from KAPOW swap destruction (R1T24)
+  - When KAPOW swap completion replaces a revealed card in a 2-revealed triad with synergy, swap bonus zeroed
+  - Prevents AI from breaking [7,7,fd] set start via face-down peek KAPOW swap
+  - 1 regression test added (R1T24 scenario)
 
 ---
 
@@ -118,4 +135,4 @@ The living document. Updated in real-time throughout every session.
 
 ---
 
-*Last updated: 03-02-2026*
+*Last updated: 03-03-2026*
