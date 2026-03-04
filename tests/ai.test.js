@@ -1,7 +1,8 @@
 import { describe, test, expect } from 'vitest';
 import {
   aiFirstTurnReveals, aiDecideDraw, aiDecideAction,
-  aiDecideRevealAfterDiscard, aiShouldGoOut, aiConsiderKapowSwap
+  aiDecideRevealAfterDiscard, aiShouldGoOut, aiConsiderKapowSwap,
+  aiEvaluateDiscardSafety
 } from '../js/ai.js';
 
 // Helpers
@@ -455,5 +456,44 @@ describe('aiDecideDraw — final turn', () => {
     });
     const decision = aiDecideDraw(state);
     expect(decision).toBe('deck');
+  });
+});
+
+describe('aiEvaluateDiscardSafety — completion penalty', () => {
+  test('R8T20: discarding 9 into opponent KAPOW triad [fd,K!,9] is dangerous', () => {
+    // Opponent has triad [fd, K!, 9]. KAPOW auto-adjusts to any value,
+    // so a 9 in the empty slot guarantees completion (9,9,9 set).
+    const opponentTriads = [
+      makeTriad(fc(5, false), kapowCard(true, false), fc(9)),
+    ];
+    const state = {
+      players: [
+        { hand: { triads: opponentTriads }, name: 'Opponent' },
+        { hand: { triads: [makeTriad(1, 2, 3)] }, name: 'AI' },
+      ],
+    };
+    const nineCard = fc(9);
+    const safety = aiEvaluateDiscardSafety(nineCard, state);
+    // Baseline for 9: 40 + (9*3) = 67. Minus 40 (completion) = 27.
+    // Placement penalty: (50 - 27) = 23, enough to deter the placement.
+    expect(safety).toBe(27);
+  });
+
+  test('discarding 9 into opponent non-KAPOW triad [fd,9,9] is equally dangerous', () => {
+    // Opponent has [fd, 9, 9]. A 9 in the empty slot completes the set [9,9,9].
+    // Same -40 completion penalty applies regardless of KAPOW presence.
+    const opponentTriads = [
+      makeTriad(fc(5, false), fc(9), fc(9)),
+    ];
+    const state = {
+      players: [
+        { hand: { triads: opponentTriads }, name: 'Opponent' },
+        { hand: { triads: [makeTriad(1, 2, 3)] }, name: 'AI' },
+      ],
+    };
+    const nineCard = fc(9);
+    const safety = aiEvaluateDiscardSafety(nineCard, state);
+    // Baseline for 9: 67. Minus 40 (completion) = 27. Same penalty as KAPOW case.
+    expect(safety).toBe(27);
   });
 });

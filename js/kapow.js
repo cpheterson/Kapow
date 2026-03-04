@@ -3313,7 +3313,7 @@ function aiScorePlacement(hand, card, triadIndex, position) {
     var replacedCard = posCards[0];
     var replacedSafety = aiEvaluateDiscardSafety(replacedCard, gameState);
     // Scaled penalty: (50 - safety) * 1.0 (instead of 0.4 for much stronger deterrent)
-    // Safety 42 (card that completes opponent triad) → penalty of -8
+    // Safety 27 (card that completes opponent triad) → penalty of -23
     // Safety 15 (KAPOW) → penalty of -35
     // Safety 0 (KAPOW + opponent needs) → penalty of -50
     if (replacedSafety < 50) {
@@ -3358,7 +3358,7 @@ function aiEvaluateDiscardSafety(card, gameState) {
       var cardVal = card.type === 'fixed' ? card.faceValue : (card.type === 'power' ? card.faceValue : 0);
       for (var c = 0; c < analysis.completionValues.length; c++) {
         if (analysis.completionValues[c] === cardVal) {
-          safety -= 25; // very dangerous
+          safety -= 40; // very dangerous — must outweigh typical placement benefit
           break;
         }
       }

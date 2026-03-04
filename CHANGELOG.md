@@ -6,6 +6,13 @@
 
 ### 03-04-2026
 
+**v3 [Chuck]** AI: stronger discard safety when feeding opponent a triad completion (R8T20).
+- Increased completion penalty in `aiEvaluateDiscardSafety()` from -25 to -40
+- Fixes R8T20: Kai no longer discards a 9 into opponent's near-complete triad — safety drops from 42→27, placement penalty 8→23 (rejected)
+- Applies to all near-complete triads (KAPOW or not), not just KAPOW-specific
+- Added `aiEvaluateDiscardSafety()` to modular `ai.js` with matching logic
+- 2 regression tests added (KAPOW triad + non-KAPOW triad, both get same penalty)
+
 **v2 [Chuck]** Enable "Understand Kai's Move" button at round end before clicking Continue.
 - Button was disabled when Kai goes out because `currentPlayer` was still AI (not human turn)
 - Now also enabled during the scoring phase pre-Continue so player can review Kai's final move

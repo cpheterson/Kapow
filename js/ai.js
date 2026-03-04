@@ -3,7 +3,7 @@
 // ========================================
 
 import { getPositionValue, countRevealedCards } from './hand.js';
-import { isTriadComplete, getEffectiveValues, getKapowValueForCompletion } from './triad.js';
+import { isTriadComplete, getEffectiveValues, getKapowValueForCompletion, isSet, isAscendingRun, isDescendingRun } from './triad.js';
 import { canSwapKapow } from './rules.js';
 
 /**
@@ -487,4 +487,103 @@ function findBestSwapTarget(hand, kapowTriad, kapowPos) {
   }
 
   return bestTarget;
+}
+
+/**
+ * Evaluate how safe a card is to discard (0-100, higher = safer).
+ * Checks if the card would help the opponent complete a triad.
+ */
+export function aiEvaluateDiscardSafety(card, gameState) {
+  const opponentHand = gameState.players[0].hand;
+  let safety = 50;
+
+  // High-value cards are generally safe to discard
+  if (card.type === 'fixed' && card.faceValue >= 10) safety = 80;
+  else if (card.type === 'fixed' && card.faceValue <= 2) safety = 30;
+  else if (card.type === 'fixed') safety = 40 + (card.faceValue * 3);
+
+  if (card.type === 'power') safety = 45;
+  if (card.type === 'kapow') safety = 15;
+
+  // Check if card would help opponent complete a triad
+  for (let t = 0; t < opponentHand.triads.length; t++) {
+    const triad = opponentHand.triads[t];
+    if (triad.isDiscarded) continue;
+
+    // Analyze triad: count revealed, find values, check for KAPOW
+    const positions = ['top', 'middle', 'bottom'];
+    let revealedCount = 0;
+    const values = [null, null, null];
+    let hasUnfrozenKapow = false;
+
+    for (let i = 0; i < 3; i++) {
+      const posCards = triad[positions[i]];
+      if (posCards.length > 0 && posCards[0].isRevealed) {
+        revealedCount++;
+        values[i] = getPositionValue(posCards);
+        if (posCards[0].type === 'kapow') {
+          hasUnfrozenKapow = true;
+        }
+      }
+    }
+
+    // Check 2-revealed triads: does this card fill the missing slot?
+    if (revealedCount === 2) {
+      let emptyIdx = -1;
+      for (let i = 0; i < 3; i++) {
+        if (values[i] === null) { emptyIdx = i; break; }
+      }
+      if (emptyIdx >= 0) {
+        const completionValues = [];
+
+        if (hasUnfrozenKapow) {
+          // KAPOW can take ANY value — test all (KAPOW value, empty slot value) combos
+          let kapowIdx = -1, fixedIdx = -1;
+          for (let ki = 0; ki < 3; ki++) {
+            if (ki === emptyIdx) continue;
+            const kCards = triad[positions[ki]];
+            if (kCards.length > 0 && kCards[0].type === 'kapow') kapowIdx = ki;
+            else fixedIdx = ki;
+          }
+          if (kapowIdx >= 0 && fixedIdx >= 0) {
+            const fixedVal = values[fixedIdx];
+            const seen = {};
+            for (let ev = 0; ev <= 12; ev++) {
+              for (let kv = 0; kv <= 12; kv++) {
+                const testVals = [null, null, null];
+                testVals[fixedIdx] = fixedVal;
+                testVals[kapowIdx] = kv;
+                testVals[emptyIdx] = ev;
+                if (isSet(testVals) || isAscendingRun(testVals) || isDescendingRun(testVals)) {
+                  if (!seen[ev]) {
+                    seen[ev] = true;
+                    completionValues.push(ev);
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          // Standard: try each value 0-12 in the empty slot
+          for (let v = 0; v <= 12; v++) {
+            const testVals = values.slice();
+            testVals[emptyIdx] = v;
+            if (isSet(testVals) || isAscendingRun(testVals) || isDescendingRun(testVals)) {
+              completionValues.push(v);
+            }
+          }
+        }
+
+        const cardVal = card.type === 'fixed' ? card.faceValue : (card.type === 'power' ? card.faceValue : 0);
+        for (let c = 0; c < completionValues.length; c++) {
+          if (completionValues[c] === cardVal) {
+            safety -= 40; // very dangerous — must outweigh typical placement benefit
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  return safety;
 }

@@ -26,6 +26,18 @@ The living document. Updated in real-time throughout every session.
 
 ---
 
+## Session Log (03-04-2026)
+
+### Shipped
+- [x] AI: stronger discard safety when feeding opponent a triad completion (R8T20)
+  - Increased completion penalty in `aiEvaluateDiscardSafety()` from -25 to -40
+  - Applies to all near-complete triads (KAPOW or not) — same defensive failure with [fd,9,9]
+  - Fixes: safety for completion cards drops from 42→27, placement penalty 8→23 (rejected)
+  - Added `aiEvaluateDiscardSafety()` to modular `ai.js` with matching logic
+  - 2 regression tests added
+
+---
+
 ## Session Log (03-01-2026)
 
 ### Shipped
@@ -146,4 +158,4 @@ The living document. Updated in real-time throughout every session.
 
 ---
 
-*Last updated: 03-03-2026*
+*Last updated: 03-04-2026*
