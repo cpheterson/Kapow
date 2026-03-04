@@ -63,6 +63,9 @@ The living document. Updated in real-time throughout every session.
   - 2 regression tests added (R3T34 scenario + no-improvement guard)
 - [x] Show discard pile top card in game log turn headers
   - Format: `--- Turn N: Player --- (discard: P2)` — log is now self-contained for analysis
+- [x] Enable "Understand Kai's Move" button at round end before Continue
+  - Button was disabled when Kai goes out because `currentPlayer` was still AI
+  - Now enabled during scoring phase pre-Continue so player can review Kai's final move
 
 ### In Progress
 - [ ] Power card face redesign: minus/plus signs flanking center value, POWER label stays at top

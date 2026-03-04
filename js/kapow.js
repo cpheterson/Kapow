@@ -4451,8 +4451,10 @@ function refreshUI() {
     endTurnBtn.classList.remove('release-card-glow');
   }
 
-  // Understand AI's Move button: enabled when it's human's turn and explanation exists
-  var understandEnabled = isHumanTurn && aiMoveExplanation;
+  // Understand AI's Move button: enabled when it's human's turn and explanation exists,
+  // or during the scoring phase before Continue (so player can review Kai's final move)
+  var isRoundEndReview = phase === 'scoring' && !roundEndAcknowledged;
+  var understandEnabled = (isHumanTurn || isRoundEndReview) && aiMoveExplanation;
   var understandBtn = document.getElementById('btn-understand-move');
   if (understandBtn) understandBtn.disabled = !understandEnabled;
   var mobileUnderstandBtn = document.getElementById('mobile-understand-btn');

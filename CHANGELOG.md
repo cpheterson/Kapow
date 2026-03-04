@@ -4,6 +4,12 @@
 
 ## Version History
 
+### 03-04-2026
+
+**v2 [Chuck]** Enable "Understand Kai's Move" button at round end before clicking Continue.
+- Button was disabled when Kai goes out because `currentPlayer` was still AI (not human turn)
+- Now also enabled during the scoring phase pre-Continue so player can review Kai's final move
+
 ### 03-03-2026
 
 **v2 [Chuck]** AI: draw from discard on final turn when it guarantees improvement (R3T34). Show discard pile in log.
