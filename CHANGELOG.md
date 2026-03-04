@@ -6,11 +6,7 @@
 
 ### 03-03-2026
 
-**v26 [Chuck]** Show discard pile top card in game log turn headers.
-- Turn header now reads `--- Turn N: Player --- (discard: P2)` so the log is self-contained
-- No need to remember what was on the discard pile — it's right there in the log
-
-**v25 [Chuck]** AI: draw from discard on final turn when it guarantees improvement (R3T34).
+**v2 [Chuck]** AI: draw from discard on final turn when it guarantees improvement (R3T34). Show discard pile in log.
 - `aiEvaluateDrawFromDiscard()` now evaluates power card modifier opportunities (not just face-value replacement)
 - On final turns, any guaranteed score improvement triggers drawing from discard
 - Fixes case where AI ignored P2 on discard that could reduce hand via -2 modifier, costing opponent a doubled score
