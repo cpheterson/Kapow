@@ -6,6 +6,8 @@
 
 ### 03-04-2026
 
+**v6 [Chuck]** Bump service worker cache to v55.
+
 **v5 [Chuck]** AI: more defensive go-out decision with uncertain margins (R3T24).
 - Lowered high-score caution threshold from 15 to 12 in `aiShouldGoOutWithScore()`
 - Prevents going out when score is 12+ and margin is thin with opponent unknowns
