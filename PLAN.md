@@ -4,7 +4,7 @@ The living document. Updated in real-time throughout every session.
 
 ---
 
-## Current State (03-04-2026)
+## Current State (03-05-2026)
 
 **Live at:** cpheterson.github.io/Kapow/ (GitHub Pages, auto-deploys on push to `main`)
 **Repo:** github.com/cpheterson/Kapow (single `main` branch, both contributors push here)
@@ -23,6 +23,16 @@ The living document. Updated in real-time throughout every session.
 - Dopamine hits: round win celebrations, streak badges, personal best detection
 - Leaderboard (top 25 lowest-score winners from telemetry API)
 - Game history saved to localStorage (last 50 games)
+
+---
+
+## Session Log (03-05-2026)
+
+### Shipped
+- [x] Fix final-turn hang when all triads auto-discard after reveal (R10T39)
+  - After AI goes out, human's remaining triads all auto-completed on reveal → empty hand → draw prompt with no valid placements → hang
+  - `advanceToNextPlayer()` now detects empty hand after auto-discard and skips straight to `endRound()`
+  - AI already had this guard in `playAITurn()` (lines 5082-5094); human path was missing it
 
 ---
 
@@ -179,4 +189,4 @@ The living document. Updated in real-time throughout every session.
 
 ---
 
-*Last updated: 03-04-2026*
+*Last updated: 03-05-2026*

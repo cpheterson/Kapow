@@ -916,6 +916,21 @@ function advanceToNextPlayer(state) {
     checkAndDiscardTriads(state, state.currentPlayer);
     logAction(state, state.currentPlayer, 'Final turn! All cards revealed.');
     logHandState(state, state.currentPlayer);
+
+    // If all triads were discarded after auto-reveal, skip this player's turn
+    var allDiscarded = true;
+    for (var td = 0; td < nextPlayer.hand.triads.length; td++) {
+      if (!nextPlayer.hand.triads[td].isDiscarded) { allDiscarded = false; break; }
+    }
+    if (allDiscarded) {
+      logAction(state, state.currentPlayer, 'All triads already discarded — no action needed.');
+      state.finalTurnsRemaining--;
+      if (state.finalTurnsRemaining <= 0) {
+        endRound(state);
+      }
+      return;
+    }
+
     state.message = playerTurnMessage(nextPlayer.name) + '. Final turn! All cards revealed.';
   } else if (state.needsFirstReveal && state.needsFirstReveal[state.currentPlayer]) {
     state.message = 'Reveal 2 cards to start your turn.';

@@ -4,6 +4,13 @@
 
 ## Version History
 
+### 03-05-2026
+
+**v1 [Chuck]** Fix final-turn hang when all triads auto-discard after reveal (R10T39).
+- After AI goes out, if the human player's remaining triads all auto-complete on reveal, the game prompted a draw with nowhere to place a card
+- `advanceToNextPlayer()` now checks for an empty hand after auto-reveal/discard and skips directly to scoring
+- Corner case: only happens when a player's last triads complete upon final-turn reveal
+
 ### 03-04-2026
 
 **v12 [Chuck]** AI: fix path gain recognition in placement scoring (R1T6).
