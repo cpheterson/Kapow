@@ -6,6 +6,11 @@
 
 ### 03-04-2026
 
+**v12 [Chuck]** AI: fix path gain recognition in placement scoring (R1T6).
+- Changed `>` to `>=` in path-doubling check in `aiScorePlacement()` — exactly doubling paths now counts as "card fits"
+- Fixes R1T6: Kai placed 6 in all-face-down T4 (+8) instead of T1-top [6,4,4] (+16) because 1→2 paths was exactly doubling, not more
+- 1 regression test added
+
 **v11 [Chuck]** Tests: 3 regression tests for R2T18 path loss and R2T48 final-turn draw.
 - Synced modular `ai.js` final-turn draw logic with production threshold (≤ 6)
 

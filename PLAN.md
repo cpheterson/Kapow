@@ -29,6 +29,11 @@ The living document. Updated in real-time throughout every session.
 ## Session Log (03-04-2026)
 
 ### Shipped
+- [x] AI: fix path gain recognition — exactly doubling paths now counts as "card fits" (R1T6)
+  - Changed `>` to `>=` in path-doubling check in `aiScorePlacement()` line 2755
+  - Going from 1→2 paths was penalized -20 because strict `>` required MORE than doubling
+  - Fixes: T1-top [6,4,4] score goes from -4 to 16, beats T4-middle's 8
+  - 1 regression test added
 - [x] AI: smarter final-turn draw decision — prefer deck over high-value discard (R2T48)
   - `aiEvaluateDrawFromDiscard()` now compares discard card value against avg deck value (~6)
   - Only draws from discard on final turns when card value ≤ 6; above that, deck is statistically better

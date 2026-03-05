@@ -2752,7 +2752,7 @@ function aiScorePlacement(hand, card, triadIndex, position) {
             var powerPaths = aiCountPowerModifierPaths(testVals, []);
             effectivePaths += powerPaths;
           }
-          if (futureWithNew.totalPaths > existingPaths * 2) {
+          if (futureWithNew.totalPaths >= existingPaths * 2) {
             newCardFits = true; // significantly improves flexibility
           } else if (effectivePaths >= existingPaths * 2 && existingTriadValue >= 16) {
             newCardFits = true; // doubles paths on high-value triad (including Power modifiers)

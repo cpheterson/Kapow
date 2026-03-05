@@ -221,6 +221,26 @@ describe('aiDecideAction', () => {
     expect(action.triadIndex).toBe(3); // T4, not T3 — preserves T3 completion paths
   });
 
+  test('R1T6: places card in triad with existing pair over all-face-down triad', () => {
+    // R1T6 scenario: T1=[fd, 4, 4] has 1 completion path (draw 4→set).
+    // Placing a mid-value card in T1-top adds paths (e.g., 5→[5,4,4]: draw 3→run).
+    // Production fix: >= in path-doubling check (was >) means exactly doubling
+    // paths counts as "card fits" — removes -20 synergy penalty.
+    // Modular AI: Strategy 5 places decent card in T1's unrevealed slot.
+    const aiTriads = [
+      makeTriad(fc(10, false), fc(4), fc(4)),   // T1: [fd(10), 4, 4] — 1 completion path
+      { ...makeTriad(fc(1), fc(1), fc(1)), isDiscarded: true },  // T2 discarded
+      { ...makeTriad(fc(1), fc(1), fc(1)), isDiscarded: true },  // T3 discarded
+      makeTriad(fc(7, false), fc(3, false), fc(9, false)),        // T4: [fd, fd, fd]
+    ];
+    const state = makeAiState(aiTriads);
+    const action = aiDecideAction(state, fc(5));
+
+    expect(action.type).toBe('replace');
+    expect(action.triadIndex).toBe(0); // T1, not T4 — card fits T1's existing pair
+    expect(action.position).toBe('top'); // replace the fd(10)
+  });
+
   test('discards rather than breaking a matched pair in a set start (R1T24)', () => {
     // Reproduces R1T24: AI has T1=[K!(fd), 7, 7] — a strong set start.
     // Drew 9. Placing 9 in T1 middle breaks the [7,7] pair for [K!(fd), 9, 7].
