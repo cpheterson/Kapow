@@ -95,7 +95,14 @@ export function aiDecideDraw(gameState) {
       }
     }
 
-    if (bestImprovement > 0) return 'discard';
+    if (bestImprovement > 0) {
+      // Only draw from discard if the card value is at or below the average
+      // deck card value (~6). Above that, the deck statistically offers better
+      // savings — and bad deck draws can always be discarded with no downside.
+      var discardPlacementValue = discardTop.type === 'kapow' ? 25 :
+        discardTop.type === 'power' ? 0 : discardTop.faceValue;
+      if (discardPlacementValue <= 6) return 'discard';
+    }
   }
 
   return 'deck';

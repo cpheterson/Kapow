@@ -6,6 +6,9 @@
 
 ### 03-04-2026
 
+**v11 [Chuck]** Tests: 3 regression tests for R2T18 path loss and R2T48 final-turn draw.
+- Synced modular `ai.js` final-turn draw logic with production threshold (≤ 6)
+
 **v10 [Chuck]** AI: smarter final-turn draw decision — prefer deck over high-value discard (R2T48).
 - `aiEvaluateDrawFromDiscard()` no longer auto-draws from discard on final turns just because there's any improvement
 - Only draws from discard when the card's value is ≤ 6 (at or below average deck card)

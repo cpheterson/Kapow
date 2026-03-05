@@ -202,6 +202,25 @@ describe('aiDecideAction', () => {
     expect(action.type).toBe('discard');
   });
 
+  test('R2T18: prefers face-down triad over revealed triad with completion paths', () => {
+    // AI has T3[5,8,7] (completion paths: 5-6-7 run, 6-7-8 run) and T4[fd,fd,fd].
+    // Drew 5. Placing in T3 would not improve it (5 already there or worse swap).
+    // T4 has face-down slots — AI should place there to preserve T3's paths.
+    // Production code handles this via path loss penalty in aiScorePlacement();
+    // modular AI achieves the same outcome via strategy ordering (unrevealed preference).
+    const aiTriads = [
+      { ...makeTriad(fc(1), fc(1), fc(1)), isDiscarded: true },  // T1 discarded
+      { ...makeTriad(fc(1), fc(1), fc(1)), isDiscarded: true },  // T2 discarded
+      makeTriad(5, 8, 7),                                         // T3: [5, 8, 7]
+      makeTriad(fc(7, false), fc(3, false), fc(7, false)),         // T4: [fd, fd, fd]
+    ];
+    const state = makeAiState(aiTriads);
+    const action = aiDecideAction(state, fc(5));
+
+    expect(action.type).toBe('replace');
+    expect(action.triadIndex).toBe(3); // T4, not T3 — preserves T3 completion paths
+  });
+
   test('discards rather than breaking a matched pair in a set start (R1T24)', () => {
     // Reproduces R1T24: AI has T1=[K!(fd), 7, 7] — a strong set start.
     // Drew 9. Placing 9 in T1 middle breaks the [7,7] pair for [K!(fd), 9, 7].
@@ -439,6 +458,37 @@ describe('aiDecideDraw — final turn', () => {
     ];
     const state = makeAiState(aiTriads, {
       discardPile: [p2],
+      phase: 'finalTurns',
+    });
+    const decision = aiDecideDraw(state);
+    expect(decision).toBe('discard');
+  });
+
+  test('R2T48: prefers deck over high-value discard on final turn', () => {
+    // AI hand: T1[K!, 0, 3], discard has 10.
+    // Replacing KAPOW(25) with 10 saves 15 pts, but avg deck card (~6) saves ~19.
+    // Deck draws have no downside (bad draws can be discarded).
+    // AI should prefer deck when discard value > 6.
+    const aiTriads = [
+      makeTriad(kapowCard(), fc(0), fc(3)),
+    ];
+    const state = makeAiState(aiTriads, {
+      discardPile: [fc(10)],
+      phase: 'finalTurns',
+    });
+    const decision = aiDecideDraw(state);
+    expect(decision).toBe('deck');
+  });
+
+  test('draws low-value card from discard on final turn to replace KAPOW', () => {
+    // Same scenario but discard is 3 instead of 10.
+    // Replacing KAPOW(25) with 3 saves 22 pts — better than avg deck (~19).
+    // AI should take the guaranteed improvement.
+    const aiTriads = [
+      makeTriad(kapowCard(), fc(0), fc(3)),
+    ];
+    const state = makeAiState(aiTriads, {
+      discardPile: [fc(3)],
       phase: 'finalTurns',
     });
     const decision = aiDecideDraw(state);
