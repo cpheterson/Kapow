@@ -26,6 +26,17 @@ The living document. Updated in real-time throughout every session.
 
 ---
 
+## Session Log (03-06-2026)
+
+### Shipped
+- [x] AI: low-value starter bonus — prefer seeding untouched triads over marginal improvements (R3T6)
+  - In `aiScorePlacement()`, low cards (0-4) get +3 bonus when placed in untouched triads with 2+ untouched remaining
+  - Root cause: 3-revealed path bonus (+16) made marginal improvements in developed triads beat the untouched triad bonus (+17)
+  - Updated modular `ai.js` Strategy 3: check for 2+ untouched triads before high-value replacement
+  - 2 regression tests added (R3T6 scenario + guard test with 1 untouched triad)
+
+---
+
 ## Session Log (03-05-2026)
 
 ### Shipped
@@ -195,4 +206,4 @@ The living document. Updated in real-time throughout every session.
 
 ---
 
-*Last updated: 03-05-2026*
+*Last updated: 03-06-2026*

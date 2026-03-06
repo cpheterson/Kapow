@@ -3122,6 +3122,13 @@ function aiScorePlacement(hand, card, triadIndex, position) {
         (newValue <= 4) ? 1.0 : (newValue <= 7) ? 0.7 : 0.4;
       score += Math.round((5 + earlyGameBoost + untouchedBoost) * valueSpreadDampen);
 
+      // Low-value starter bonus: a low card (0-4) is a great seed for an untouched triad.
+      // When 2+ untouched triads remain, prefer spreading low cards rather than making
+      // marginal improvements to developed triads.
+      if (card.type !== 'kapow' && newValue <= 4 && untouchedTriads >= 2) {
+        score += 3;
+      }
+
       // KAPOW middle position bonus: placing KAPOW in the middle of a triad gives it
       // maximum completion flexibility. From the middle, KAPOW participates in both
       // top-mid and mid-bottom pairs, meaning almost any card placed above or below

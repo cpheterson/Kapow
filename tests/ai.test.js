@@ -609,3 +609,40 @@ describe('aiDecideAction — KAPOW opportunity cost', () => {
     expect(action.triadIndex).toBe(1); // T2 — high-value completion kept
   });
 });
+
+describe('Low-value starter bonus (untouched triad preference)', () => {
+  test('R3T6: low card (2) placed in untouched triad when 2+ untouched triads exist', () => {
+    // AI hand: T1[fd,0,fd], T2[5,2,3] (all revealed), T3[fd,fd,fd], T4[fd,fd,fd]
+    // Drawn: 2. Should place in T3 (untouched) not T2 (marginal improvement)
+    const aiTriads = [
+      makeTriad(fc(0, false), fc(0), fc(0, false)),            // T1: [fd,0,fd] — 1 revealed
+      makeTriad(5, 2, 3),                                       // T2: [5,2,3] all revealed
+      makeTriad(fc(5, false), fc(5, false), fc(5, false)),      // T3: untouched
+      makeTriad(fc(5, false), fc(5, false), fc(5, false)),      // T4: untouched
+    ];
+    const drawn = fc(2);
+    const state = makeAiState(aiTriads, { phase: 'playing' });
+    const action = aiDecideAction(state, drawn);
+
+    expect(action.type).toBe('replace');
+    expect(action.triadIndex).toBe(2); // T3 — untouched triad preferred
+  });
+
+  test('R3T6 guard: low card replaces highest when only 1 untouched triad', () => {
+    // Same hand but T4 has a revealed card — only 1 untouched triad, so normal replacement
+    const aiTriads = [
+      makeTriad(fc(0, false), fc(0), fc(0, false)),            // T1: 1 revealed
+      makeTriad(5, 2, 3),                                       // T2: all revealed (5 is highest)
+      makeTriad(fc(5, false), fc(5, false), fc(5, false)),      // T3: untouched
+      makeTriad(fc(5, false), fc(8), fc(5, false)),             // T4: 1 revealed — NOT untouched
+    ];
+    const drawn = fc(2);
+    const state = makeAiState(aiTriads, { phase: 'playing' });
+    const action = aiDecideAction(state, drawn);
+
+    expect(action.type).toBe('replace');
+    // With only 1 untouched triad, falls through to high-value replacement (8 in T4)
+    expect(action.triadIndex).toBe(3); // T4 — replaces highest value (8)
+    expect(action.position).toBe('middle');
+  });
+});

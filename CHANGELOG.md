@@ -4,6 +4,15 @@
 
 ## Version History
 
+### 03-06-2026
+
+**v1 [Chuck]** AI: low-value starter bonus — prefer seeding untouched triads over marginal improvements (R3T6).
+- In `aiScorePlacement()`, low cards (0-4) placed into untouched triads get +3 bonus when 2+ untouched triads remain
+- Prevents wasting good starter cards on 3-point saves in developed triads that also lose completion paths
+- Fixes R3T6: Kai placed 2 in T2-top (replacing 5, saving 3 pts) instead of starting T3 (untouched, better long-term value)
+- Updated modular `ai.js` with matching logic (untouched triad preference in Strategy 3)
+- 2 regression tests added
+
 ### 03-05-2026
 
 **v2 [Chuck]** AI: KAPOW opportunity cost — skip low-value triad completion when KAPOW has more flexibility value (R2T16).

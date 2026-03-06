@@ -215,8 +215,28 @@ export function aiDecideAction(gameState, drawnCard) {
     }
   }
 
-  // Strategy 3: If low value card (0-4), replace highest value position
+  // Strategy 3: If low value card (0-4), prefer untouched triads then replace highest
   if (drawnCard.type === 'fixed' && drawnCard.faceValue <= 4) {
+    // Low-value starter: when 2+ untouched triads exist, seed one instead of
+    // making marginal improvements to developed triads
+    let untouchedCount = 0;
+    let firstUntouched = null;
+    for (let t = 0; t < aiHand.triads.length; t++) {
+      const triad = aiHand.triads[t];
+      if (triad.isDiscarded) continue;
+      let hasRevealed = false;
+      for (const pos of ['top', 'middle', 'bottom']) {
+        if (triad[pos].length > 0 && triad[pos][0].isRevealed) { hasRevealed = true; break; }
+      }
+      if (!hasRevealed) {
+        untouchedCount++;
+        if (!firstUntouched) firstUntouched = { triadIndex: t, position: 'middle' };
+      }
+    }
+    if (untouchedCount >= 2 && firstUntouched) {
+      return { type: 'replace', ...firstUntouched };
+    }
+
     const highPos = findHighestValuePosition(aiHand);
     if (highPos && highPos.value > drawnCard.faceValue + 2) {
       return { type: 'replace', triadIndex: highPos.triadIndex, position: highPos.position };
