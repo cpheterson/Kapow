@@ -259,6 +259,36 @@ export function aiDecideAction(gameState, drawnCard) {
     }
   }
 
+  // Strategy 6: Discard safety — avoid discarding cards that help opponent.
+  // When the drawn card is dangerous to discard (safety < 40), find a low-cost
+  // swap where the replaced card is significantly safer to discard.
+  if (drawnCard.type === 'fixed') {
+    const drawnSafety = aiEvaluateDiscardSafety(drawnCard, gameState);
+    if (drawnSafety < 40) {
+      let safestSwap = null;
+      let bestSafetyGain = 15; // minimum threshold
+      for (let t = 0; t < aiHand.triads.length; t++) {
+        const triad = aiHand.triads[t];
+        if (triad.isDiscarded) continue;
+        for (const pos of ['top', 'middle', 'bottom']) {
+          if (triad[pos].length === 0 || !triad[pos][0].isRevealed) continue;
+          const currentVal = getPositionValue(triad[pos]);
+          const valueCost = drawnCard.faceValue - currentVal;
+          if (valueCost > 3) continue; // too expensive
+          const replacedSafety = aiEvaluateDiscardSafety(triad[pos][0], gameState);
+          const safetyGain = replacedSafety - drawnSafety;
+          if (safetyGain > bestSafetyGain) {
+            bestSafetyGain = safetyGain;
+            safestSwap = { triadIndex: t, position: pos };
+          }
+        }
+      }
+      if (safestSwap) {
+        return { type: 'replace', ...safestSwap };
+      }
+    }
+  }
+
   // Default: discard
   return { type: 'discard' };
 }

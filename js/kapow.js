@@ -3020,6 +3020,18 @@ function aiScorePlacement(hand, card, triadIndex, position) {
           // Penalty scales with value (higher cards = more urgent to complete) and
           // threat (opponent may go out soon, can't afford to break good triads).
           var matchPairPenalty = 15 + (currentValue * 1.5) + (matchCount * 5);
+          // Check if the new card creates a DIFFERENT matched pair with remaining cards.
+          // E.g., [6,6,7] → [7,6,7]: old pair (6,6) destroyed, new pair (7,7) created.
+          // The new pair has equal set-completion potential, so offset the penalty.
+          var newMatchCount = 0;
+          for (var nmp = 0; nmp < 3; nmp++) {
+            if (nmp === posIdx) continue;
+            if (analysis.values[nmp] === newValue) newMatchCount++;
+          }
+          if (newMatchCount > 0) {
+            var newPairOffset = 15 + (newValue * 1.5) + (newMatchCount * 5);
+            matchPairPenalty = Math.max(0, matchPairPenalty - newPairOffset);
+          }
           score -= Math.round(matchPairPenalty * (1 + opponentThreat));
         }
       }
@@ -3369,6 +3381,15 @@ function aiScorePlacement(hand, card, triadIndex, position) {
     // Safety 0 (KAPOW + opponent needs) → penalty of -50
     if (replacedSafety < 50) {
       score -= Math.round((50 - replacedSafety) * 1.0);
+    }
+    // DISCARD SAFETY SWAP BONUS: When the drawn card is dangerous to discard
+    // (safety < 40) and the replaced card is significantly safer, reward the
+    // placement. This captures "eat 1 point to avoid feeding the opponent."
+    // E.g., drawn 7 (safety 36, opponent needs 7) → place in T2, discard the
+    // replaced 6 (safety ~58) instead. Cost is 1 point, but avoids the feed.
+    var drawnCardSafety = aiEvaluateDiscardSafety(card, gameState);
+    if (drawnCardSafety < 40 && replacedSafety > drawnCardSafety + 10) {
+      score += Math.min(Math.round((replacedSafety - drawnCardSafety) * 0.4), 15);
     }
   }
 

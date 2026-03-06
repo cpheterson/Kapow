@@ -29,6 +29,11 @@ The living document. Updated in real-time throughout every session.
 ## Session Log (03-06-2026)
 
 ### Shipped
+- [x] AI: discard-aware placement — avoid feeding opponent completion cards (R2T22)
+  - Fix 1: matched-pair destruction offset in `aiScorePlacement()` — when new pair created, offset the penalty
+  - Fix 2: discard safety swap bonus — reward placements that avoid discarding dangerous cards
+  - Fix 3: modular `ai.js` Strategy 6 — discard safety swap before default discard
+  - 2 regression tests added (R2T22 scenario + guard test with safe drawn card)
 - [x] AI: low-value starter bonus — prefer seeding untouched triads over marginal improvements (R3T6)
   - In `aiScorePlacement()`, low cards (0-4) get +3 bonus when placed in untouched triads with 2+ untouched remaining
   - Root cause: 3-revealed path bonus (+16) made marginal improvements in developed triads beat the untouched triad bonus (+17)

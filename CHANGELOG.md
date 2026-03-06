@@ -6,6 +6,14 @@
 
 ### 03-06-2026
 
+**v2 [Chuck]** AI: discard-aware placement — avoid feeding opponent completion cards (R2T22).
+- Two fixes in `aiScorePlacement()`:
+  1. Matched-pair offset: when destroying a pair creates a NEW pair with equal potential, offset the penalty (e.g., [6,6,7]→[7,6,7]: old pair penalty zeroed by new 7,7 pair)
+  2. Discard safety swap bonus: when drawn card is dangerous (safety < 40) and replaced card is much safer (delta > 10), reward the placement up to +15
+- Fixes R2T22: Kai drew 7 and discarded it (safety=21, opponent had [7,7,fd]) instead of placing in T2 and discarding the safe 6
+- Updated modular `ai.js` with Strategy 6: discard safety swap (before default discard)
+- 2 regression tests added
+
 **v1 [Chuck]** AI: low-value starter bonus — prefer seeding untouched triads over marginal improvements (R3T6).
 - In `aiScorePlacement()`, low cards (0-4) placed into untouched triads get +3 bonus when 2+ untouched triads remain
 - Prevents wasting good starter cards on 3-point saves in developed triads that also lose completion paths

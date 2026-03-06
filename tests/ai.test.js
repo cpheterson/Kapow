@@ -646,3 +646,69 @@ describe('Low-value starter bonus (untouched triad preference)', () => {
     expect(action.position).toBe('middle');
   });
 });
+
+describe('Discard-aware placement (discard safety swap)', () => {
+  test('R2T22: places drawn 7 instead of discarding when opponent needs a 7', () => {
+    // AI hand: T1 discarded, T2[6,6,7] all revealed, T3[fd,fd,fd], T4[fd,P2,3]
+    // Opponent has [7,7,fd] — needs a 7 to complete set.
+    // Drawn: fixed 7, safety = 40 + 7*3 = 61, minus 40 (completion) = 21. < 40 → Strategy 6.
+    // T2-top (6): valueCost = 7-6 = 1 (≤3), replacedSafety for 6 = 40+6*3 = 58.
+    // safetyGain = 58-21 = 37 > 15 threshold → swap wins.
+    // T3 all face-down → skipped by Strategy 6 (only considers revealed positions).
+    // Production AI: matched-pair offset zeroes the penalty (old 6,6 → new 7,7),
+    // plus discard safety swap bonus. Modular AI: Strategy 6 catches it.
+    const aiTriads = [
+      { ...makeTriad(0, 0, 0), isDiscarded: true },             // T1: discarded
+      makeTriad(6, 6, 7),                                        // T2: [6,6,7] all revealed
+      makeTriad(fc(11, false), fc(11, false), fc(10, false)),    // T3: [fd,fd,fd]
+      makeTriad(fc(5, false), powerCard(2, [-2, 2]), fc(3)),     // T4: [fd,P2,3]
+    ];
+    const opponentTriads = [
+      makeTriad(fc(7), fc(7), fc(5, false)),                     // [7,7,fd] — needs a 7
+    ];
+    const drawn = fc(7);
+    const state = {
+      players: [
+        { hand: { triads: opponentTriads }, name: 'You' },
+        { hand: { triads: aiTriads }, name: 'AI' },
+      ],
+      drawPile: [fc(1)],
+      discardPile: [],
+      drawnCard: null,
+      phase: 'playing',
+    };
+    const action = aiDecideAction(state, drawn);
+
+    expect(action.type).toBe('replace');
+    // Should place in T2 (index 1) — swap the 6, discard it safely
+    expect(action.triadIndex).toBe(1);
+  });
+
+  test('R2T22 guard: safe drawn card (10) discarded normally', () => {
+    // Same AI hand and opponent, but drawn card is 10 (safety = 80, well above 40).
+    // No Strategy 6 trigger — AI discards normally.
+    const aiTriads = [
+      { ...makeTriad(0, 0, 0), isDiscarded: true },
+      makeTriad(6, 6, 7),
+      makeTriad(fc(11, false), fc(11, false), fc(10, false)),
+      makeTriad(fc(5, false), powerCard(2, [-2, 2]), fc(3)),
+    ];
+    const opponentTriads = [
+      makeTriad(fc(7), fc(7), fc(5, false)),
+    ];
+    const drawn = fc(10);
+    const state = {
+      players: [
+        { hand: { triads: opponentTriads }, name: 'You' },
+        { hand: { triads: aiTriads }, name: 'AI' },
+      ],
+      drawPile: [fc(1)],
+      discardPile: [],
+      drawnCard: null,
+      phase: 'playing',
+    };
+    const action = aiDecideAction(state, drawn);
+
+    expect(action.type).toBe('discard');
+  });
+});
