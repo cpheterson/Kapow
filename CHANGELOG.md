@@ -6,6 +6,8 @@
 
 ### 03-07-2026
 
+**v4 [Chuck]** UI: add trademark symbol and "Card Game" subtitle to launch screen.
+
 **v3 [Chuck]** AI: bury KAPOW after cross-triad swap completion (R2T13).
 - After a cross-triad KAPOW swap completes a triad, the K! was left at the top position — landing on the discard pile where the opponent could grab it
 - New burial logic in `aiStepCheckSwap()` moves K! from top to bottom (or middle) if the triad stays complete, matching the existing within-triad burial in `aiStepWithinTriadSwap()`
