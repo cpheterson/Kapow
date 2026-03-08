@@ -1,0 +1,59 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, beta]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+
+      - name: Checkout beta
+        uses: actions/checkout@v4
+        with:
+          ref: beta
+          path: beta-src
+        continue-on-error: true
+
+      - name: Build site structure
+        run: |
+          mkdir -p _site
+          # Prod = main branch at root
+          cp -r main/* _site/
+          rm -rf _site/.git _site/.github
+          # Beta = beta branch at /beta/
+          if [ -d beta-src ]; then
+            mkdir -p _site/beta
+            cp -r beta-src/* _site/beta/
+            rm -rf _site/beta/.git _site/beta/.github
+          fi
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

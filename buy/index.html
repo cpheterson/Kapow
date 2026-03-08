@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KAPOW! — Get the Card Game</title>
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="KAPOW! Card Game — Get the Real Deck">
+  <meta property="og:description" content="The original card game of triads, strategy, and chaos. Physical decks now available.">
+  <meta property="og:type" content="website">
+
+  <!-- Fonts (matching game) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="../icons/icon.svg" type="image/svg+xml">
+
+  <style>
+    /* ---- Design Tokens (from game) ---- */
+    :root {
+      --color-fixed: #1a5490;
+      --color-power: #d4920a;
+      --color-kapow: #d63031;
+      --color-card-back: #1a4f8a;
+
+      --color-bg: #1a6b2a;
+      --color-bg-dark: #0c3a14;
+      --color-bg-felt: #17572a;
+      --color-text: #f0f0f0;
+      --color-accent: #fbbf24;
+      --color-accent-glow: rgba(251, 191, 36, 0.5);
+      --color-danger: #ef4444;
+      --color-success: #22c55e;
+
+      --font-display: 'Bangers', Impact, 'Arial Black', sans-serif;
+      --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* ---- Reset ---- */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* ---- Body ---- */
+    body {
+      font-family: var(--font-body);
+      font-weight: 500;
+      background-color: var(--color-bg-dark);
+      color: var(--color-text);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* Felt texture background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: -50px;
+      background:
+        url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E"),
+        radial-gradient(ellipse at 50% 30%, var(--color-bg) 0%, var(--color-bg-dark) 100%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    /* ---- Hero ---- */
+    .hero {
+      text-align: center;
+      padding: 80px 24px 60px;
+      position: relative;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      color: var(--color-accent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 6px 16px;
+      border-radius: 100px;
+      margin-bottom: 24px;
+      animation: fadeSlideIn 0.6s ease-out;
+    }
+
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(56px, 12vw, 96px);
+      color: var(--color-accent);
+      letter-spacing: 6px;
+      line-height: 1;
+      margin-bottom: 8px;
+      text-shadow: 0 4px 24px rgba(251, 191, 36, 0.3);
+      animation: fadeSlideIn 0.6s ease-out 0.1s both;
+    }
+
+    .hero-subtitle {
+      font-family: var(--font-display);
+      font-size: clamp(16px, 3vw, 22px);
+      color: rgba(255, 255, 255, 0.5);
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      animation: fadeSlideIn 0.6s ease-out 0.15s both;
+    }
+
+    .hero-tagline {
+      font-size: 18px;
+      color: rgba(255, 255, 255, 0.7);
+      max-width: 520px;
+      margin: 0 auto 40px;
+      line-height: 1.6;
+      animation: fadeSlideIn 0.6s ease-out 0.2s both;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      animation: fadeSlideIn 0.6s ease-out 0.3s both;
+    }
+
+    /* ---- Buttons ---- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 32px;
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      letter-spacing: 0.3px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--color-accent), #f59e0b);
+      color: #0c3a14;
+      box-shadow: 0 4px 16px rgba(251, 191, 36, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(251, 191, 36, 0.4);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--color-text);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    /* ---- Card Display ---- */
+    .card-showcase {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      padding: 40px 24px 60px;
+      perspective: 800px;
+      animation: fadeSlideIn 0.8s ease-out 0.4s both;
+    }
+
+    .showcase-card {
+      width: 120px;
+      height: 168px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      transition: transform 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .showcase-card:hover {
+      transform: translateY(-8px) rotateY(5deg);
+    }
+
+    .showcase-card:nth-child(1) { animation-delay: 0.5s; }
+    .showcase-card:nth-child(2) { animation-delay: 0.6s; }
+    .showcase-card:nth-child(3) { animation-delay: 0.7s; }
+
+    .showcase-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      pointer-events: none;
+    }
+
+    .card-fixed {
+      background: linear-gradient(145deg, #1a5490, #0e3a6a);
+    }
+
+    .card-power {
+      background: linear-gradient(145deg, #d4920a, #9a6d08);
+    }
+
+    .card-kapow {
+      background: linear-gradient(145deg, #d63031, #a02020);
+    }
+
+    .card-value {
+      font-size: 42px;
+      color: white;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-label {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.6);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .card-kapow .card-value {
+      font-size: 22px;
+      color: var(--color-accent);
+      letter-spacing: 2px;
+    }
+
+    /* ---- Section Divider ---- */
+    .divider {
+      width: 60px;
+      height: 3px;
+      background: var(--color-accent);
+      margin: 0 auto;
+      border-radius: 2px;
+      opacity: 0.4;
+    }
+
+    /* ---- Features ---- */
+    .features {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 60px 24px;
+    }
+
+    .features h2 {
+      font-family: var(--font-display);
+      font-size: 36px;
+      color: var(--color-accent);
+      text-align: center;
+      letter-spacing: 3px;
+      margin-bottom: 48px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 32px;
+    }
+
+    .feature-card {
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 28px;
+      transition: all 0.3s ease;
+    }
+
+    .feature-card:hover {
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04));
+      border-color: rgba(251, 191, 36, 0.2);
+      transform: translateY(-4px);
+    }
+
+    .feature-icon {
+      font-size: 32px;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .feature-card h3 {
+      font-family: var(--font-display);
+      font-size: 20px;
+      color: var(--color-accent);
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.6);
+      line-height: 1.6;
+    }
+
+    /* ---- Product Section ---- */
+    .product {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 60px 24px;
+      text-align: center;
+    }
+
+    .product h2 {
+      font-family: var(--font-display);
+      font-size: 36px;
+      color: var(--color-accent);
+      letter-spacing: 3px;
+      margin-bottom: 16px;
+    }
+
+    .product-description {
+      font-size: 16px;
+      color: rgba(255, 255, 255, 0.65);
+      line-height: 1.7;
+      max-width: 560px;
+      margin: 0 auto 40px;
+    }
+
+    /* Photo placeholder grid */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 48px;
+    }
+
+    .photo-slot {
+      aspect-ratio: 4/3;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+      border: 2px dashed rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255, 255, 255, 0.2);
+      font-size: 13px;
+      gap: 8px;
+    }
+
+    .photo-slot.has-image {
+      border: none;
+      overflow: hidden;
+    }
+
+    .photo-slot.has-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .photo-slot svg {
+      width: 32px;
+      height: 32px;
+      opacity: 0.3;
+    }
+
+    /* Price block */
+    .price-block {
+      background: linear-gradient(145deg, #0f2a1a, #1a3f2a);
+      border: 2px solid var(--color-accent);
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 420px;
+      margin: 0 auto;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+    }
+
+    .price-amount {
+      font-family: var(--font-display);
+      font-size: 48px;
+      color: var(--color-accent);
+      letter-spacing: 2px;
+    }
+
+    .price-shipping {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.5);
+      margin-top: 4px;
+      margin-bottom: 24px;
+    }
+
+    .price-includes {
+      text-align: left;
+      margin-bottom: 28px;
+    }
+
+    .price-includes li {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+      padding: 6px 0;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .price-includes li::before {
+      content: '';
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      background: var(--color-success);
+      border-radius: 50%;
+      flex-shrink: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E");
+      background-size: 12px;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    .btn-buy {
+      width: 100%;
+      justify-content: center;
+      font-size: 17px;
+      padding: 16px 32px;
+    }
+
+    /* ---- How to Play ---- */
+    .how-to-play {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 60px 24px;
+      text-align: center;
+    }
+
+    .how-to-play h2 {
+      font-family: var(--font-display);
+      font-size: 36px;
+      color: var(--color-accent);
+      letter-spacing: 3px;
+      margin-bottom: 48px;
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      text-align: left;
+    }
+
+    .step {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .step-number {
+      font-family: var(--font-display);
+      font-size: 36px;
+      color: var(--color-accent);
+      opacity: 0.4;
+      line-height: 1;
+      flex-shrink: 0;
+      width: 40px;
+    }
+
+    .step h3 {
+      font-family: var(--font-display);
+      font-size: 18px;
+      color: var(--color-text);
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .step p {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.55);
+      line-height: 1.6;
+    }
+
+    /* ---- Reviews / Community ---- */
+    .reviews {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 60px 24px;
+    }
+
+    .reviews h2 {
+      font-family: var(--font-display);
+      font-size: 36px;
+      color: var(--color-accent);
+      text-align: center;
+      letter-spacing: 3px;
+      margin-bottom: 12px;
+    }
+
+    .reviews-subtitle {
+      text-align: center;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 32px;
+    }
+
+    .reviews-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .review-card {
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 20px 24px;
+    }
+
+    .review-card .review-text {
+      font-size: 15px;
+      color: rgba(255, 255, 255, 0.75);
+      line-height: 1.6;
+      margin-bottom: 8px;
+      font-style: italic;
+    }
+
+    .review-card .review-author {
+      font-size: 13px;
+      color: var(--color-accent);
+      font-weight: 600;
+    }
+
+    .review-empty {
+      text-align: center;
+      padding: 24px;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.35);
+    }
+
+    .review-form {
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 24px;
+    }
+
+    .review-form h3 {
+      font-family: var(--font-display);
+      font-size: 20px;
+      color: var(--color-accent);
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+
+    .review-form textarea {
+      display: block;
+      width: 100%;
+      padding: 12px 16px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      color: white;
+      outline: none;
+      resize: vertical;
+      min-height: 80px;
+      margin-bottom: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .review-form textarea::placeholder {
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    .review-form textarea:focus {
+      border-color: var(--color-accent);
+      background: rgba(255, 255, 255, 0.12);
+      box-shadow: 0 0 0 3px var(--color-accent-glow);
+    }
+
+    .review-form-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .review-form-row input {
+      flex: 1;
+      padding: 12px 16px;
+      font-family: var(--font-body);
+      font-size: 14px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      color: white;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .review-form-row input::placeholder {
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    .review-form-row input:focus {
+      border-color: var(--color-accent);
+      background: rgba(255, 255, 255, 0.12);
+      box-shadow: 0 0 0 3px var(--color-accent-glow);
+    }
+
+    .review-thanks {
+      display: none;
+      text-align: center;
+      padding: 16px;
+      color: var(--color-success);
+      font-weight: 600;
+    }
+
+    .review-note {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.3);
+      text-align: center;
+      margin-top: 12px;
+    }
+
+    /* ---- Email Capture (pre-Stripe fallback) ---- */
+    .email-capture {
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+      text-align: center;
+    }
+
+    .email-capture p {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 16px;
+    }
+
+    .email-form {
+      display: flex;
+      gap: 8px;
+    }
+
+    .email-form input {
+      flex: 1;
+      padding: 12px 16px;
+      font-family: var(--font-body);
+      font-size: 15px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      color: white;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .email-form input::placeholder {
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    .email-form input:focus {
+      border-color: var(--color-accent);
+      background: rgba(255, 255, 255, 0.12);
+      box-shadow: 0 0 0 3px var(--color-accent-glow);
+    }
+
+    .email-thanks {
+      display: none;
+      color: var(--color-success);
+      font-weight: 600;
+      margin-top: 12px;
+    }
+
+    /* ---- Footer ---- */
+    .page-footer {
+      text-align: center;
+      padding: 32px 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    .page-footer a {
+      color: rgba(255, 255, 255, 0.4);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .page-footer a:hover {
+      color: var(--color-accent);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+
+    /* ---- Animations ---- */
+    @keyframes fadeSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 600px) {
+      .hero {
+        padding: 60px 20px 40px;
+      }
+
+      .card-showcase {
+        gap: 12px;
+      }
+
+      .showcase-card {
+        width: 90px;
+        height: 126px;
+      }
+
+      .card-value {
+        font-size: 32px;
+      }
+
+      .card-kapow .card-value {
+        font-size: 18px;
+      }
+
+      .card-label {
+        font-size: 9px;
+      }
+
+      .photo-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .email-form {
+        flex-direction: column;
+      }
+
+      .features-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .hero-actions {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-badge">Now Available</div>
+    <h1>KAPOW!</h1>
+    <div class="hero-subtitle">Card Game</div>
+    <p class="hero-tagline">The original card game of triads, strategy, and a little bit of chaos. Outsmart your opponents, complete your triads, and try not to get KAPOW'd.</p>
+    <div class="hero-actions">
+      <a href="#buy" class="btn btn-primary">Get the Deck</a>
+      <a href="../" class="btn btn-secondary">Play Free Online</a>
+    </div>
+  </section>
+
+  <!-- Card Showcase -->
+  <div class="card-showcase">
+    <div class="showcase-card card-fixed">
+      <span class="card-value">7</span>
+      <span class="card-label">Fixed</span>
+    </div>
+    <div class="showcase-card card-power">
+      <span class="card-value">3</span>
+      <span class="card-label">Power</span>
+    </div>
+    <div class="showcase-card card-kapow">
+      <span class="card-value">KAPOW!</span>
+      <span class="card-label">Wild</span>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Features -->
+  <section class="features">
+    <h2>Why KAPOW!</h2>
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">&#9824;</span>
+        <h3>Easy to Learn</h3>
+        <p>Teach anyone in 2 minutes. Draw, place, discard. Complete 4 triads of sequential numbers to win.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">&#9829;</span>
+        <h3>Hard to Master</h3>
+        <p>Every card you discard could help your opponent. Every KAPOW! reshuffles your strategy. No two games are alike.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon" aria-hidden="true">&#9830;</span>
+        <h3>2-4 Players</h3>
+        <p>Perfect for game night, travel, or anywhere you've got 15 minutes and a competitive streak.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- How to Play -->
+  <section class="how-to-play">
+    <h2>How It Works</h2>
+    <div class="steps">
+      <div class="step">
+        <span class="step-number">1</span>
+        <div>
+          <h3>Build Your Triads</h3>
+          <p>Arrange cards into four groups of three sequential numbers. Lower is better &mdash; a 1-2-3 triad beats a 7-8-9.</p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-number">2</span>
+        <div>
+          <h3>Draw &amp; Decide</h3>
+          <p>Each turn, draw from the deck or grab from the discard pile. Place it, swap it, or toss it. Every choice matters.</p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-number">3</span>
+        <div>
+          <h3>Watch for KAPOW!</h3>
+          <p>The wild card. It completes any triad &mdash; but it can also blow up your opponent's best-laid plans.</p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-number">4</span>
+        <div>
+          <h3>Go Out &amp; Score</h3>
+          <p>Complete all four triads to end the round. Everyone else totals their incomplete cards. Lowest score after 5 rounds wins.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Product / Buy -->
+  <section class="product" id="buy">
+    <h2>Get the Real Deck</h2>
+    <p class="product-description">The same game you love online, now in your hands. Premium card stock, bold colors, and that satisfying shuffle.</p>
+
+    <!-- Product photos — Chuck will provide these -->
+    <div class="photo-grid" id="product-photos">
+      <div class="photo-slot">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+        Product photo
+      </div>
+      <div class="photo-slot">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+        Cards close-up
+      </div>
+      <div class="photo-slot">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+        Gameplay
+      </div>
+    </div>
+
+    <!-- Price + Buy -->
+    <div class="price-block" id="price-block">
+      <div class="price-amount" id="price-display">$19.99</div>
+      <div class="price-shipping">+ shipping</div>
+      <ul class="price-includes">
+        <li>Full 55-card KAPOW! deck</li>
+        <li>Quick-start rules card</li>
+        <li>2&ndash;4 players, ages 8+</li>
+        <li>15-minute games</li>
+      </ul>
+      <!-- Buy button — mode switches between email capture and Stripe -->
+      <a href="#" class="btn btn-primary btn-buy" id="buy-btn" onclick="handleBuy(event)">
+        Buy Now
+      </a>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- Reviews & Feedback (moderated) -->
+  <section class="reviews" id="reviews">
+    <h2>What Players Say</h2>
+    <p class="reviews-subtitle">Reviews from real KAPOW! players</p>
+
+    <!-- Approved reviews load here -->
+    <div class="reviews-list" id="reviews-list">
+      <div class="review-empty" id="reviews-empty">Be the first to share your thoughts!</div>
+    </div>
+
+    <!-- Submit a review -->
+    <div class="review-form">
+      <h3>Share Your Thoughts</h3>
+      <form id="review-submit-form" onsubmit="submitReview(event)">
+        <textarea id="review-text" placeholder="What do you think of KAPOW!? Strategy tips, game night stories, suggestions..." maxlength="500" required></textarea>
+        <div class="review-form-row">
+          <input type="text" id="review-name" placeholder="Your name" maxlength="30" required>
+          <input type="email" id="review-email" placeholder="Email (not shown)" required>
+          <button type="submit" class="btn btn-primary" style="flex-shrink:0;">Submit</button>
+        </div>
+      </form>
+      <div class="review-thanks" id="review-thanks">Thanks! Your review will appear after approval.</div>
+      <p class="review-note">Reviews are moderated before appearing publicly.</p>
+    </div>
+  </section>
+
+  <!-- Email fallback (shown when Stripe not ready) -->
+  <section class="email-capture" id="email-section">
+    <p>Want to know when decks ship? Drop your email.</p>
+    <form class="email-form" id="email-form"
+          action="https://docs.google.com/forms/d/1du6KdHXiqiBiX0TLkgu83lnk3Kmo1JeWjdKPSSeNTDg/formResponse"
+          method="POST" target="buy-email-hidden"
+          onsubmit="handleEmailSubmit()">
+      <input type="email" name="entry.1116097858" placeholder="your@email.com" required>
+      <button type="submit" class="btn btn-primary">Notify Me</button>
+    </form>
+    <p class="email-thanks" id="email-thanks">You're on the list!</p>
+    <iframe name="buy-email-hidden" style="display:none;"></iframe>
+  </section>
+
+  <!-- Footer -->
+  <footer class="page-footer">
+    <div class="footer-links">
+      <a href="../">Play Online</a>
+      <a href="mailto:feedback@kapowcardgame.com">Contact</a>
+    </div>
+    <p>KAPOW!&trade; Card Game</p>
+  </footer>
+
+  <script>
+    // ========================================
+    // KAPOW! Buy Page — Purchase Mode Toggle
+    // ========================================
+
+    // Toggle this to switch between email capture and Stripe checkout.
+    // 'email' = pre-launch (notify me)
+    // 'stripe' = live sales (redirect to Stripe Payment Link)
+    const KAPOW_BUY_MODE = 'email';
+
+    // Set this to the Stripe Payment Link URL when ready
+    const STRIPE_CHECKOUT_URL = '';
+
+    // Set price (updated from Stripe or manually)
+    const DECK_PRICE = '$19.99';
+
+    function handleBuy(e) {
+      e.preventDefault();
+
+      if (KAPOW_BUY_MODE === 'stripe' && STRIPE_CHECKOUT_URL) {
+        // Live mode — redirect to Stripe checkout
+        window.location.href = STRIPE_CHECKOUT_URL;
+      } else {
+        // Pre-launch mode — scroll to email capture
+        document.getElementById('email-section').scrollIntoView({ behavior: 'smooth' });
+        setTimeout(() => {
+          document.querySelector('#email-form input[type="email"]').focus();
+        }, 500);
+      }
+    }
+
+    function handleEmailSubmit() {
+      setTimeout(() => {
+        document.getElementById('email-form').style.display = 'none';
+        document.getElementById('email-thanks').style.display = 'block';
+      }, 300);
+    }
+
+    // Update UI based on mode
+    (function initBuyPage() {
+      const buyBtn = document.getElementById('buy-btn');
+      const emailSection = document.getElementById('email-section');
+
+      if (KAPOW_BUY_MODE === 'stripe' && STRIPE_CHECKOUT_URL) {
+        // Stripe mode — buy button goes to checkout, hide email section
+        buyBtn.textContent = 'Buy Now';
+        buyBtn.href = STRIPE_CHECKOUT_URL;
+        emailSection.style.display = 'none';
+      } else {
+        // Email mode — buy button scrolls to email capture
+        buyBtn.textContent = 'Get Notified';
+        emailSection.style.display = 'block';
+      }
+
+      // Update price display
+      document.getElementById('price-display').textContent = DECK_PRICE;
+    })();
+
+    // ========================================
+    // Reviews — Moderated Public Feedback
+    // ========================================
+    // Reviews are submitted via Google Form.
+    // Approved reviews are served via a Google Apps Script API.
+    // To set up: create a Google Sheet with columns: timestamp, name, text, approved
+    // Publish an Apps Script web app that returns rows where approved=TRUE as JSON.
+
+    // Set this to your Apps Script URL that returns approved reviews
+    const REVIEWS_API = '';
+
+    // Set this to the Google Form action URL for review submissions
+    const REVIEWS_FORM_URL = '';
+    // Field IDs for the Google Form (update these after creating the form)
+    const REVIEWS_FIELD_NAME = 'entry.XXXXXXX';
+    const REVIEWS_FIELD_EMAIL = 'entry.XXXXXXX';
+    const REVIEWS_FIELD_TEXT = 'entry.XXXXXXX';
+
+    function loadReviews() {
+      if (!REVIEWS_API) return; // Not configured yet
+      fetch(REVIEWS_API)
+        .then(r => r.json())
+        .then(reviews => {
+          if (!reviews.length) return;
+          const list = document.getElementById('reviews-list');
+          const empty = document.getElementById('reviews-empty');
+          if (empty) empty.style.display = 'none';
+          let html = '';
+          reviews.forEach(r => {
+            html += '<div class="review-card"><p class="review-text">"' +
+              escapeHtml(r.text) + '"</p><span class="review-author">' +
+              escapeHtml(r.name) + '</span></div>';
+          });
+          list.innerHTML = html;
+        })
+        .catch(() => {}); // Fail silently
+    }
+
+    function submitReview(e) {
+      e.preventDefault();
+      const name = document.getElementById('review-name').value.trim();
+      const email = document.getElementById('review-email').value.trim();
+      const text = document.getElementById('review-text').value.trim();
+      if (!name || !email || !text) return;
+
+      if (REVIEWS_FORM_URL) {
+        // Submit to Google Form
+        const formData = new FormData();
+        formData.append(REVIEWS_FIELD_NAME, name);
+        formData.append(REVIEWS_FIELD_EMAIL, email);
+        formData.append(REVIEWS_FIELD_TEXT, text);
+        fetch(REVIEWS_FORM_URL, { method: 'POST', body: formData, mode: 'no-cors' });
+      }
+
+      // Show thank you
+      document.getElementById('review-submit-form').style.display = 'none';
+      document.getElementById('review-thanks').style.display = 'block';
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // Load approved reviews on page load
+    loadReviews();
+  </script>
+
+</body>
+</html>

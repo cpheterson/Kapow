@@ -4,6 +4,17 @@
 
 ## Version History
 
+### 03-08-2026
+
+**v1 [Eric]** Buy page, leaderboard upgrades, and deploy workflow.
+- Product landing page at `/buy/` — hero, card showcase, features, how-to-play, pricing block, photo placeholders
+- Moderated reviews section — players submit feedback, approved reviews appear publicly
+- Leaderboard now shows both player score AND Kai's score
+- Leaderboard email now required for entry (was optional)
+- Game over screen: added "Get the Real Deck" CTA button
+- Buy funnel toggle: `KAPOW_BUY_MODE` routes all CTAs through `showBuyModal()` — supports `email`, `product`, or `stripe` mode
+- GitHub Actions deploy workflow: `main` → prod, `beta` → `/beta/` preview
+
 ### 03-07-2026
 
 **v4 [Chuck]** UI: add trademark symbol and "Card Game" subtitle to launch screen and scorecard header.

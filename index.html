@@ -206,6 +206,7 @@
         <h1 id="game-over-title">Game Over!</h1>
         <div id="final-scores"></div>
         <button id="btn-new-game" class="action-btn">New Game</button>
+        <a href="buy/" class="kapow-buy-btn kapow-buy-btn-warm" style="display:inline-block;padding:10px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:14px;margin-top:12px;">Get the Real Deck</a>
         <a href="#" class="game-over-feedback" onclick="event.preventDefault();showFeedbackModal()">Send Feedback</a>
       </div>
     </div>
@@ -269,7 +270,7 @@
         <a href="#" class="scorecard-deck-link footer-buy" onclick="event.preventDefault();event.stopPropagation();showBuyModal()">Get the Card Game &rarr;</a>
       </div>
     </div>
-    <div class="scorecard-version">03-07-2026 v7</div>
+    <div class="scorecard-version">03-08-2026 v2</div>
     </div>
     <div id="ai-commentary"></div>
   </div>
@@ -316,10 +317,11 @@
             <th class="lb-rank">#</th>
             <th class="lb-name">Player</th>
             <th class="lb-score">Score</th>
+            <th class="lb-score" style="opacity:0.5;">Kai</th>
           </tr>
         </thead>
         <tbody id="leaderboard-body">
-          <tr><td colspan="3" style="text-align:center; padding:20px; opacity:0.5;">Loading...</td></tr>
+          <tr><td colspan="4" style="text-align:center; padding:20px; opacity:0.5;">Loading...</td></tr>
         </tbody>
       </table>
       <div class="leaderboard-promo">
@@ -336,9 +338,9 @@
       <h2>Join the Leaderboard!</h2>
       <p class="lb-submit-subtitle">Your score: <strong id="lb-submit-score">0</strong> points</p>
       <div id="lb-submit-form-wrap" class="lb-submit-form">
-        <input type="text" id="lb-submit-name" placeholder="Your name" maxlength="20" class="buy-modal-input">
-        <input type="email" id="lb-submit-email" placeholder="Email (for leaderboard ID)" class="buy-modal-input">
-        <p class="lb-submit-note">Email is used to track your best score &mdash; not shared publicly.</p>
+        <input type="text" id="lb-submit-name" placeholder="Your name" maxlength="20" class="buy-modal-input" required>
+        <input type="email" id="lb-submit-email" placeholder="your@email.com" class="buy-modal-input" required>
+        <p class="lb-submit-note">Email tracks your best score and gets you updates &mdash; never shared publicly.</p>
         <button class="action-btn kapow-buy-btn" onclick="confirmLeaderboardSubmit()">Submit Score</button>
         <button class="link-btn lb-submit-skip" onclick="hideLeaderboardSubmit()">Skip</button>
       </div>
@@ -510,8 +512,23 @@
       navigator.serviceWorker.register('sw.js').catch(function() {});
     }
 
+    // ── Buy Funnel Mode ──────────────────────
+    // 'email'   = pre-launch email capture modal (current)
+    // 'product' = redirect to /buy/ product page
+    // 'stripe'  = redirect straight to Stripe checkout
+    var KAPOW_BUY_MODE = 'product';
+    var STRIPE_CHECKOUT_URL = '';
+
     // Modal show/hide helpers
-    function showBuyModal() { document.getElementById('kapow-buy-modal').classList.remove('hidden'); }
+    function showBuyModal() {
+      if (KAPOW_BUY_MODE === 'stripe' && STRIPE_CHECKOUT_URL) {
+        window.open(STRIPE_CHECKOUT_URL, '_blank');
+      } else if (KAPOW_BUY_MODE === 'product') {
+        window.location.href = 'buy/';
+      } else {
+        document.getElementById('kapow-buy-modal').classList.remove('hidden');
+      }
+    }
     function hideBuyModal() { document.getElementById('kapow-buy-modal').classList.add('hidden'); }
     function showLeaderboard() { document.getElementById('leaderboard-modal').classList.remove('hidden'); fetchLeaderboard(); }
     function hideLeaderboard() { document.getElementById('leaderboard-modal').classList.add('hidden'); }
@@ -528,7 +545,7 @@
 
     function fetchLeaderboard() {
       var tbody = document.getElementById('leaderboard-body');
-      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;"><div class="loading-cards"><span></span><span></span><span></span></div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;"><div class="loading-cards"><span></span><span></span><span></span></div></td></tr>';
 
       fetch(LEADERBOARD_API)
         .then(function(r) { return r.json(); })
@@ -541,9 +558,10 @@
             var key = (g.player_email || g.player_id || '').toLowerCase();
             var name = g.player_name || 'Anonymous';
             var score = parseInt(g.player_score);
+            var kaiScore = parseInt(g.kai_score) || 0;
             if (isNaN(score)) continue;
             if (!bestScores[key] || score < bestScores[key].score) {
-              bestScores[key] = { name: name, score: score };
+              bestScores[key] = { name: name, score: score, kaiScore: kaiScore };
             }
           }
           // Sort by score ascending (lowest = best)
@@ -554,21 +572,22 @@
           renderLeaderboardRows(leaderboardCache);
         })
         .catch(function() {
-          tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;opacity:0.5;">Could not load leaderboard</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;opacity:0.5;">Could not load leaderboard</td></tr>';
         });
     }
 
     function renderLeaderboardRows(entries) {
       var tbody = document.getElementById('leaderboard-body');
       if (!entries.length) {
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;opacity:0.5;">No scores yet — be the first!</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;opacity:0.5;">No scores yet — be the first!</td></tr>';
         return;
       }
       var html = '';
       for (var i = 0; i < entries.length; i++) {
         var medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
         html += '<tr><td class="lb-rank">' + medal + '</td><td class="lb-name">' +
-          escapeHtml(entries[i].name) + '</td><td class="lb-score">' + entries[i].score + '</td></tr>';
+          escapeHtml(entries[i].name) + '</td><td class="lb-score">' + entries[i].score +
+          '</td><td class="lb-score" style="opacity:0.5;">' + (entries[i].kaiScore || '—') + '</td></tr>';
       }
       tbody.innerHTML = html;
     }
@@ -599,6 +618,7 @@
       var name = document.getElementById('lb-submit-name').value.trim();
       var email = document.getElementById('lb-submit-email').value.trim();
       if (!name) { document.getElementById('lb-submit-name').focus(); return; }
+      if (!email) { document.getElementById('lb-submit-email').focus(); return; }
       // Save email for future use
       if (email) { try { localStorage.setItem('kapow-email', email); } catch(e) {} }
       // Submit via telemetry form (same pipeline, marked as leaderboard entry)
