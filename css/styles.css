@@ -975,6 +975,14 @@ body::before {
   letter-spacing: 2px;
 }
 
+#scorecard h3 .trademark {
+  font-family: var(--font-body);
+  font-size: 0.65em;
+  font-weight: 400;
+  vertical-align: super;
+  letter-spacing: 0;
+}
+
 #scorecard-table {
   width: 100%;
   border-collapse: collapse;
