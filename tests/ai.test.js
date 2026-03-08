@@ -568,6 +568,65 @@ describe('aiEvaluateDiscardSafety — completion penalty', () => {
   });
 });
 
+describe('aiEvaluateDiscardSafety — KAPOW swap completion', () => {
+  test('R5T27: discarding 5 into opponent KAPOW triad [fd, 3, K!] is swap-dangerous', () => {
+    // Opponent has [fd, 3, K!]. Standard completionValues = {2, 3, 4}.
+    // But with KAPOW swap, opponent can place 5 in top → [5, 3, K!],
+    // swap K! to middle → [5, K!, 3], assign K!=4 → [5, 4, 3] descending run.
+    // The swap extends the danger zone to F±2 = {1, 2, 3, 4, 5}.
+    const opponentTriads = [
+      makeTriad(fc(5, false), fc(3), kapowCard(true, false)),
+    ];
+    const state = {
+      players: [
+        { hand: { triads: opponentTriads }, name: 'Opponent' },
+        { hand: { triads: [makeTriad(1, 2, 3)] }, name: 'AI' },
+      ],
+    };
+    const fiveCard = fc(5);
+    const safety = aiEvaluateDiscardSafety(fiveCard, state);
+    // Baseline for 5: 40 + (5*3) = 55. Minus 40 (KAPOW swap) = 15.
+    expect(safety).toBeLessThanOrEqual(20);
+  });
+
+  test('R5T27 guard: discarding 8 into opponent [fd, 3, K!] is NOT swap-dangerous', () => {
+    // |8-3| = 5 > 2, so no swap penalty applies.
+    const opponentTriads = [
+      makeTriad(fc(5, false), fc(3), kapowCard(true, false)),
+    ];
+    const state = {
+      players: [
+        { hand: { triads: opponentTriads }, name: 'Opponent' },
+        { hand: { triads: [makeTriad(1, 2, 3)] }, name: 'AI' },
+      ],
+    };
+    const eightCard = fc(8);
+    const safety = aiEvaluateDiscardSafety(eightCard, state);
+    // Baseline for 8: 40 + (8*3) = 64. No penalty.
+    expect(safety).toBeGreaterThanOrEqual(50);
+  });
+
+  test('R5T27 guard 2: standard completionValues still apply — no double penalty', () => {
+    // Discarding 4 into [fd, 3, K!]. 4 is in standard completionValues {2,3,4},
+    // so it already gets -40. The swap check should NOT add a second -40.
+    const opponentTriads = [
+      makeTriad(fc(5, false), fc(3), kapowCard(true, false)),
+    ];
+    const state = {
+      players: [
+        { hand: { triads: opponentTriads }, name: 'Opponent' },
+        { hand: { triads: [makeTriad(1, 2, 3)] }, name: 'AI' },
+      ],
+    };
+    const fourCard = fc(4);
+    const safety = aiEvaluateDiscardSafety(fourCard, state);
+    // Baseline for 4: 40 + (4*3) = 52. Minus 40 (standard completion) = 12.
+    // Swap check sees 4 IS in completionValues, so no extra penalty.
+    expect(safety).toBeLessThanOrEqual(20);
+    expect(safety).toBeGreaterThanOrEqual(5); // not double-penalized to negative
+  });
+});
+
 describe('aiDecideAction — KAPOW opportunity cost', () => {
   test('R2T16: KAPOW goes to flexible triad, not low-value completion', () => {
     // T1: discarded, T2: [0,9,0] all revealed, T3: [fd,4,fd], T4: [fd,fd,fd]

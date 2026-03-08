@@ -3497,6 +3497,30 @@ function aiEvaluateDiscardSafety(card, gameState) {
         }
       }
 
+      // KAPOW swap completions: when opponent has [fd, F, K!] or similar,
+      // they can place a drawn card, then swap KAPOW to a different position
+      // and assign it a value that completes a run. This expands the danger
+      // zone from F±1 to F±2 (e.g., F=3: standard {2,3,4}, swap adds {1,5}).
+      if (analysis.hasUnfrozenKapow && card.type === 'fixed') {
+        var kapowFixedVal = null;
+        var kapowPositions = ['top', 'middle', 'bottom'];
+        for (var ki = 0; ki < 3; ki++) {
+          if (analysis.values[ki] !== null) {
+            var kiCards = triad[kapowPositions[ki]];
+            if (kiCards.length > 0 && kiCards[0].type !== 'kapow') {
+              kapowFixedVal = analysis.values[ki];
+              break;
+            }
+          }
+        }
+        if (kapowFixedVal !== null) {
+          var swapDist = Math.abs(cardVal - kapowFixedVal);
+          if (swapDist <= 2 && !analysis.completionValues.includes(cardVal)) {
+            safety -= 40;
+          }
+        }
+      }
+
       // Power card as modifier: could it shift opponent's revealed values into a completion?
       if (card.type === 'power' && analysis.powerModifierPaths > 0) {
         // Opponent could use this Power card's modifiers on their existing cards

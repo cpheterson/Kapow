@@ -6,6 +6,13 @@
 
 ### 03-07-2026
 
+**v2 [Chuck]** AI: detect KAPOW swap completions in discard safety (R5T27).
+- When opponent has [fd, F, K!], standard completionValues only checks F±1 — misses that opponent can place a card, then swap KAPOW to a different position to complete a run
+- KAPOW swap expands the danger zone from F±1 to F±2: for F=3, standard={2,3,4}, swap adds {1,5}
+- Applies same -40 penalty as direct completion — the swap is guaranteed, not speculative
+- Fixes R5T27: Kai discarded 5 (safety=55) into [fd, 3, K!], Mindy grabbed it, swapped K! to complete [5, 4, 3] and went out
+- 3 regression tests added (R5T27 scenario + 2 guard tests)
+
 **v1 [Chuck]** AI: fix KAPOW placement scoring — seed face-down slots, don't replace known cards (R4T12).
 - Fix 1: skip existingSynergyPenalty for KAPOW placements — KAPOW is wild (0-12), penalizing it for "no direct paths" with neighbors is always wrong
 - Fix 2: skip discard safety swap bonus for KAPOW draws — KAPOW's low safety (15) caused systematic bias toward replacing revealed cards

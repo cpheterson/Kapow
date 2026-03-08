@@ -776,6 +776,27 @@ export function aiEvaluateDiscardSafety(card, gameState) {
             break;
           }
         }
+
+        // KAPOW swap completions: opponent can place card, then swap KAPOW
+        // to a different position and assign it a value that completes a run.
+        // This expands the danger zone from F±1 to F±2.
+        if (hasUnfrozenKapow && card.type === 'fixed') {
+          let kapowFixedVal = null;
+          for (let ki = 0; ki < 3; ki++) {
+            if (ki === emptyIdx) continue;
+            const kiCards = triad[positions[ki]];
+            if (kiCards.length > 0 && kiCards[0].type !== 'kapow') {
+              kapowFixedVal = values[ki];
+              break;
+            }
+          }
+          if (kapowFixedVal !== null) {
+            const swapDist = Math.abs(cardVal - kapowFixedVal);
+            if (swapDist <= 2 && !completionValues.includes(cardVal)) {
+              safety -= 40;
+            }
+          }
+        }
       }
     }
   }

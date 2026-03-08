@@ -29,6 +29,12 @@ The living document. Updated in real-time throughout every session.
 ## Session Log (03-07-2026)
 
 ### Shipped
+- [x] AI: detect KAPOW swap completions in discard safety (R5T27)
+  - `aiEvaluateDiscardSafety()` now checks if a discarded fixed card is within ±2 of the fixed value in an opponent's [fd, F, K!] triad
+  - Standard completionValues only covers F±1 (in-place); swap extends to F±2 (opponent rearranges after placement)
+  - Same -40 penalty as direct completion — the swap is deterministic
+  - Fixes R5T27: 5 discarded into [fd, 3, K!], Mindy swapped K! to complete [5,4,3] and went out
+  - 3 regression tests added (R5T27 + guard for out-of-range + guard for no double-penalty)
 - [x] AI: fix KAPOW placement scoring — seed face-down slots, don't replace known cards (R4T12)
   - Fix 1 (`kapow.js` line 2679): skip existingSynergyPenalty for KAPOW — wild card has synergy with everything
   - Fix 2 (`kapow.js` line 3452): skip discard safety swap bonus for KAPOW — low safety (15) biased toward replacing revealed cards
