@@ -23,7 +23,9 @@ feature/your-thing  →  beta  →  main
 |--------|---------|---------------|------------|
 | `main` | Production — what players see | **No** — PR from `beta` only | `cpheterson.github.io/Kapow/` |
 | `beta` | Integration / staging | Yes — both contributors merge here | `cpheterson.github.io/Kapow/beta/` |
-| `feature/*` | Individual work | Yes (your branch) | Not deployed |
+| `feature/*` | Individual work | Yes (your branch) | `cpheterson.github.io/Kapow/feature-my-thing/` |
+
+**Every branch gets its own preview URL.** Push any branch and it auto-deploys to a subfolder. Slashes in branch names become dashes (e.g., `feature/buy-page` → `/feature-buy-page/`). No pressure to merge into beta until you're ready — you can share your preview URL for feedback first.
 
 **Workflow:**
 1. Create a feature branch off `beta`: `git checkout beta && git pull && git checkout -b feature/my-thing`
@@ -40,9 +42,10 @@ feature/your-thing  →  beta  →  main
 | URL | Source |
 |-----|--------|
 | **https://cpheterson.github.io/Kapow/** | `main` branch (production) |
-| **https://cpheterson.github.io/Kapow/beta/** | `beta` branch (staging preview) |
+| **https://cpheterson.github.io/Kapow/beta/** | `beta` branch (staging) |
+| **https://cpheterson.github.io/Kapow/feature-xyz/** | Any pushed branch |
 
-The deploy workflow triggers on push to `main` or `beta`. It builds both branches into a single Pages artifact — `main` at root, `beta` at `/beta/`. No build step; GitHub Actions just copies files.
+The deploy workflow triggers on push to **any branch**. It builds all branches into a single Pages artifact — `main` at root, every other branch in its own subfolder. No build step; GitHub Actions just copies files.
 
 **Setup requirement:** In repo Settings → Pages, the source must be set to **"GitHub Actions"** (not "Deploy from a branch").
 

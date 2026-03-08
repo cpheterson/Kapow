@@ -15,6 +15,7 @@
 - Buy funnel toggle: `KAPOW_BUY_MODE` routes all CTAs through `showBuyModal()` — supports `email`, `product`, or `stripe` mode
 - GitHub Actions deploy workflow: `main` → prod, `beta` → `/beta/` preview
 - CONTRIBUTING.md: branching strategy docs (feature → beta → main)
+- Deploy workflow: every branch gets its own preview URL at `/branch-name/`
 
 ### 03-07-2026
 
