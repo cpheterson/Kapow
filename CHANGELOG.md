@@ -14,6 +14,7 @@
 - Game over screen: added "Get the Real Deck" CTA button
 - Buy funnel toggle: `KAPOW_BUY_MODE` routes all CTAs through `showBuyModal()` — supports `email`, `product`, or `stripe` mode
 - GitHub Actions deploy workflow: `main` → prod, `beta` → `/beta/` preview
+- CONTRIBUTING.md: branching strategy docs (feature → beta → main)
 
 ### 03-07-2026
 

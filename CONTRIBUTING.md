@@ -12,13 +12,39 @@ python3 -m http.server 8000          # Serve locally at http://localhost:8000
 
 No build tools. No bundler. Edit → refresh → test → commit.
 
+## Branching Strategy
+
+```
+feature/your-thing  →  beta  →  main
+       (dev)          (staging)   (prod)
+```
+
+| Branch | Purpose | Push directly? | Deploys to |
+|--------|---------|---------------|------------|
+| `main` | Production — what players see | **No** — PR from `beta` only | `cpheterson.github.io/Kapow/` |
+| `beta` | Integration / staging | Yes — both contributors merge here | `cpheterson.github.io/Kapow/beta/` |
+| `feature/*` | Individual work | Yes (your branch) | Not deployed |
+
+**Workflow:**
+1. Create a feature branch off `beta`: `git checkout beta && git pull && git checkout -b feature/my-thing`
+2. Do your work, commit, push: `git push -u origin feature/my-thing`
+3. Merge into `beta`: `git checkout beta && git merge feature/my-thing && git push`
+4. Preview at `/beta/` — when ready for prod, open a PR from `beta` → `main`
+
+**Why this matters:** `main` auto-deploys to the live site. Pushing untested code to `main` breaks the game for real players. Always go through `beta` first.
+
 ## Deployment
 
-**Hosted on GitHub Pages** — auto-deploys on push to `main`.
+**Hosted on GitHub Pages** via GitHub Actions (`.github/workflows/deploy.yml`).
 
-Live at: **https://cpheterson.github.io/Kapow/**
+| URL | Source |
+|-----|--------|
+| **https://cpheterson.github.io/Kapow/** | `main` branch (production) |
+| **https://cpheterson.github.io/Kapow/beta/** | `beta` branch (staging preview) |
 
-There's no build step. GitHub Pages serves `index.html` directly. Push to `main` and it's live within ~60 seconds.
+The deploy workflow triggers on push to `main` or `beta`. It builds both branches into a single Pages artifact — `main` at root, `beta` at `/beta/`. No build step; GitHub Actions just copies files.
+
+**Setup requirement:** In repo Settings → Pages, the source must be set to **"GitHub Actions"** (not "Deploy from a branch").
 
 ## How Things Work
 
@@ -131,7 +157,8 @@ typeof gtag === 'function'  # should be true
 
 1. **Pre-commit hook not running?** Run `git config core.hooksPath hooks` — must be done once after cloning.
 2. **CHANGELOG.md not updated?** The hook blocks commits without a CHANGELOG entry. Add one, or skip with `--no-verify` for docs-only changes.
-3. **Version didn't bump?** The hook compares against `origin/main`. If your remote is out of date, run `git fetch origin` first.
+3. **Version didn't bump?** The hook compares against the remote. If your remote is out of date, run `git fetch origin` first.
+7. **Pushed to `main` by accident?** Don't panic. The live site updates in ~60s. If the change is broken, revert: `git revert HEAD && git push`. Going forward, always work on `beta` or a feature branch.
 4. **Service worker caching old version?** Bump `CACHE_NAME` in `sw.js`. Users on old versions need a hard refresh (Cmd+Shift+R / Ctrl+Shift+R).
 5. **Tests fail but game works?** The modular files (`js/deck.js`, etc.) may be out of sync with `kapow.js`. Update both when changing game logic.
 6. **Game logic changed in kapow.js but tests don't cover it?** The modular `js/ai.js` is a simplified subset (~300 lines) of the full AI (~1,600 lines). Some AI behaviors only exist in the production bundle.
