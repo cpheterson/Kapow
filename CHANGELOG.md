@@ -4,6 +4,16 @@
 
 ## Version History
 
+### 03-10-2026
+
+**v1 [Chuck]** AI: smarter forced go-out from triad completion — compare doubled score vs. stuck score (R4T25).
+- When completing a triad forces going out and `aiShouldGoOutWithScore` blocks it, the AI applied a blanket -200 penalty — killing the completion even when holding was worse
+- Now compares doubled go-out score vs. estimated stuck score (all remaining hand points if opponent goes out first)
+- If doubled is less than stuck, reduces penalty from -200 to -10 (allows completion)
+- Only applies when opponent threat >= 0.5 (3+ triads completed); low-threat situations still fully block
+- Fixes R4T25: Kai had T2[fd,12,12] and drew 12, but refused to complete [12,12,12] because going out with 10 doubled to 20 was "bad" — meanwhile opponent had 3 triads done and would go out soon, leaving Kai stuck with ~34 points
+- 1 regression test added
+
 ### 03-09-2026
 
 **v1 [Chuck]** AI: exclude safety swap bonus from draw-from-discard decision (R2T12).

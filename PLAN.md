@@ -4,7 +4,7 @@ The living document. Updated in real-time throughout every session.
 
 ---
 
-## Current State (03-09-2026)
+## Current State (03-10-2026)
 
 **Live at:** cpheterson.github.io/Kapow/ (GitHub Pages, auto-deploys on push to `main`)
 **Repo:** github.com/cpheterson/Kapow (single `main` branch, both contributors push here)
@@ -23,6 +23,17 @@ The living document. Updated in real-time throughout every session.
 - Dopamine hits: round win celebrations, streak badges, personal best detection
 - Leaderboard (top 25 lowest-score winners from telemetry API)
 - Game history saved to localStorage (last 50 games)
+
+---
+
+## Session Log (03-10-2026)
+
+### Shipped
+- [x] AI: smarter forced go-out from triad completion (R4T25)
+  - When completing a triad forces going out, -200 penalty was too blunt — didn't consider opponent is about to go out
+  - Now compares doubled go-out score vs. stuck score; allows completion when doubled is better
+  - Fixes R4T25: Kai refused to complete T2[fd,12,12] → [12,12,12] because going out with 10 (doubled 20) was "bad", while holding ~34 points was worse
+  - 1 regression test added
 
 ---
 
@@ -266,4 +277,4 @@ The living document. Updated in real-time throughout every session.
 
 ---
 
-*Last updated: 03-09-2026*
+*Last updated: 03-10-2026*

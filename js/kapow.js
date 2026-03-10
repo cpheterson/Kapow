@@ -1827,9 +1827,41 @@ function aiDecideAction(gameState, drawnCard) {
             ps += 50;  // boost — go out!
           } else {
             // Dangerous: completing this triad forces going out with a bad score.
-            // The penalty must overcome the triad completion bonus (+100+existingPts)
-            // so the AI picks a different action (discard or place elsewhere).
-            ps -= 200;
+            // BUT: compare going out doubled vs. getting stuck with all remaining
+            // points when the opponent goes out first. When opponent is close to going
+            // out (high threat), holding high-value cards is often worse than going out
+            // doubled. E.g., going out doubled (10→20) beats holding 34+ points.
+            var opThreat = aiAssessOpponentThreat(gameState);
+            if (opThreat >= 0.5) {
+              // Opponent is threatening — estimate cost of NOT going out.
+              // If opponent goes out, AI is stuck with ALL remaining hand points
+              // (including the triad we'd complete AND the remaining triads).
+              var stuckScore = remainingScore;
+              // Add points from the triad we'd be completing (since we won't complete it)
+              var completingTriadPts = 0;
+              var ctPositions = ['top', 'middle', 'bottom'];
+              for (var ctp = 0; ctp < 3; ctp++) {
+                var ctCards = triad[ctPositions[ctp]];
+                if (ctCards.length > 0 && ctCards[0].isRevealed) {
+                  completingTriadPts += getPositionValue(ctCards);
+                } else {
+                  completingTriadPts += 6; // estimated face-down
+                }
+              }
+              stuckScore += completingTriadPts;
+              var doubledGoOut = remainingScore * 2;
+              if (doubledGoOut < stuckScore) {
+                // Going out doubled is STILL better than getting stuck — allow it.
+                // Small penalty instead of -200 to slightly prefer non-forced alternatives.
+                ps -= 10;
+              } else {
+                // Going out doubled is worse than getting stuck — full block.
+                ps -= 200;
+              }
+            } else {
+              // Low threat — opponent not close to going out. Full block is fine.
+              ps -= 200;
+            }
           }
         }
       } else if (isUnrevealed) {

@@ -1004,3 +1004,43 @@ describe('Draw decision — safety swap bonus exclusion', () => {
     expect(decision).toBe('deck');
   });
 });
+
+describe('Go-out forced by triad completion — opponent threat override', () => {
+  test('R4T25: complete triad even when going out is forced, if opponent is about to go out', () => {
+    // AI hand: T1[discarded], T2[fd,12,12], T3[discarded], T4[3,4,3] (all revealed)
+    // Drawn: 12. Placing in T2-top completes [12,12,12] → discards T2 → only T4 left
+    // (all revealed) → forces going out with 10 points.
+    // Opponent has 3 triads completed and T4[0,fd,5] — about to go out.
+    // Going out doubled (20) is better than holding ~34+ points when opponent goes out.
+    // Production AI: go-out penalty reduced when opponent threat is high and
+    //   doubled score < stuck score. Modular AI: Strategy 1 completes directly.
+    const aiTriads = [
+      { ...makeTriad(0, 0, 0), isDiscarded: true },              // T1: discarded
+      makeTriad(fc(12, false), 12, 12),                           // T2: [fd,12,12]
+      { ...makeTriad(0, 0, 0), isDiscarded: true },              // T3: discarded
+      makeTriad(3, 4, 3),                                         // T4: [3,4,3] all revealed
+    ];
+    const opponentTriads = [
+      { ...makeTriad(0, 0, 0), isDiscarded: true },
+      { ...makeTriad(0, 0, 0), isDiscarded: true },
+      { ...makeTriad(0, 0, 0), isDiscarded: true },
+      makeTriad(0, fc(6, false), 5),                              // T4: [0,fd,5]
+    ];
+    const drawn12 = fc(12);
+    const state = {
+      players: [
+        { hand: { triads: opponentTriads }, name: 'You' },
+        { hand: { triads: aiTriads }, name: 'AI' },
+      ],
+      drawPile: [fc(1)],
+      discardPile: [drawn12],
+      drawnCard: null,
+      phase: 'playing',
+    };
+    const action = aiDecideAction(state, drawn12);
+
+    expect(action.type).toBe('replace');
+    expect(action.triadIndex).toBe(1);    // T2
+    expect(action.position).toBe('top');  // completes [12,12,12]
+  });
+});
