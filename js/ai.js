@@ -454,10 +454,12 @@ export function aiBuryKapowInCompletedTriad(hand, triadIndex) {
   const topCards = triad.top;
   if (topCards.length === 0 || topCards[0].type !== 'kapow') return null;
 
-  // Try burial: bottom first (deepest), then middle
+  // Try burial: bottom first (deepest), then middle.
+  // Skip targets that are also KAPOW — swapping KAPOW ↔ KAPOW is a no-op.
   for (const targetPos of ['bottom', 'middle']) {
     const kapowCards = triad.top;
     const targetCards = triad[targetPos];
+    if (targetCards.length > 0 && targetCards[0].type === 'kapow') continue;
     // Simulate
     triad.top = targetCards;
     triad[targetPos] = kapowCards;

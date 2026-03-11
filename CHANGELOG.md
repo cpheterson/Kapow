@@ -6,6 +6,15 @@
 
 ### 03-10-2026
 
+**v4 [Chuck]** AI: fix KAPOW burial in double-KAPOW triads — skip KAPOW ↔ KAPOW no-op swap (R9T9).
+- [K!, 11, K!] burial tried swapping top K! ↔ bottom K! (no-op), leaving K! on top of discard pile
+- Now skips target positions that are also KAPOW, correctly swaps top K! ↔ middle 11
+- 1 regression test added
+
+**v4 [Chuck]** UI: show "Discard Completed Triad(s)" button for AI's reveal-completed triads too.
+- When human goes out and AI's face-down cards reveal a complete triad, it auto-vanished after 800ms
+- Now shows the same confirmation button as human triads, giving the player time to see the completion
+
 **v2 [Chuck]** Deploy: fix GitHub Pages — switch from broken workflow mode back to branch deploy, disable stale deploy workflow.
 
 **v1 [Chuck]** AI: smarter forced go-out from triad completion — compare doubled score vs. stuck score (R4T25).

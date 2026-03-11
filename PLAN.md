@@ -29,6 +29,12 @@ The living document. Updated in real-time throughout every session.
 ## Session Log (03-10-2026)
 
 ### Shipped
+- [x] AI: fix KAPOW burial in double-KAPOW triads (R9T9)
+  - [K!, 11, K!] burial swapped K! ↔ K! (no-op), leaving K! on discard pile
+  - Now skips KAPOW targets, correctly swaps top K! with middle 11
+  - 1 regression test added
+- [x] UI: show "Discard Completed Triad(s)" button for AI's reveal-completed triads
+  - AI's triads auto-vanished after 800ms on final turn reveal; now pauses with button like human triads
 - [x] AI: smarter forced go-out from triad completion (R4T25)
   - When completing a triad forces going out, -200 penalty was too blunt — didn't consider opponent is about to go out
   - Now compares doubled go-out score vs. stuck score; allows completion when doubled is better

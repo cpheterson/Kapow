@@ -937,46 +937,17 @@ function advanceToNextPlayer(state) {
         nextPlayer.hand.triads[newlyDiscardedOnReveal[ur]].isDiscarded = false;
       }
 
-      if (nextPlayer.isHuman) {
-        // Human: pause and show "Discard Completed Triad(s)" button
-        state.pendingRevealDiscard = {
-          triadsBefore: triadsBefore,
-          playerIndex: state.currentPlayer,
-          newlyDiscarded: newlyDiscardedOnReveal
-        };
-        state.message = 'Triad(s) completed on reveal! Tap to discard.';
-        return;
-      } else {
-        // AI: brief pause to show the revealed state, then animate discard
-        triadAnimationInProgress = true;
-        refreshUI();
-        // Restore isDiscarded after render
-        for (var ar = 0; ar < newlyDiscardedOnReveal.length; ar++) {
-          nextPlayer.hand.triads[newlyDiscardedOnReveal[ar]].isDiscarded = true;
-        }
-        setTimeout(function() {
-          animateNewlyDiscardedTriads(triadsBefore, state.currentPlayer, function() {
-            triadAnimationInProgress = false;
-            // Check if all triads are now discarded
-            var allGone = true;
-            for (var ag = 0; ag < nextPlayer.hand.triads.length; ag++) {
-              if (!nextPlayer.hand.triads[ag].isDiscarded) { allGone = false; break; }
-            }
-            if (allGone) {
-              logAction(state, state.currentPlayer, 'All triads already discarded — no action needed.');
-              state.finalTurnsRemaining--;
-              if (state.finalTurnsRemaining <= 0) {
-                endRound(state);
-              }
-              refreshUI();
-              return;
-            }
-            state.message = playerTurnMessage(nextPlayer.name) + '. Final turn! All cards revealed.';
-            refreshUI();
-          });
-        }, 800);
-        return;
-      }
+      // Both human and AI: pause and show "Discard Completed Triad(s)" button.
+      // The player needs time to see which triads completed on reveal before they vanish.
+      state.pendingRevealDiscard = {
+        triadsBefore: triadsBefore,
+        playerIndex: state.currentPlayer,
+        newlyDiscarded: newlyDiscardedOnReveal
+      };
+      state.message = nextPlayer.isHuman
+        ? 'Triad(s) completed on reveal! Tap to discard.'
+        : nextPlayer.name + '\'s triad(s) completed on reveal!';
+      return;
     }
 
     // If all triads were discarded after auto-reveal (already discarded before reveal), skip this player's turn
@@ -5643,6 +5614,12 @@ function aiStepWithinTriadSwap() {
 
   for (var b = 0; b < burialPreference.length; b++) {
     var targetPos = burialPreference[b];
+
+    // Skip if target is also a KAPOW — swapping KAPOW ↔ KAPOW is a no-op.
+    // E.g., [K!,11,K!]: swapping top ↔ bottom changes nothing; the 11 should
+    // go to top instead (swap top K! ↔ middle 11).
+    var targetCards0 = triad[targetPos];
+    if (targetCards0.length > 0 && targetCards0[0].type === 'kapow') continue;
 
     // Simulate the swap
     var kapowCards = triad[kapowPos];

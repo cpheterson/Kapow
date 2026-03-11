@@ -967,6 +967,19 @@ describe('KAPOW burial after cross-triad swap completion', () => {
     const result = aiBuryKapowInCompletedTriad(state.players[1].hand, 0);
     expect(result).toBeNull();
   });
+
+  test('R9T9: skip KAPOW ↔ KAPOW swap, bury via non-KAPOW swap instead', () => {
+    // T2: [K!, 11, K!] — complete (K! wild). Burial tries bottom first: bottom
+    // is also K!, so swapping K! ↔ K! does nothing. Should skip to middle (11),
+    // swap top K! ↔ middle 11 → [11, K!, K!]. Now 11 is on top of discard pile
+    // (safe) and both KAPOWs are buried.
+    const aiTriads = [
+      makeTriad(kapowCard(), fc(11), kapowCard()),             // T1: [K!, 11, K!] — complete
+    ];
+    const state = makeAiState(aiTriads);
+    const result = aiBuryKapowInCompletedTriad(state.players[1].hand, 0);
+    expect(result).toBe('middle'); // swap top K! with middle 11
+  });
 });
 
 describe('Draw decision — safety swap bonus exclusion', () => {
