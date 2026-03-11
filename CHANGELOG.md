@@ -6,6 +6,8 @@
 
 ### 03-10-2026
 
+**v8 [Eric]** Chore: trigger deploy workflow for per-branch preview URLs.
+
 **v7 [Eric]** Infra: self-host fonts (Safari fix), add deploy workflow to main, update CONTRIBUTING.md for Play-Kapow org.
 - Self-hosted Bangers + DM Sans woff2 (35KB) — eliminates cross-origin font loading issues on Safari
 - Added `.github/workflows/deploy.yml` to main — enables GitHub Actions deploys + per-branch preview URLs
