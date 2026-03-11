@@ -967,4 +967,93 @@ describe('KAPOW burial after cross-triad swap completion', () => {
     const result = aiBuryKapowInCompletedTriad(state.players[1].hand, 0);
     expect(result).toBeNull();
   });
+
+  test('R9T9: skip KAPOW ↔ KAPOW swap, bury via non-KAPOW swap instead', () => {
+    // T2: [K!, 11, K!] — complete (K! wild). Burial tries bottom first: bottom
+    // is also K!, so swapping K! ↔ K! does nothing. Should skip to middle (11),
+    // swap top K! ↔ middle 11 → [11, K!, K!]. Now 11 is on top of discard pile
+    // (safe) and both KAPOWs are buried.
+    const aiTriads = [
+      makeTriad(kapowCard(), fc(11), kapowCard()),             // T1: [K!, 11, K!] — complete
+    ];
+    const state = makeAiState(aiTriads);
+    const result = aiBuryKapowInCompletedTriad(state.players[1].hand, 0);
+    expect(result).toBe('middle'); // swap top K! with middle 11
+  });
+});
+
+describe('Draw decision — safety swap bonus exclusion', () => {
+  test('R2T12: AI does NOT draw 9 from discard when safety swap bonus would inflate score', () => {
+    // AI hand: T1 discarded, T2[fd, 5, fd], T3[fd, fd, fd], T4[fd, fd, fd]
+    // Opponent has T3[fd, 10, K!] — so a 9 has somewhat low discard safety.
+    // Discard pile has a 9. The 9 replaces the 5 in T2 for +4 points (bad).
+    // Production bug: DISCARD SAFETY SWAP BONUS inflated score to +10.32, above
+    // the draw threshold. Fix: exclude safety swap bonus from draw evaluation.
+    // Modular AI: 9 is not ≤3 (low-value draw) and doesn't complete a triad,
+    // so aiDecideDraw returns 'deck' by default.
+    const aiTriads = [
+      { ...makeTriad(0, 0, 0), isDiscarded: true },             // T1: discarded
+      makeTriad(fc(3, false), fc(5), fc(7, false)),              // T2: [fd, 5, fd]
+      makeTriad(fc(4, false), fc(6, false), fc(8, false)),       // T3: [fd, fd, fd]
+      makeTriad(fc(2, false), fc(9, false), fc(11, false)),      // T4: [fd, fd, fd]
+    ];
+    const opponentTriads = [
+      { ...makeTriad(0, 0, 0), isDiscarded: true },
+      { ...makeTriad(0, 0, 0), isDiscarded: true },
+      makeTriad(fc(5, false), fc(10), kapowCard(true, false)),   // [fd, 10, K!]
+      makeTriad(fc(1, false), fc(4, false), fc(7, false)),
+    ];
+    const state = {
+      players: [
+        { hand: { triads: opponentTriads }, name: 'You' },
+        { hand: { triads: aiTriads }, name: 'AI' },
+      ],
+      drawPile: [fc(1)],
+      discardPile: [fc(9)],
+      drawnCard: null,
+      phase: 'playing',
+    };
+    const decision = aiDecideDraw(state);
+    expect(decision).toBe('deck');
+  });
+});
+
+describe('Go-out forced by triad completion — opponent threat override', () => {
+  test('R4T25: complete triad even when going out is forced, if opponent is about to go out', () => {
+    // AI hand: T1[discarded], T2[fd,12,12], T3[discarded], T4[3,4,3] (all revealed)
+    // Drawn: 12. Placing in T2-top completes [12,12,12] → discards T2 → only T4 left
+    // (all revealed) → forces going out with 10 points.
+    // Opponent has 3 triads completed and T4[0,fd,5] — about to go out.
+    // Going out doubled (20) is better than holding ~34+ points when opponent goes out.
+    // Production AI: go-out penalty reduced when opponent threat is high and
+    //   doubled score < stuck score. Modular AI: Strategy 1 completes directly.
+    const aiTriads = [
+      { ...makeTriad(0, 0, 0), isDiscarded: true },              // T1: discarded
+      makeTriad(fc(12, false), 12, 12),                           // T2: [fd,12,12]
+      { ...makeTriad(0, 0, 0), isDiscarded: true },              // T3: discarded
+      makeTriad(3, 4, 3),                                         // T4: [3,4,3] all revealed
+    ];
+    const opponentTriads = [
+      { ...makeTriad(0, 0, 0), isDiscarded: true },
+      { ...makeTriad(0, 0, 0), isDiscarded: true },
+      { ...makeTriad(0, 0, 0), isDiscarded: true },
+      makeTriad(0, fc(6, false), 5),                              // T4: [0,fd,5]
+    ];
+    const drawn12 = fc(12);
+    const state = {
+      players: [
+        { hand: { triads: opponentTriads }, name: 'You' },
+        { hand: { triads: aiTriads }, name: 'AI' },
+      ],
+      drawPile: [fc(1)],
+      discardPile: [drawn12],
+      drawnCard: null,
+      phase: 'playing',
+    };
+    const action = aiDecideAction(state, drawn12);
+
+    expect(action.type).toBe('replace');
+    expect(action.triadIndex).toBe(1);    // T2
+    expect(action.position).toBe('top');  // completes [12,12,12]
+  });
 });

@@ -20,10 +20,23 @@
   <meta property="og:description" content="An original card game — play against Kai, the built-in opponent">
   <meta property="og:type" content="website">
 
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Fonts (self-hosted, no cross-origin issues) -->
+  <style>
+    @font-face {
+      font-family: 'Bangers';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url(fonts/bangers-latin.woff2) format('woff2');
+    }
+    @font-face {
+      font-family: 'DM Sans';
+      font-style: normal;
+      font-weight: 400 700;
+      font-display: swap;
+      src: url(fonts/dm-sans-latin.woff2) format('woff2');
+    }
+  </style>
 
   <link rel="stylesheet" href="css/styles.css">
 
@@ -270,7 +283,7 @@
         <a href="#" class="scorecard-deck-link footer-buy" onclick="event.preventDefault();event.stopPropagation();showBuyModal()">Get the Card Game &rarr;</a>
       </div>
     </div>
-    <div class="scorecard-version">03-08-2026 v5</div>
+    <div class="scorecard-version">03-10-2026 v10</div>
     </div>
     <div id="ai-commentary"></div>
   </div>

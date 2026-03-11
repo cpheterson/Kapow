@@ -913,11 +913,44 @@ function advanceToNextPlayer(state) {
   if (state.phase === 'finalTurns') {
     var nextPlayer = state.players[state.currentPlayer];
     revealAllCards(nextPlayer.hand);
+
+    // Capture triad state before discard to detect newly completed triads
+    var triadsBefore = [];
+    for (var tb = 0; tb < nextPlayer.hand.triads.length; tb++) {
+      triadsBefore.push(nextPlayer.hand.triads[tb].isDiscarded);
+    }
     checkAndDiscardTriads(state, state.currentPlayer);
     logAction(state, state.currentPlayer, 'Final turn! All cards revealed.');
     logHandState(state, state.currentPlayer);
 
-    // If all triads were discarded after auto-reveal, skip this player's turn
+    // Detect newly completed triads from the reveal
+    var newlyDiscardedOnReveal = [];
+    for (var nd = 0; nd < nextPlayer.hand.triads.length; nd++) {
+      if (!triadsBefore[nd] && nextPlayer.hand.triads[nd].isDiscarded) {
+        newlyDiscardedOnReveal.push(nd);
+      }
+    }
+
+    if (newlyDiscardedOnReveal.length > 0) {
+      // Temporarily undo isDiscarded so cards render visible
+      for (var ur = 0; ur < newlyDiscardedOnReveal.length; ur++) {
+        nextPlayer.hand.triads[newlyDiscardedOnReveal[ur]].isDiscarded = false;
+      }
+
+      // Both human and AI: pause and show "Discard Completed Triad(s)" button.
+      // The player needs time to see which triads completed on reveal before they vanish.
+      state.pendingRevealDiscard = {
+        triadsBefore: triadsBefore,
+        playerIndex: state.currentPlayer,
+        newlyDiscarded: newlyDiscardedOnReveal
+      };
+      state.message = nextPlayer.isHuman
+        ? 'Triad(s) completed on reveal! Tap to discard.'
+        : nextPlayer.name + '\'s triad(s) completed on reveal!';
+      return;
+    }
+
+    // If all triads were discarded after auto-reveal (already discarded before reveal), skip this player's turn
     var allDiscarded = true;
     for (var td = 0; td < nextPlayer.hand.triads.length; td++) {
       if (!nextPlayer.hand.triads[td].isDiscarded) { allDiscarded = false; break; }
@@ -1574,7 +1607,7 @@ function buildAiExplanation(gameState, drawnCard, drawChoice, action) {
     if (action.position === 'middle' || action.position === 'bottom') {
       if (drawnCard.type === 'kapow') {
         lines.push('<p class="explain-step"><span class="explain-label">Defense:</span> By placing the KAPOW! card in the ' + action.position + ' position, it will be buried in the discard pile when the triad completes. A KAPOW! card on top of the discard pile would give you a powerful wild card.</p>');
-      } else {
+      } else if (analysis && analysis.revealedCount >= 2 && (analysis.completionPaths > 0 || analysis.powerModifierPaths > 0)) {
         var oppNeeds3 = aiGetOpponentNeeds(gameState);
         var cardVal3 = drawnCard.type === 'fixed' ? drawnCard.faceValue : -1;
         if (cardVal3 >= 0 && oppNeeds3[cardVal3] && oppNeeds3[cardVal3] >= 2) {
@@ -1765,9 +1798,41 @@ function aiDecideAction(gameState, drawnCard) {
             ps += 50;  // boost — go out!
           } else {
             // Dangerous: completing this triad forces going out with a bad score.
-            // The penalty must overcome the triad completion bonus (+100+existingPts)
-            // so the AI picks a different action (discard or place elsewhere).
-            ps -= 200;
+            // BUT: compare going out doubled vs. getting stuck with all remaining
+            // points when the opponent goes out first. When opponent is close to going
+            // out (high threat), holding high-value cards is often worse than going out
+            // doubled. E.g., going out doubled (10→20) beats holding 34+ points.
+            var opThreat = aiAssessOpponentThreat(gameState);
+            if (opThreat >= 0.5) {
+              // Opponent is threatening — estimate cost of NOT going out.
+              // If opponent goes out, AI is stuck with ALL remaining hand points
+              // (including the triad we'd complete AND the remaining triads).
+              var stuckScore = remainingScore;
+              // Add points from the triad we'd be completing (since we won't complete it)
+              var completingTriadPts = 0;
+              var ctPositions = ['top', 'middle', 'bottom'];
+              for (var ctp = 0; ctp < 3; ctp++) {
+                var ctCards = triad[ctPositions[ctp]];
+                if (ctCards.length > 0 && ctCards[0].isRevealed) {
+                  completingTriadPts += getPositionValue(ctCards);
+                } else {
+                  completingTriadPts += 6; // estimated face-down
+                }
+              }
+              stuckScore += completingTriadPts;
+              var doubledGoOut = remainingScore * 2;
+              if (doubledGoOut < stuckScore) {
+                // Going out doubled is STILL better than getting stuck — allow it.
+                // Small penalty instead of -200 to slightly prefer non-forced alternatives.
+                ps -= 10;
+              } else {
+                // Going out doubled is worse than getting stuck — full block.
+                ps -= 200;
+              }
+            } else {
+              // Low threat — opponent not close to going out. Full block is fine.
+              ps -= 200;
+            }
           }
         }
       } else if (isUnrevealed) {
@@ -2497,12 +2562,14 @@ function aiGetTopDiscardValue(triad, completingPosition) {
   return -1; // unknown (face-down)
 }
 
-function aiScorePlacement(hand, card, triadIndex, position) {
+function aiScorePlacement(hand, card, triadIndex, position, options) {
   var triad = hand.triads[triadIndex];
   if (!triad || triad.isDiscarded) return -999;
   var posCards = triad[position];
   var positions = ['top', 'middle', 'bottom'];
   var posIdx = positions.indexOf(position);
+
+  options = options || {};
 
   var score = 0;
 
@@ -3450,7 +3517,7 @@ function aiScorePlacement(hand, card, triadIndex, position) {
     // E.g., drawn 7 (safety 36, opponent needs 7) → place in T2, discard the
     // replaced 6 (safety ~58) instead. Cost is 1 point, but avoids the feed.
     var drawnCardSafety = aiEvaluateDiscardSafety(card, gameState);
-    if (card.type !== 'kapow' && drawnCardSafety < 40 && replacedSafety > drawnCardSafety + 10) {
+    if (!options.excludeSafetySwapBonus && card.type !== 'kapow' && drawnCardSafety < 40 && replacedSafety > drawnCardSafety + 10) {
       score += Math.min(Math.round((replacedSafety - drawnCardSafety) * 0.4), 15);
     }
   }
@@ -3581,7 +3648,7 @@ function aiEvaluateDrawFromDiscard(gameState) {
     if (triad.isDiscarded) continue;
     var positions = ['top', 'middle', 'bottom'];
     for (var p = 0; p < positions.length; p++) {
-      var ps = aiScorePlacement(aiHand, discardTop, t, positions[p]);
+      var ps = aiScorePlacement(aiHand, discardTop, t, positions[p], { excludeSafetySwapBonus: true });
       if (ps > bestPlacementScore) {
         bestPlacementScore = ps;
         bestPos = { triadIndex: t, position: positions[p] };
@@ -4376,6 +4443,38 @@ function onEndTurn() {
     return;
   }
 
+  // Final-turn reveal: discard completed triads with animation
+  if (gameState.pendingRevealDiscard) {
+    var prd = gameState.pendingRevealDiscard;
+    var hand = gameState.players[prd.playerIndex].hand;
+    // Restore isDiscarded so animation sees the correct state
+    for (var ri = 0; ri < prd.newlyDiscarded.length; ri++) {
+      hand.triads[prd.newlyDiscarded[ri]].isDiscarded = true;
+    }
+    gameState.pendingRevealDiscard = null;
+    triadAnimationInProgress = true;
+    animateNewlyDiscardedTriads(prd.triadsBefore, prd.playerIndex, function() {
+      triadAnimationInProgress = false;
+      // Check if all triads are now discarded
+      var allGone = true;
+      for (var ag = 0; ag < hand.triads.length; ag++) {
+        if (!hand.triads[ag].isDiscarded) { allGone = false; break; }
+      }
+      if (allGone) {
+        logAction(gameState, prd.playerIndex, 'All triads already discarded — no action needed.');
+        gameState.finalTurnsRemaining--;
+        if (gameState.finalTurnsRemaining <= 0) {
+          endRound(gameState);
+        }
+        refreshUI();
+        return;
+      }
+      gameState.message = playerTurnMessage(gameState.players[prd.playerIndex].name) + '. Final turn! All cards revealed.';
+      refreshUI();
+    });
+    return;
+  }
+
   if (!gameState.players[gameState.currentPlayer].isHuman) return;
 
   // Within-triad KAPOW swap mode: discard the completed triad and end turn
@@ -4599,11 +4698,30 @@ function refreshUI() {
   document.getElementById('btn-discard').disabled = !(isHumanTurn && gameState.drawnCard !== null && !gameState.drawnFromDiscard);
   // End Turn / Release Card / Discard Triad button
   var endTurnBtn = document.getElementById('btn-end-turn');
+  var isPendingRevealDiscard = !!gameState.pendingRevealDiscard;
   var isWithinTriadSwap = isHumanTurn && gameState.swappingWithinCompletedTriad;
   var isSwapPhase = isHumanTurn && gameState.awaitingKapowSwap && !isWithinTriadSwap;
   var isReleaseMode = isHumanTurn && gameState.drawnCard && gameState.drawnFromDiscard && !isSwapPhase && !isWithinTriadSwap;
-  endTurnBtn.disabled = !(isSwapPhase || isReleaseMode || isWithinTriadSwap);
-  if (isReleaseMode) {
+  endTurnBtn.disabled = !(isSwapPhase || isReleaseMode || isWithinTriadSwap || isPendingRevealDiscard);
+  if (isPendingRevealDiscard) {
+    endTurnBtn.textContent = 'Discard Completed Triad(s)';
+    endTurnBtn.disabled = false;
+    endTurnBtn.classList.add('end-turn-glow');
+    endTurnBtn.classList.remove('release-card-glow');
+    // Highlight the completed triads
+    var prdTriads = gameState.pendingRevealDiscard.newlyDiscarded;
+    var prdPlayerIdx = gameState.pendingRevealDiscard.playerIndex;
+    var prdContainerId = prdPlayerIdx === 0 ? 'player-hand' : 'ai-hand';
+    var prdContainer = document.getElementById(prdContainerId);
+    if (prdContainer) {
+      var triadEls = prdContainer.querySelectorAll('.triad');
+      for (var hi = 0; hi < prdTriads.length; hi++) {
+        if (triadEls[prdTriads[hi]]) {
+          triadEls[prdTriads[hi]].classList.add('triad-completing');
+        }
+      }
+    }
+  } else if (isReleaseMode) {
     endTurnBtn.textContent = 'Release Card';
     endTurnBtn.classList.remove('end-turn-glow');
     endTurnBtn.classList.add('release-card-glow');
@@ -4818,35 +4936,34 @@ window._onCardClick = function(triadIndex, position) {
       return;
     }
 
-    // Perform the swap
-    runWithTriadAnimation(0, function() {
-      var fromLabel = positions[kapowPos];
-      var toLabel = position;
-      swapKapowCard(hand, completedTriadIdx, kapowPos, completedTriadIdx, position);
-      logAction(gameState, 0, 'Swaps KAPOW! within completed triad: ' + fromLabel + ' ↔ ' + toLabel);
-      logHandState(gameState, 0);
+    // Perform the swap directly — completeWithinTriadSwap already handles animation.
+    // Do NOT wrap in runWithTriadAnimation, which would create a competing animation chain.
+    var fromLabel = positions[kapowPos];
+    var toLabel = position;
+    swapKapowCard(hand, completedTriadIdx, kapowPos, completedTriadIdx, position);
+    logAction(gameState, 0, 'Swaps KAPOW! within completed triad: ' + fromLabel + ' ↔ ' + toLabel);
+    logHandState(gameState, 0);
 
-      // One swap is all that's needed. If KAPOW is now buried (middle or bottom),
-      // auto-proceed to discard — no need to offer another swap.
-      // If KAPOW somehow ended up at top still, allow one more swap attempt.
-      var newKapowPos = null;
-      var posCheck = ['top', 'middle', 'bottom'];
-      for (var pk = 0; pk < posCheck.length; pk++) {
-        var pkCards = hand.triads[completedTriadIdx][posCheck[pk]];
-        if (pkCards.length > 0 && pkCards[0].type === 'kapow') {
-          newKapowPos = posCheck[pk];
-          break;
-        }
+    // One swap is all that's needed. If KAPOW is now buried (middle or bottom),
+    // auto-proceed to discard — no need to offer another swap.
+    // If KAPOW somehow ended up at top still, allow one more swap attempt.
+    var newKapowPos = null;
+    var posCheck = ['top', 'middle', 'bottom'];
+    for (var pk = 0; pk < posCheck.length; pk++) {
+      var pkCards = hand.triads[completedTriadIdx][posCheck[pk]];
+      if (pkCards.length > 0 && pkCards[0].type === 'kapow') {
+        newKapowPos = posCheck[pk];
+        break;
       }
-      if (newKapowPos === 'top') {
-        // KAPOW still at top (swap to bottom/middle wasn't possible) — let player try again
-        gameState.message = 'KAPOW! swapped! Swap again, or Discard Triad and End Turn.';
-        refreshUI();
-      } else {
-        // KAPOW is buried (middle or bottom) — proceed straight to discard
-        completeWithinTriadSwap(gameState, completedTriadIdx, null);
-      }
-    });
+    }
+    if (newKapowPos === 'top') {
+      // KAPOW still at top (swap to bottom/middle wasn't possible) — let player try again
+      gameState.message = 'KAPOW! swapped! Swap again, or Discard Triad and End Turn.';
+      refreshUI();
+    } else {
+      // KAPOW is buried (middle or bottom) — proceed straight to discard
+      completeWithinTriadSwap(gameState, completedTriadIdx, null);
+    }
     return;
   }
 
@@ -5497,6 +5614,12 @@ function aiStepWithinTriadSwap() {
 
   for (var b = 0; b < burialPreference.length; b++) {
     var targetPos = burialPreference[b];
+
+    // Skip if target is also a KAPOW — swapping KAPOW ↔ KAPOW is a no-op.
+    // E.g., [K!,11,K!]: swapping top ↔ bottom changes nothing; the 11 should
+    // go to top instead (swap top K! ↔ middle 11).
+    var targetCards0 = triad[targetPos];
+    if (targetCards0.length > 0 && targetCards0[0].type === 'kapow') continue;
 
     // Simulate the swap
     var kapowCards = triad[kapowPos];

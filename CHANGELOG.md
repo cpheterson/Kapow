@@ -4,6 +4,61 @@
 
 ## Version History
 
+### 03-10-2026
+
+**v8 [Eric]** Chore: trigger deploy workflow for per-branch preview URLs.
+
+**v7 [Eric]** Infra: self-host fonts (Safari fix), add deploy workflow to main, update CONTRIBUTING.md for Play-Kapow org.
+- Self-hosted Bangers + DM Sans woff2 (35KB) — eliminates cross-origin font loading issues on Safari
+- Added `.github/workflows/deploy.yml` to main — enables GitHub Actions deploys + per-branch preview URLs
+- Updated CONTRIBUTING.md: new org URL, branching workflow, accurate test count, service worker status
+
+**v6 [Eric]** Infra: disable service worker caching, fix Safari font loading.
+
+**v5 [Eric]** Infra: add custom domain playkapow.com via GitHub Pages CNAME.
+
+**v4 [Chuck]** AI: fix KAPOW burial in double-KAPOW triads — skip KAPOW ↔ KAPOW no-op swap (R9T9).
+- [K!, 11, K!] burial tried swapping top K! ↔ bottom K! (no-op), leaving K! on top of discard pile
+- Now skips target positions that are also KAPOW, correctly swaps top K! ↔ middle 11
+- 1 regression test added
+
+**v4 [Chuck]** UI: show "Discard Completed Triad(s)" button for AI's reveal-completed triads too.
+- When human goes out and AI's face-down cards reveal a complete triad, it auto-vanished after 800ms
+- Now shows the same confirmation button as human triads, giving the player time to see the completion
+
+**v2 [Chuck]** Deploy: fix GitHub Pages — switch from broken workflow mode back to branch deploy, disable stale deploy workflow.
+
+**v1 [Chuck]** AI: smarter forced go-out from triad completion — compare doubled score vs. stuck score (R4T25).
+- When completing a triad forces going out and `aiShouldGoOutWithScore` blocks it, the AI applied a blanket -200 penalty — killing the completion even when holding was worse
+- Now compares doubled go-out score vs. estimated stuck score (all remaining hand points if opponent goes out first)
+- If doubled is less than stuck, reduces penalty from -200 to -10 (allows completion)
+- Only applies when opponent threat >= 0.5 (3+ triads completed); low-threat situations still fully block
+- Fixes R4T25: Kai had T2[fd,12,12] and drew 12, but refused to complete [12,12,12] because going out with 10 doubled to 20 was "bad" — meanwhile opponent had 3 triads done and would go out soon, leaving Kai stuck with ~34 points
+- 1 regression test added
+
+### 03-09-2026
+
+**v1 [Chuck]** AI: exclude safety swap bonus from draw-from-discard decision (R2T12).
+- DISCARD SAFETY SWAP BONUS inflated placement scores during draw evaluation, causing AI to draw dangerous cards just because they could be placed (absorbing a score cost)
+- The bonus is correct for placement decisions (after draw) but wrong for draw decisions (should not motivate drawing)
+- Added `excludeSafetySwapBonus` option to `aiScorePlacement()`, passed from `aiEvaluateDrawFromDiscard()`
+- Fixes R2T12: Kai drew 9 from discard and placed in T2-middle replacing a 5 (+4 points)
+- 1 regression test added
+
+**v1 [Chuck]** AI: gate defensive burial explanation on triad completion potential.
+- "Buried when triad completes" explanation no longer shows for triads with zero completion paths
+- Prevents misleading explanation when card is placed in a triad like [fd, 9, fd] (no realistic completion)
+
+**v1 [Chuck]** UI: show completed triads before discarding on final-turn reveal.
+- When face-down cards are revealed and complete triads, they no longer vanish instantly
+- Human player sees completed triads highlighted green with a "Discard Completed Triad(s)" button
+- AI's reveal-completed triads animate out after a brief delay
+- Uses existing `triad-completing` CSS class and `animateNewlyDiscardedTriads` animation
+
+**v1 [Chuck]** UI: fix K! within-triad swap double animation.
+- Removed `runWithTriadAnimation` wrapper from within-triad swap handler
+- `completeWithinTriadSwap` already has proper animation logic; wrapping it caused competing animation chains
+
 ### 03-08-2026
 
 **v1 [Eric]** Buy page, leaderboard upgrades, and deploy workflow.
