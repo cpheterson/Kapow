@@ -6,6 +6,13 @@
 
 ### 03-12-2026
 
+**v4 [Eric]** feat: add logging and game history module
+- Created logging.js with 6 functions (~115 lines) from kapow.js
+- Functions: logAction, logSystem, logHandState, exportLog, saveGameToHistory, getGameHistory
+- Changed exportLog to accept state/gameNotes as parameters (were IIFE closure variables)
+- Changed saveGameToHistory to accept gameNotes/KapowTelemetry as parameters (were IIFE closure variables)
+- 35 new tests covering log formatting, hand state snapshots, history save/load (313 total)
+
 **v3 [Eric]** feat(ui): add animation module
 - Created animation.js with 3 functions (~166 lines) from kapow.js
 - Functions: animateTriadDiscard, animateNewlyDiscardedTriads, runWithTriadAnimation
