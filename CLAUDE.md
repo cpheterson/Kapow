@@ -17,35 +17,35 @@ No build step. Edit -> refresh -> test -> commit.
 ## Commands
 
 ```bash
-npm test              # Run tests once (Vitest, 133 tests across 7 modules)
+npm test              # Run tests once (Vitest, 390 tests across 12 modules)
 npm run test:watch    # Watch mode
 ```
 
 ## Architecture
 
-### Production vs. Modular Split
-
-The game runs from a single IIFE bundle: **`js/kapow.js`** (~5,400 lines). This is the only JS file loaded by `index.html`. It contains everything: deck, hand, triads, scoring, rules, game state, AI, UI, tutorial, banter, action log.
-
-Separate ES module files exist for **testing only** and are not loaded by the game:
+The game uses ES modules loaded via `<script type="module" src="js/main.js">` in `index.html`. No bundler, no build step.
 
 | Module | Purpose |
 |--------|---------|
-| `js/deck.js` | Card creation, shuffle, deal, draw, replenish |
-| `js/hand.js` | Position values, powerset stacking, reveal/replace/swap |
-| `js/triad.js` | Completion detection (sets, runs), KAPOW value solver |
-| `js/scoring.js` | Hand scoring, first-out penalty, round scores |
-| `js/rules.js` | Valid actions by phase, powerset/KAPOW/go-out rules |
-| `js/gameState.js` | State machine: setup -> firstTurn -> playing -> finalTurns -> scoring -> gameOver |
-| `js/ai.js` | Simplified AI for testing (~300 lines; full AI is ~1,600 lines in kapow.js) |
-
-**When changing game logic, update both `kapow.js` and the corresponding modular file.**
+| `js/main.js` | Entry point — game loop, events, AI orchestration |
+| `js/gameState.js` | State machine, round management |
+| `js/ai.js` | All AI decisions + evaluation |
+| `js/aiExplanation.js` | Banter + "Understand Kai's Move" |
+| `js/deck.js` | Card/deck operations |
+| `js/hand.js` | Hand operations |
+| `js/triad.js` | Completion detection |
+| `js/scoring.js` | Score calculation |
+| `js/rules.js` | Move validation |
+| `js/ui.js` | DOM rendering |
+| `js/animation.js` | Visual feedback (flip, glow) |
+| `js/modals.js` | Modal system |
+| `js/logging.js` | Action log + game history |
+| `js/sound.js` | Web Audio synthesis |
+| `js/telemetry.js` | Analytics + consent |
+| `js/shell.js` | Leaderboard, share, buy, notes |
 
 ### Other Key Files
 
-- `js/sound.js` - Web Audio API synthesized sound effects (no HTTP requests)
-- `js/telemetry.js` - GA4 events, player consent, analytics pipeline
-- `js/ui.js` - DOM rendering helpers, modals, animations
 - `css/styles.css` - All styles, mobile-first with `@media (min-width: 768px)` for desktop
 - `sw.js` - Service worker for offline caching (bump `CACHE_NAME` to bust cache)
 - `dashboard.html` - Analytics dashboard with Chart.js
@@ -74,7 +74,7 @@ Runs automatically on `git commit` (requires `git config core.hooksPath hooks`):
 ## Conventions
 
 - **JS style**: camelCase functions/variables, no classes, pure functions for game logic
-- **Section headers** in kapow.js: `// ======== SECTION NAME ========`
+- **Module headers**: `// ======== KAPOW! - Module Name ========`
 - **Tests**: `tests/{module}.test.js` mirrors `js/{module}.js`, Vitest with `describe`/`test`/`expect`
 - **CSS**: Mobile-first, single breakpoint at 768px
 - **Versioning**: `MM-DD-YYYY vN` format, auto-bumped by pre-commit hook
@@ -91,11 +91,11 @@ GitHub Pages auto-deploys on push to `main`. Live at https://cpheterson.github.i
 ## Common Mistakes to Avoid
 
 1. **Forgetting `git config core.hooksPath hooks`** — without this, commits skip tests and don't auto-bump versions. Run it once after every fresh clone.
-2. **Editing modular files but not kapow.js (or vice versa)** — the game loads `kapow.js`, tests load the modular files. They must stay in sync for game logic changes.
-3. **Manually bumping the version in index.html** — the pre-commit hook does this. Manual bumps can cause conflicts between contributors.
-4. **Forgetting to update CHANGELOG.md** — the hook will block your commit. Add an entry describing what changed.
-5. **Testing only on desktop** — this is a mobile-first game. Always check mobile viewport (375px width) after UI changes. Add to iPhone home screen for true PWA testing.
-6. **Breaking the AI explanation modal** — `buildAiExplanation()` in kapow.js builds HTML that shows in the "Understand Kai's Move" modal. If you change AI logic, make sure the explanation still makes sense.
+2. **Manually bumping the version in index.html** — the pre-commit hook does this. Manual bumps can cause conflicts between contributors.
+3. **Forgetting to update CHANGELOG.md** — the hook will block your commit. Add an entry describing what changed.
+4. **Testing only on desktop** — this is a mobile-first game. Always check mobile viewport (375px width) after UI changes. Add to iPhone home screen for true PWA testing.
+5. **Breaking the AI explanation modal** — `buildAiExplanation()` in `js/aiExplanation.js` builds HTML for the "Understand Kai's Move" modal. If you change AI logic, make sure the explanation still makes sense.
+6. **Forgetting to export new functions** — every public function needs an `export` keyword. If tests can't find it, you forgot to export.
 
 ## Two Contributors, One Repo
 

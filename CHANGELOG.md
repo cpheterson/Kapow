@@ -6,6 +6,13 @@
 
 ### 03-12-2026
 
+**v13 [Eric]** docs: update CLAUDE.md, README.md, CONTRIBUTING.md for ES module architecture
+- Replaced "Production vs. Modular Split" section with unified 16-module architecture table
+- Removed Common Mistake #2 (dual maintenance of kapow.js and modular files)
+- Updated test count (390 tests across 12 modules), AI references, and analytics references
+- Updated CONTRIBUTING.md: removed IIFE bundle section, updated making-changes and gotchas
+- Updated README.md: replaced IIFE architecture table with ES module table
+
 **v12 [Eric]** chore: remove kapow.js IIFE (fully replaced by ES modules)
 - Deleted `js/kapow.js` (~5,400 lines) — no longer loaded by index.html since v11
 - All game logic now lives in 16 ES modules loaded via `js/main.js`

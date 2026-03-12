@@ -41,29 +41,32 @@ There's no build step. GitHub Pages serves `index.html` directly.
 
 ## How Things Work
 
-### Production Bundle
+### ES Modules
 
-The game runs from a single IIFE bundle: `js/kapow.js` (~5,100 lines). This file contains everything — deck, hand, triads, scoring, rules, game state, AI engine, UI, tutorial, banter, action log.
-
-### Modular Files (for testing)
-
-Clean ES module versions of the game logic live alongside the bundle:
+The game loads `js/main.js` as a `<script type="module">`, which imports all other modules:
 
 | Module | What It Does |
 |--------|-------------|
+| `js/main.js` | Entry point — game loop, events, AI orchestration |
+| `js/gameState.js` | State machine: setup → firstTurn → playing → finalTurns → scoring → gameOver |
+| `js/ai.js` | All AI decisions + evaluation |
+| `js/aiExplanation.js` | Banter + "Understand Kai's Move" |
 | `js/deck.js` | Card creation, shuffle, deal, draw, replenish |
 | `js/hand.js` | Position values, powerset stacking, reveal/replace/swap |
 | `js/triad.js` | Completion detection (sets, runs), KAPOW value solver |
 | `js/scoring.js` | Hand scoring, first-out penalty, round scores, winner |
 | `js/rules.js` | Valid actions by phase, powerset/KAPOW/go-out rules |
-| `js/gameState.js` | State machine: setup → firstTurn → playing → finalTurns → scoring |
-| `js/ai.js` | AI decision engine (simplified version of production AI) |
-
-These modules are **not loaded by the game** — `index.html` loads `kapow.js` directly. The modules exist for testability and will eventually replace the IIFE when the refactor happens.
+| `js/ui.js` | DOM rendering |
+| `js/animation.js` | Visual feedback (flip, glow) |
+| `js/modals.js` | Modal system |
+| `js/logging.js` | Action log + game history |
+| `js/sound.js` | Web Audio synthesis |
+| `js/telemetry.js` | Analytics + consent |
+| `js/shell.js` | Leaderboard, share, buy, notes |
 
 ### Tests
 
-168 tests across all 7 modules using [Vitest](https://vitest.dev/):
+390 tests across 12 modules using [Vitest](https://vitest.dev/):
 
 ```bash
 npm test              # Run once
@@ -96,10 +99,10 @@ Without this, git won't find the pre-commit hook and commits will skip tests + v
 ## Making Changes
 
 ### Game Logic
-Edit `js/kapow.js` (the production bundle). If you're changing game logic that's also in a modular file, update both to keep them in sync.
+Edit the relevant ES module in `js/`. Core game logic lives in `deck.js`, `hand.js`, `triad.js`, `scoring.js`, `rules.js`, and `gameState.js`. The game loop and event handling live in `main.js`.
 
 ### AI (Kai)
-The production AI lives in `js/kapow.js` starting around line 1945 ("AI OPPONENT" section). It's ~1,600 lines of strategic evaluation. The simplified `js/ai.js` is a subset used for testing.
+The full AI engine lives in `js/ai.js` (~2,600 lines of strategic evaluation). Banter and the "Understand Kai's Move" modal are in `js/aiExplanation.js`.
 
 ### Styles
 All CSS is in `css/styles.css`. Mobile-first with a `@media (min-width: 768px)` breakpoint for desktop.
@@ -144,7 +147,7 @@ typeof gtag === 'function'  # should be true
 # GA4 Debug View: add ?gtm_debug=1 to URL, then check DebugView in GA4 console
 ```
 
-**Implementation:** gtag snippet in `index.html` `<head>`, `trackEvent()` helper called from `js/kapow.js`. Events are no-ops if gtag fails to load (ad blockers, offline).
+**Implementation:** gtag snippet in `index.html` `<head>`, `trackEvent()` helper in `js/shell.js` called from game modules. Events are no-ops if gtag fails to load (ad blockers, offline).
 
 ## Common Gotchas
 
@@ -152,8 +155,8 @@ typeof gtag === 'function'  # should be true
 2. **CHANGELOG.md not updated?** The hook blocks commits without a CHANGELOG entry. Add one, or skip with `--no-verify` for docs-only changes.
 3. **Version didn't bump?** The hook compares against `origin/main`. If your remote is out of date, run `git fetch origin` first.
 4. **Seeing stale content?** Hard refresh (Cmd+Shift+R / Ctrl+Shift+R). Service worker is currently disabled.
-5. **Tests fail but game works?** The modular files (`js/deck.js`, etc.) may be out of sync with `kapow.js`. Update both when changing game logic.
-6. **Game logic changed in kapow.js but tests don't cover it?** The modular `js/ai.js` is a simplified subset (~300 lines) of the full AI (~1,600 lines). Some AI behaviors only exist in the production bundle.
+5. **Tests fail but game works?** Check that you exported new functions and that imports are correct in the test file.
+6. **New function not accessible in the browser?** If it's called from HTML `onclick` handlers, it must be assigned to `window.*` in `main.js`.
 
 ## Repo History
 

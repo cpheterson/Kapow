@@ -63,19 +63,22 @@ When all your cards are revealed or discarded, the round ends. All other players
 
 ## Architecture
 
-Single-file IIFE bundle (`js/kapow.js`, ~192KB unminified):
+ES modules loaded via `<script type="module" src="js/main.js">`. No bundler, no build step.
 
-| Section | What It Does |
-|---------|-------------|
-| Kai's Banter | 100+ contextual messages across 17 categories |
-| Deck/Hand | Card creation, Fisher-Yates shuffle, deal, hand management |
-| Triads | Completion detection: sets, runs, KAPOW value assignment |
-| Scoring | Hand evaluation, first-out doubling penalty, winner determination |
-| Game State | State machine: setup → firstTurn → playing → finalTurns → scoring → gameOver |
-| AI Engine | Multi-layered heuristic evaluation with opponent modeling |
-| UI | DOM rendering, modals, animations, scorecard |
-| Tutorial | Stacked-deck onboarding: triads, power cards, KAPOW mechanics |
-| Action Log | Turn-by-turn history with text export |
+| Module | What It Does |
+|--------|-------------|
+| `main.js` | Entry point — game loop, events, AI orchestration |
+| `gameState.js` | State machine: setup → firstTurn → playing → finalTurns → scoring → gameOver |
+| `ai.js` | Multi-layered heuristic evaluation with opponent modeling |
+| `aiExplanation.js` | 100+ banter messages + "Understand Kai's Move" |
+| `deck.js` / `hand.js` | Card creation, shuffle, deal, hand management |
+| `triad.js` | Completion detection: sets, runs, KAPOW value assignment |
+| `scoring.js` | Hand evaluation, first-out doubling penalty, winner determination |
+| `rules.js` | Move validation |
+| `ui.js` | DOM rendering, scorecard |
+| `animation.js` | Visual feedback (flip, glow, shake) |
+| `sound.js` | Web Audio synthesis |
+| `shell.js` | Leaderboard, share, buy, notes |
 
 ### Kai (the AI)
 
@@ -102,7 +105,7 @@ git config core.hooksPath hooks      # Pre-commit: tests + auto-version bump
 python3 -m http.server 8000          # http://localhost:8000
 ```
 
-133 tests across 7 modules. Pre-commit hook runs them automatically.
+390 tests across 12 modules. Pre-commit hook runs them automatically.
 
 See **[CONTRIBUTING.md](CONTRIBUTING.md)** for full dev guide — architecture, AI, testing, versioning, deployment.
 
