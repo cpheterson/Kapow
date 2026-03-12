@@ -4,7 +4,7 @@ The living document. Updated in real-time throughout every session.
 
 ---
 
-## Current State (03-10-2026)
+## Current State (03-12-2026)
 
 **Live at:** cpheterson.github.io/Kapow/ (GitHub Pages, auto-deploys on push to `main`)
 **Repo:** github.com/cpheterson/Kapow (single `main` branch, both contributors push here)
@@ -23,6 +23,27 @@ The living document. Updated in real-time throughout every session.
 - Dopamine hits: round win celebrations, streak badges, personal best detection
 - Leaderboard (top 25 lowest-score winners from telemetry API)
 - Game history saved to localStorage (last 50 games)
+
+---
+
+## Session Log (03-12-2026)
+
+### Shipped
+- [x] AI: fix draw decision missing power card modifier opportunities when 1 fd card remaining (R5T29)
+  - Bug 1 (kapow.js): go-out check fired before modifier evaluation, wrongly blocking draw
+  - Bug 2 (ai.js): modifier opportunity check missing from playing phase draw logic
+  - 2 regression tests added
+
+---
+
+## Session Log (03-11-2026)
+
+### Shipped
+- [x] AI: fix final-turn KAPOW placement choosing low-value completion over high-value (R2T35)
+  - T2[0,0,P1]=1pt vs T4[P1,6,7]=14pt — AI was picking T2 for KAPOW on final turn
+  - Bug 1 (kapow.js): go-out penalty (-200) fired on finalTurns phase — skipped via `phase !== 'finalTurns'` guard
+  - Bug 2 (ai.js): findTriadCompletionSpot returned first match; final-turn block now scans all completions and picks the highest savings
+  - 1 regression test added
 
 ---
 
