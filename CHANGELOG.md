@@ -6,6 +6,17 @@
 
 ### 03-12-2026
 
+**v8 [Eric]** feat(gameState): add _lastAction hooks for animation and logging
+- Added `_lastAction` metadata object to game state, populated by state-changing functions
+- `checkAndDiscardTriads` now returns array of newly discarded triad indices
+- `handlePlaceCard`, `handleRevealAfterDiscard`, `handleAddPowerset` populate `_lastAction` with discardedTriads, playerWentOut, and nested roundEnd data
+- `endRound` captures both raw (pre-doubling) and adjusted round scores in `_lastAction`
+- `advanceToNextPlayer` records previousPlayer/currentPlayer transition
+- `handleGoOut` records playerWentOut
+- Enables main.js to trigger animations, logging, and banter from pure return data
+- gameState.js remains pure: zero UI/DOM imports
+- All 390 tests pass unchanged
+
 **v7 [Eric]** feat: enhance main.js to full game controller
 - Replaced skeleton main.js (~325 lines) with full game controller (~1450 lines) ported from kapow.js lines 4375-5858
 - Full init: name screen, version population, player name entry with Enter key support

@@ -9,6 +9,20 @@ import { scoreHand, revealAllCards, calculateRoundScores, getWinner } from './sc
 
 /**
  * Create initial game state for a new game.
+ *
+ * The _lastAction object is populated by state-changing functions to indicate
+ * what happened, so callers can trigger side effects (animations, logging,
+ * banter) without gameState.js importing any UI modules.
+ *
+ * _lastAction fields (all optional, set per-call):
+ *   type:              string  - what happened ('placeCard', 'discardCard', 'revealAfterDiscard',
+ *                                 'addPowerset', 'goOut', 'roundEnd', 'turnAdvance')
+ *   discardedTriads:   number[] - indices of triads newly discarded (for animation)
+ *   playerWentOut:     number|null - player index if someone auto-went-out this turn
+ *   roundScores:       number[]|null - per-player round scores (set on roundEnd)
+ *   rawScores:         number[]|null - pre-doubling scores (set on roundEnd)
+ *   previousPlayer:    number|null - player index before advance
+ *   currentPlayer:     number|null - player index after advance
  */
 export function createGameState(playerNames = ['You', 'AI']) {
   return {
@@ -30,7 +44,8 @@ export function createGameState(playerNames = ['You', 'AI']) {
     firstOutPlayer: null,
     finalTurnsRemaining: 0,
     firstTurnReveals: 0, // Track how many cards revealed in first turn
-    message: ''
+    message: '',
+    _lastAction: null // Populated by state functions for caller-side effects
   };
 }
 
@@ -138,11 +153,18 @@ export function handleDrawFromDiscard(state) {
 
 /**
  * Handle placing the drawn card into a hand position (replacing existing card).
+ *
+ * Populates state._lastAction with:
+ *   type: 'placeCard'
+ *   triadIndex, position: where the card was placed
+ *   discardedTriads: indices of triads completed by this placement
+ *   playerWentOut: player index if they auto-went-out, else null
  */
 export function handlePlaceCard(state, triadIndex, position) {
   if (!state.drawnCard) return state;
 
   const player = state.players[state.currentPlayer];
+  const placingPlayer = state.currentPlayer;
   const { hand, discarded } = replaceCard(player.hand, triadIndex, position, state.drawnCard);
   player.hand = hand;
 
@@ -155,9 +177,23 @@ export function handlePlaceCard(state, triadIndex, position) {
   state.drawnCard = null;
 
   // Check for completed triads
-  checkAndDiscardTriads(state, state.currentPlayer);
+  const discardedTriads = checkAndDiscardTriads(state, placingPlayer);
 
+  // Capture pre-endTurn state for went-out detection
+  const phaseBefore = state.phase;
   endTurn(state);
+
+  // endTurn may have set _lastAction (roundEnd or turnAdvance); merge into ours
+  const endAction = state._lastAction;
+  state._lastAction = {
+    type: 'placeCard',
+    triadIndex,
+    position,
+    discardedTriads,
+    playerWentOut: (phaseBefore === 'playing' && state.phase === 'finalTurns') ? state.firstOutPlayer : null,
+    roundEnd: (endAction && endAction.type === 'roundEnd') ? endAction : null
+  };
+
   return state;
 }
 
@@ -182,33 +218,71 @@ export function handleDiscard(state) {
 
 /**
  * Handle the mandatory reveal after discarding.
+ *
+ * Populates state._lastAction with:
+ *   type: 'revealAfterDiscard'
+ *   triadIndex, position: which card was revealed
+ *   discardedTriads: indices of triads completed by the reveal
+ *   playerWentOut: player index if they auto-went-out, else null
  */
 export function handleRevealAfterDiscard(state, triadIndex, position) {
   const player = state.players[state.currentPlayer];
+  const revealingPlayer = state.currentPlayer;
   revealCard(player.hand, triadIndex, position);
   state.awaitingRevealAfterDiscard = false;
 
   // Check for completed triads
-  checkAndDiscardTriads(state, state.currentPlayer);
+  const discardedTriads = checkAndDiscardTriads(state, revealingPlayer);
 
+  const phaseBefore = state.phase;
   endTurn(state);
+
+  const endAction = state._lastAction;
+  state._lastAction = {
+    type: 'revealAfterDiscard',
+    triadIndex,
+    position,
+    discardedTriads,
+    playerWentOut: (phaseBefore === 'playing' && state.phase === 'finalTurns') ? state.firstOutPlayer : null,
+    roundEnd: (endAction && endAction.type === 'roundEnd') ? endAction : null
+  };
+
   return state;
 }
 
 /**
  * Handle adding a power card to a powerset.
+ *
+ * Populates state._lastAction with:
+ *   type: 'addPowerset'
+ *   triadIndex, position: where the powerset was added
+ *   discardedTriads: indices of triads completed by this addition
+ *   playerWentOut: player index if they auto-went-out, else null
  */
 export function handleAddPowerset(state, triadIndex, position) {
   if (!state.drawnCard || state.drawnCard.type !== 'power') return state;
 
   const player = state.players[state.currentPlayer];
+  const placingPlayer = state.currentPlayer;
   addToPowerset(player.hand, triadIndex, position, state.drawnCard);
   state.drawnCard = null;
 
   // Check for completed triads
-  checkAndDiscardTriads(state, state.currentPlayer);
+  const discardedTriads = checkAndDiscardTriads(state, placingPlayer);
 
+  const phaseBefore = state.phase;
   endTurn(state);
+
+  const endAction = state._lastAction;
+  state._lastAction = {
+    type: 'addPowerset',
+    triadIndex,
+    position,
+    discardedTriads,
+    playerWentOut: (phaseBefore === 'playing' && state.phase === 'finalTurns') ? state.firstOutPlayer : null,
+    roundEnd: (endAction && endAction.type === 'roundEnd') ? endAction : null
+  };
+
   return state;
 }
 
@@ -224,28 +298,44 @@ export function handleKapowSwap(state, fromTriad, fromPos, toTriad, toPos) {
 
 /**
  * Handle a player going out (declaring end of round).
+ *
+ * Populates state._lastAction with:
+ *   type: 'goOut'
+ *   playerWentOut: index of the player who went out
  */
 export function handleGoOut(state) {
   state.firstOutPlayer = state.currentPlayer;
+  const wentOutPlayer = state.currentPlayer;
   state.phase = 'finalTurns';
   // Every other player gets one more turn
   state.finalTurnsRemaining = state.players.length - 1;
   state.message = `${state.players[state.currentPlayer].name} goes out! Others get one final turn.`;
 
   advanceToNextPlayer(state);
+
+  // Override the turnAdvance _lastAction with the more specific goOut action
+  state._lastAction = {
+    type: 'goOut',
+    playerWentOut: wentOutPlayer
+  };
+
   return state;
 }
 
 /**
  * Check all triads for completion and auto-discard completed ones.
+ * Returns array of triad indices that were newly discarded (empty if none).
  */
 function checkAndDiscardTriads(state, playerIndex) {
   const hand = state.players[playerIndex].hand;
+  const newlyDiscarded = [];
 
-  for (const triad of hand.triads) {
+  for (let i = 0; i < hand.triads.length; i++) {
+    const triad = hand.triads[i];
     if (triad.isDiscarded) continue;
     if (isTriadComplete(triad)) {
       triad.isDiscarded = true;
+      newlyDiscarded.push(i);
 
       // Freeze any KAPOW! cards in the completed triad
       for (const pos of ['top', 'middle', 'bottom']) {
@@ -257,6 +347,8 @@ function checkAndDiscardTriads(state, playerIndex) {
       }
     }
   }
+
+  return newlyDiscarded;
 }
 
 /**
@@ -279,6 +371,7 @@ function endTurn(state) {
  * Move to the next player.
  */
 function advanceToNextPlayer(state) {
+  const previousPlayer = state.currentPlayer;
   state.currentPlayer = (state.currentPlayer + 1) % state.players.length;
 
   // Skip the player who went out during final turns
@@ -287,16 +380,30 @@ function advanceToNextPlayer(state) {
   }
 
   state.message = `${state.players[state.currentPlayer].name}'s turn.`;
+  state._lastAction = {
+    type: 'turnAdvance',
+    previousPlayer,
+    currentPlayer: state.currentPlayer
+  };
 }
 
 /**
  * End the current round, calculate scores.
+ *
+ * Populates state._lastAction with:
+ *   type: 'roundEnd'
+ *   roundScores: per-player adjusted scores (after doubling penalty)
+ *   rawScores: per-player pre-doubling scores
+ *   firstOutPlayer: who went out first
  */
 function endRound(state) {
   // Reveal all cards
   state.players.forEach(p => revealAllCards(p.hand));
 
-  // Calculate scores
+  // Capture raw (pre-doubling) scores for logging/banter
+  const rawScores = state.players.map(p => scoreHand(p.hand));
+
+  // Calculate scores (applies doubling penalty)
   const roundScores = calculateRoundScores(state.players, state.firstOutPlayer);
 
   // Record scores
@@ -307,6 +414,13 @@ function endRound(state) {
 
   state.phase = 'scoring';
   state.message = 'Round complete!';
+
+  state._lastAction = {
+    type: 'roundEnd',
+    roundScores,
+    rawScores,
+    firstOutPlayer: state.firstOutPlayer
+  };
 }
 
 /**
