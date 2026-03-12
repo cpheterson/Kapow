@@ -59,7 +59,7 @@ export function createGameState(playerNames = ['You', 'AI']) {
     round: 1,
     maxRounds: 10,
     currentPlayer: 0,
-    dealerIndex: 0,
+    dealerIndex: 1,
     players: playerNames.map((name, i) => ({
       name,
       hand: null,
@@ -70,11 +70,21 @@ export function createGameState(playerNames = ['You', 'AI']) {
     drawPile: [],
     discardPile: [],
     drawnCard: null,
+    drawnFromDiscard: false,
     phase: 'setup', // setup | firstTurn | playing | finalTurns | scoring | gameOver
     firstOutPlayer: null,
     finalTurnsRemaining: 0,
     firstTurnReveals: 0, // Track how many cards revealed in first turn
     message: '',
+    aiHighlight: null,  // { type: 'draw'|'place'|'reveal'|'discard', triadIndex, position, pile }
+    awaitingKapowSwap: false,  // true after place/discard when swappable KAPOWs exist
+    selectedKapow: null,  // { triadIndex, position } of selected KAPOW card during swap
+    swappingWithinCompletedTriad: false,  // true when player can swap KAPOW within a just-completed triad
+    completedTriadIndex: -1,  // which triad is being swapped within
+    turnNumber: 0,
+    actionLog: [],
+    aiCommentary: '',
+    lastDiscardKnown: false,
     _lastAction: null // Populated by state functions for caller-side effects
   };
 }

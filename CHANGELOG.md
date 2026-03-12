@@ -6,6 +6,11 @@
 
 ### 03-12-2026
 
+**v15 [Eric]** fix(gameState): add missing state properties to createGameState
+- Added 10 missing properties: `actionLog`, `turnNumber`, `aiCommentary`, `lastDiscardKnown`, `drawnFromDiscard`, `aiHighlight`, `awaitingKapowSwap`, `selectedKapow`, `swappingWithinCompletedTriad`, `completedTriadIndex`
+- Fixed `dealerIndex` default (was 0, should be 1 per kapow.js)
+- Without these, game crashed on start: `Cannot read properties of undefined (reading 'push')` in logSystem
+
 **v14 [Eric]** docs: add JSDoc types to core game modules
 - Added `@typedef` for `Card`, `Triad`, `Hand`, `Player`, `GameState`, `LastAction`, `Action` across deck.js, scoring.js, rules.js, gameState.js
 - Added `@param`/`@returns` to all exported functions in deck.js, hand.js, triad.js, scoring.js, rules.js, gameState.js
