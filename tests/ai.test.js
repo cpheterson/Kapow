@@ -113,6 +113,47 @@ describe('aiDecideDraw', () => {
     const state = makeAiState(aiTriads, { discardPile: [] });
     expect(aiDecideDraw(state)).toBe('deck');
   });
+
+  test('R5T29: draws P2 from discard to use as modifier, even with 1 face-down card remaining', () => {
+    // AI hand: T3[fd, 0(-2)=-2, P2(2)]. Discard: P2(-2/+2).
+    // Using -2 modifier on T3-bottom (P2(2)) reduces it to P2(-2)=0 — saves 2pts.
+    // Modifier placement does NOT reveal the fd card, so go-out is not forced.
+    // Production bug: go-out check fired before modifier evaluation and blocked the
+    //   draw because placing P2 at T3-top would force going out with 2pts (deemed bad).
+    //   Fix: evaluate modifier improvements first; skip go-out check when modifier escape exists.
+    // Modular bug: playing-phase P2 draw only checked replacements, not modifier opportunities.
+    //   Fix: add modifier improvement check in aiDecideDraw for playing phase.
+    const p2base = powerCard(1, [-1, 1]); // standalone P2 at T3-bottom (faceValue acts as 2... but use P2 for test)
+    const aiTriads = [
+      { ...makeTriad(0, 0, 0), isDiscarded: true },              // T1: discarded
+      { ...makeTriad(0, 0, 0), isDiscarded: true },              // T2: discarded
+      makeTriad(fc(5, false), fc(0), powerCard(2, [-2, 2])),     // T3: [fd, 0, P2(2)]
+      { ...makeTriad(0, 0, 0), isDiscarded: true },              // T4: discarded
+    ];
+    const discardP2 = powerCard(2, [-2, 2]);
+    const state = makeAiState(aiTriads, {
+      discardPile: [discardP2],
+      phase: 'playing',
+    });
+    expect(aiDecideDraw(state)).toBe('discard');
+  });
+
+  test('R5T29 guard: draws from deck when power card saves less than 2pts', () => {
+    // Discard is P1 (modifiers [-1, +1]). Best improvement = -(-1) = 1 pt.
+    // Threshold is >= 2, so 1pt improvement does not trigger a draw.
+    const aiTriads = [
+      { ...makeTriad(0, 0, 0), isDiscarded: true },
+      { ...makeTriad(0, 0, 0), isDiscarded: true },
+      makeTriad(fc(5, false), fc(4), fc(3)),           // T3: [fd, 4, 3] — P1(-1) on 4 saves 1pt
+      { ...makeTriad(0, 0, 0), isDiscarded: true },
+    ];
+    const discardP1 = powerCard(1, [-1, 1]);
+    const state = makeAiState(aiTriads, {
+      discardPile: [discardP1],
+      phase: 'playing',
+    });
+    expect(aiDecideDraw(state)).toBe('deck');
+  });
 });
 
 describe('aiDecideAction', () => {

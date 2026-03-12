@@ -3659,25 +3659,16 @@ function aiEvaluateDrawFromDiscard(gameState) {
     }
   }
 
-  // Before drawing from discard, check if drawing this card would FORCE going out
-  // with a bad score. This happens when the AI has only one face-down card left and
-  // any placement would leave the hand fully revealed. Drawing from the discard pile
-  // is especially dangerous because it removes the ability to discard (can't discard
-  // a card drawn from the discard pile). If placing this card would force going out
-  // and going out is inadvisable, prefer the draw pile instead.
-  var handEvalDraw = aiEvaluateHand(aiHand);
-  if (handEvalDraw.unrevealedCount === 1) {
-    // Only one face-down card — any placement reveals it and triggers going out.
-    // Simulate score: known revealed cards + drawn card value.
-    var drawnCardValue = discardTop.type === 'kapow' ? 25 : discardTop.faceValue;
-    var simulatedGoOutScore = handEvalDraw.knownScore + drawnCardValue;
-    var goOutCheck = aiShouldGoOutWithScore(gameState, simulatedGoOutScore);
-    if (!goOutCheck.shouldGoOut) {
-      return { shouldDraw: false, reason: 'drawing would force going out with bad score (' + simulatedGoOutScore + ' pts)' };
-    }
-  }
-
-  // Also evaluate power card modifier opportunities (stacking beneath face cards)
+  // Evaluate power card modifier opportunities early — BEFORE the go-out check.
+  // Modifier placements stack beneath an already-revealed card without replacing
+  // or revealing any face-down slot. This means they NEVER trigger going out,
+  // even when unrevealedCount === 1. We must compute this first so the go-out
+  // check can correctly skip itself when a safe modifier option exists.
+  // (R5T29: AI had T3[fd,-2,P2(2)], discard was P2. Go-out check fired and blocked
+  // the draw because replacing the fd would force going out with 2pts. But placing
+  // P2 as a modifier under T3-bottom (P2→0, saves 2pts) never touches the fd.
+  // Fix: hoist modifier evaluation above the go-out check.)
+  var bestModifierImprovement = 0;
   if (discardTop.type === 'power') {
     for (var mt = 0; mt < aiHand.triads.length; mt++) {
       var mTriad = aiHand.triads[mt];
@@ -3688,12 +3679,30 @@ function aiEvaluateDrawFromDiscard(gameState) {
         if (mPosCards.length === 0 || !mPosCards[0].isRevealed) continue;
         if (mPosCards[0].type === 'kapow') continue;
         if (mPosCards.length > 1) continue; // already has a modifier
-        var mCurrentValue = getPositionValue(mPosCards);
         for (var mmi = 0; mmi < discardTop.modifiers.length; mmi++) {
           var modImprovement = -discardTop.modifiers[mmi]; // negative modifier = positive improvement
-          if (modImprovement > bestPlacementScore) bestPlacementScore = modImprovement;
+          if (modImprovement > bestModifierImprovement) bestModifierImprovement = modImprovement;
         }
       }
+    }
+    if (bestModifierImprovement > bestPlacementScore) bestPlacementScore = bestModifierImprovement;
+  }
+
+  // Before drawing from discard, check if drawing this card would FORCE going out
+  // with a bad score. This happens when the AI has only one face-down card left and
+  // any REPLACEMENT placement would leave the hand fully revealed. Drawing from the
+  // discard pile is especially dangerous because it removes the ability to discard.
+  // Skip this check if a safe modifier improvement exists — modifier placements
+  // on revealed positions do NOT reveal the fd card, so go-out is not forced.
+  var handEvalDraw = aiEvaluateHand(aiHand);
+  if (handEvalDraw.unrevealedCount === 1 && bestModifierImprovement === 0) {
+    // Only one face-down card and no modifier escape — any replacement reveals it.
+    // Simulate score: known revealed cards + drawn card value.
+    var drawnCardValue = discardTop.type === 'kapow' ? 25 : discardTop.faceValue;
+    var simulatedGoOutScore = handEvalDraw.knownScore + drawnCardValue;
+    var goOutCheck = aiShouldGoOutWithScore(gameState, simulatedGoOutScore);
+    if (!goOutCheck.shouldGoOut) {
+      return { shouldDraw: false, reason: 'drawing would force going out with bad score (' + simulatedGoOutScore + ' pts)' };
     }
   }
 
@@ -3714,6 +3723,13 @@ function aiEvaluateDrawFromDiscard(gameState) {
   // Draw if the best placement gives meaningful improvement (> threshold)
   if (bestPlacementScore >= 8) {
     return { shouldDraw: true, reason: 'strong placement available' };
+  }
+
+  // Draw power card for modifier improvement even below the main threshold.
+  // Modifier placements are guaranteed, safe (no go-out risk), and any positive
+  // reduction helps — 2+ pts is worth taking over an uncertain deck draw.
+  if (discardTop.type === 'power' && bestModifierImprovement >= 2) {
+    return { shouldDraw: true, reason: 'power card modifier improvement (' + bestModifierImprovement + ' pts)' };
   }
 
   // Draw low-value cards that build toward runs/sets

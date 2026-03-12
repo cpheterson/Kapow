@@ -4,6 +4,15 @@
 
 ## Version History
 
+### 03-12-2026
+
+**v1 [Chuck]** AI: fix draw decision missing power card modifier opportunities when 1 fd card remains (R5T29).
+- AI had T3[fd,-2,P2(2)], discard was P2. Modifier on T3-bottom saves 2pts without touching fd.
+- Bug 1 (kapow.js): go-out check fired before modifier evaluation, assuming any placement reveals fd — false for modifier placements on already-revealed positions.
+- Bug 2 (ai.js): aiDecideDraw only checked modifier opportunities on finalTurns, not playing phase.
+- Fix: evaluate modifier improvements before go-out check; skip go-out block when modifier escape ≥ 2pt exists; add playing-phase modifier check to modular AI.
+- 2 regression tests added (R5T29 + guard)
+
 ### 03-11-2026
 
 **v1 [Chuck]** AI: fix final-turn KAPOW preferring low-value completion over high-value (R2T35).

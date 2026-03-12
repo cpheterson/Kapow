@@ -58,6 +58,29 @@ export function aiDecideDraw(gameState) {
     }
   }
 
+  // If discard is a power card, check for modifier improvement opportunities.
+  // Modifier placements stack under an existing revealed card without replacing
+  // or revealing anything — safe to draw even with one face-down card remaining.
+  // (R5T29: AI had T3[fd,-2,P2(2)], discard P2. Modifier saves 2pts on T3-bottom
+  // without touching the fd. Go-out check was incorrectly blocking the draw.)
+  if (discardTop.type === 'power') {
+    let bestModImp = 0;
+    for (const triad of aiHand.triads) {
+      if (triad.isDiscarded) continue;
+      for (const pos of ['top', 'middle', 'bottom']) {
+        const posCards = triad[pos];
+        if (posCards.length === 0 || !posCards[0].isRevealed) continue;
+        if (posCards[0].type === 'kapow') continue;
+        if (posCards.length > 1) continue; // already has modifier
+        for (const mod of discardTop.modifiers) {
+          const modImp = -mod; // negative modifier = positive improvement
+          if (modImp > bestModImp) bestModImp = modImp;
+        }
+      }
+    }
+    if (bestModImp >= 2) return 'discard';
+  }
+
   // On final turns, any guaranteed improvement is worth drawing from discard.
   // Evaluate both position replacement and power card modifier opportunities.
   if (gameState.phase === 'finalTurns') {
