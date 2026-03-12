@@ -6,6 +6,12 @@
 
 ### 03-12-2026
 
+**v3 [Eric]** feat(ui): add animation module
+- Created animation.js with 3 functions (~166 lines) from kapow.js
+- Functions: animateTriadDiscard, animateNewlyDiscardedTriads, runWithTriadAnimation
+- Added gameState, triadAnimationInProgress, refreshUI as parameters (were IIFE closure variables)
+- 20 new tests covering detection logic and orchestration (278 total)
+
 **v2 [Eric]** feat(ai): add explanation and banter module
 - Created aiExplanation.js with 5 functions (~433 lines) from kapow.js
 - Functions: AI_BANTER, generateAIBanter, clearAIBanter, buildAiExplanation, generateTakeawayTip
