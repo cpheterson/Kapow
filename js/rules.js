@@ -2,8 +2,23 @@
 // KAPOW! - Rules Engine
 // ========================================
 
+/** @typedef {import('./deck.js').Card} Card */
+/** @typedef {import('./deck.js').Hand} Hand */
+/** @typedef {import('./gameState.js').GameState} GameState */
+
+/**
+ * @typedef {Object} Action
+ * @property {string} type - 'reveal'|'drawFromDeck'|'drawFromDiscard'|'discard'|'replace'|'powerset'|'swapKapow'
+ * @property {number} [triadIndex]
+ * @property {'top'|'middle'|'bottom'} [position]
+ * @property {number} [fromTriad]
+ * @property {'top'|'middle'|'bottom'} [fromPos]
+ */
+
 /**
  * Check if a player can draw from the draw pile.
+ * @param {GameState} gameState
+ * @returns {boolean}
  */
 export function canDrawFromDeck(gameState) {
   return gameState.drawPile.length > 0;
@@ -11,6 +26,8 @@ export function canDrawFromDeck(gameState) {
 
 /**
  * Check if a player can draw from the discard pile.
+ * @param {GameState} gameState
+ * @returns {boolean}
  */
 export function canDrawFromDiscard(gameState) {
   return gameState.discardPile.length > 0;
@@ -19,6 +36,10 @@ export function canDrawFromDiscard(gameState) {
 /**
  * Check if a card can be used to replace at a given position.
  * Cannot replace into a discarded triad.
+ * @param {Hand} hand
+ * @param {number} triadIndex
+ * @param {'top'|'middle'|'bottom'} position
+ * @returns {boolean}
  */
 export function canReplace(hand, triadIndex, position) {
   const triad = hand.triads[triadIndex];
@@ -31,6 +52,11 @@ export function canReplace(hand, triadIndex, position) {
  * Requirements:
  *  - Position must have a face-up card
  *  - The card being added must be a power card
+ * @param {Hand} hand
+ * @param {number} triadIndex
+ * @param {'top'|'middle'|'bottom'} position
+ * @param {Card} card
+ * @returns {boolean}
  */
 export function canCreatePowerset(hand, triadIndex, position, card) {
   if (card.type !== 'power') return false;
@@ -51,6 +77,10 @@ export function canCreatePowerset(hand, triadIndex, position, card) {
  *  - The card must be a KAPOW! card
  *  - The card must not be frozen
  *  - The card must be the only card in its position (not in a powerset)
+ * @param {Hand} hand
+ * @param {number} triadIndex
+ * @param {'top'|'middle'|'bottom'} position
+ * @returns {boolean}
  */
 export function canSwapKapow(hand, triadIndex, position) {
   const triad = hand.triads[triadIndex];
@@ -65,6 +95,9 @@ export function canSwapKapow(hand, triadIndex, position) {
 
 /**
  * Get all valid actions for the current game phase.
+ * @param {GameState} gameState
+ * @param {number} playerIndex
+ * @returns {Action[]}
  */
 export function getValidActions(gameState, playerIndex) {
   const player = gameState.players[playerIndex];
@@ -131,6 +164,9 @@ export function getValidActions(gameState, playerIndex) {
  * Check if a player can go out (declare end of round).
  * A player can go out at any time after their first turn,
  * but strategically should only do so with a low hand value.
+ * @param {GameState} gameState
+ * @param {number} playerIndex
+ * @returns {boolean}
  */
 export function canGoOut(gameState, playerIndex) {
   if (gameState.phase === 'firstTurn' || gameState.phase === 'finalTurns') return false;

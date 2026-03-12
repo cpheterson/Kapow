@@ -7,6 +7,43 @@ import { initializeHand, revealCard, replaceCard, addToPowerset, swapKapowCard }
 import { isTriadComplete } from './triad.js';
 import { scoreHand, revealAllCards, calculateRoundScores, getWinner } from './scoring.js';
 
+/** @typedef {import('./deck.js').Card} Card */
+/** @typedef {import('./scoring.js').Player} Player */
+
+/**
+ * @typedef {Object} LastAction
+ * @property {string} type - What happened ('placeCard', 'discardCard', 'revealAfterDiscard', 'addPowerset', 'goOut', 'roundEnd', 'turnAdvance')
+ * @property {number[]} [discardedTriads] - Indices of triads newly discarded
+ * @property {number|null} [playerWentOut] - Player index if someone went out
+ * @property {number[]} [roundScores] - Per-player adjusted scores (on roundEnd)
+ * @property {number[]} [rawScores] - Per-player pre-doubling scores (on roundEnd)
+ * @property {number} [previousPlayer] - Player index before advance
+ * @property {number} [currentPlayer] - Player index after advance
+ * @property {number} [triadIndex]
+ * @property {string} [position]
+ * @property {number} [firstOutPlayer]
+ * @property {LastAction|null} [roundEnd] - Nested roundEnd action if round ended this turn
+ */
+
+/**
+ * @typedef {Object} GameState
+ * @property {number} round
+ * @property {number} maxRounds
+ * @property {number} currentPlayer
+ * @property {number} dealerIndex
+ * @property {Player[]} players
+ * @property {Card[]} drawPile
+ * @property {Card[]} discardPile
+ * @property {Card|null} drawnCard
+ * @property {'setup'|'firstTurn'|'playing'|'finalTurns'|'scoring'|'gameOver'} phase
+ * @property {number|null} firstOutPlayer
+ * @property {number} finalTurnsRemaining
+ * @property {number} firstTurnReveals
+ * @property {string} message
+ * @property {LastAction|null} _lastAction
+ * @property {boolean} [awaitingRevealAfterDiscard]
+ */
+
 /**
  * Create initial game state for a new game.
  *
@@ -14,15 +51,8 @@ import { scoreHand, revealAllCards, calculateRoundScores, getWinner } from './sc
  * what happened, so callers can trigger side effects (animations, logging,
  * banter) without gameState.js importing any UI modules.
  *
- * _lastAction fields (all optional, set per-call):
- *   type:              string  - what happened ('placeCard', 'discardCard', 'revealAfterDiscard',
- *                                 'addPowerset', 'goOut', 'roundEnd', 'turnAdvance')
- *   discardedTriads:   number[] - indices of triads newly discarded (for animation)
- *   playerWentOut:     number|null - player index if someone auto-went-out this turn
- *   roundScores:       number[]|null - per-player round scores (set on roundEnd)
- *   rawScores:         number[]|null - pre-doubling scores (set on roundEnd)
- *   previousPlayer:    number|null - player index before advance
- *   currentPlayer:     number|null - player index after advance
+ * @param {string[]} [playerNames=['You', 'AI']]
+ * @returns {GameState}
  */
 export function createGameState(playerNames = ['You', 'AI']) {
   return {
@@ -51,6 +81,8 @@ export function createGameState(playerNames = ['You', 'AI']) {
 
 /**
  * Start a new round: shuffle deck, deal hands, set up piles.
+ * @param {GameState} state
+ * @returns {GameState}
  */
 export function startRound(state) {
   const deck = shuffle(createDeck());
@@ -88,6 +120,10 @@ export function startRound(state) {
 
 /**
  * Handle revealing a card during the first turn phase.
+ * @param {GameState} state
+ * @param {number} triadIndex
+ * @param {'top'|'middle'|'bottom'} position
+ * @returns {GameState}
  */
 export function handleFirstTurnReveal(state, triadIndex, position) {
   const player = state.players[state.currentPlayer];
@@ -117,6 +153,8 @@ export function handleFirstTurnReveal(state, triadIndex, position) {
 
 /**
  * Handle drawing a card from the draw pile.
+ * @param {GameState} state
+ * @returns {GameState}
  */
 export function handleDrawFromDeck(state) {
   if (state.drawPile.length === 0) {
@@ -139,6 +177,8 @@ export function handleDrawFromDeck(state) {
 
 /**
  * Handle drawing from the discard pile.
+ * @param {GameState} state
+ * @returns {GameState}
  */
 export function handleDrawFromDiscard(state) {
   const { card, pile } = drawFromPile(state.discardPile);
@@ -159,6 +199,11 @@ export function handleDrawFromDiscard(state) {
  *   triadIndex, position: where the card was placed
  *   discardedTriads: indices of triads completed by this placement
  *   playerWentOut: player index if they auto-went-out, else null
+ *
+ * @param {GameState} state
+ * @param {number} triadIndex
+ * @param {'top'|'middle'|'bottom'} position
+ * @returns {GameState}
  */
 export function handlePlaceCard(state, triadIndex, position) {
   if (!state.drawnCard) return state;
@@ -199,6 +244,8 @@ export function handlePlaceCard(state, triadIndex, position) {
 
 /**
  * Handle discarding the drawn card without placing it.
+ * @param {GameState} state
+ * @returns {GameState}
  */
 export function handleDiscard(state) {
   if (!state.drawnCard) return state;
@@ -224,6 +271,11 @@ export function handleDiscard(state) {
  *   triadIndex, position: which card was revealed
  *   discardedTriads: indices of triads completed by the reveal
  *   playerWentOut: player index if they auto-went-out, else null
+ *
+ * @param {GameState} state
+ * @param {number} triadIndex
+ * @param {'top'|'middle'|'bottom'} position
+ * @returns {GameState}
  */
 export function handleRevealAfterDiscard(state, triadIndex, position) {
   const player = state.players[state.currentPlayer];
@@ -258,6 +310,11 @@ export function handleRevealAfterDiscard(state, triadIndex, position) {
  *   triadIndex, position: where the powerset was added
  *   discardedTriads: indices of triads completed by this addition
  *   playerWentOut: player index if they auto-went-out, else null
+ *
+ * @param {GameState} state
+ * @param {number} triadIndex
+ * @param {'top'|'middle'|'bottom'} position
+ * @returns {GameState}
  */
 export function handleAddPowerset(state, triadIndex, position) {
   if (!state.drawnCard || state.drawnCard.type !== 'power') return state;
@@ -288,6 +345,12 @@ export function handleAddPowerset(state, triadIndex, position) {
 
 /**
  * Handle KAPOW! card swap.
+ * @param {GameState} state
+ * @param {number} fromTriad
+ * @param {'top'|'middle'|'bottom'} fromPos
+ * @param {number} toTriad
+ * @param {'top'|'middle'|'bottom'} toPos
+ * @returns {GameState}
  */
 export function handleKapowSwap(state, fromTriad, fromPos, toTriad, toPos) {
   const player = state.players[state.currentPlayer];
@@ -302,6 +365,9 @@ export function handleKapowSwap(state, fromTriad, fromPos, toTriad, toPos) {
  * Populates state._lastAction with:
  *   type: 'goOut'
  *   playerWentOut: index of the player who went out
+ *
+ * @param {GameState} state
+ * @returns {GameState}
  */
 export function handleGoOut(state) {
   state.firstOutPlayer = state.currentPlayer;
@@ -425,6 +491,8 @@ function endRound(state) {
 
 /**
  * Advance to the next round or end the game.
+ * @param {GameState} state
+ * @returns {GameState}
  */
 export function advanceRound(state) {
   if (state.round >= state.maxRounds) {

@@ -4,6 +4,8 @@
 
 import { getPositionValue } from './hand.js';
 
+/** @typedef {import('./deck.js').Triad} Triad */
+
 /**
  * Check if a triad is complete (set or run).
  * All three positions must be revealed.
@@ -11,6 +13,9 @@ import { getPositionValue } from './hand.js';
  *   - A set: all three values are equal
  *   - An ascending run: values increase by 1 (top, top+1, top+2)
  *   - A descending run: values decrease by 1 (top, top-1, top-2)
+ *
+ * @param {Triad} triad
+ * @returns {boolean}
  */
 export function isTriadComplete(triad) {
   if (triad.isDiscarded) return false;
@@ -77,7 +82,8 @@ export function isTriadComplete(triad) {
 
 /**
  * Get effective values for a triad's three positions.
- * Returns [topValue, middleValue, bottomValue].
+ * @param {Triad} triad
+ * @returns {[number, number, number]} [topValue, middleValue, bottomValue]
  */
 export function getEffectiveValues(triad) {
   return [
@@ -89,6 +95,8 @@ export function getEffectiveValues(triad) {
 
 /**
  * Check if three values form a set (all equal).
+ * @param {number[]} values
+ * @returns {boolean}
  */
 export function isSet(values) {
   return values[0] === values[1] && values[1] === values[2];
@@ -96,6 +104,8 @@ export function isSet(values) {
 
 /**
  * Check if three values form an ascending run (each +1).
+ * @param {number[]} values
+ * @returns {boolean}
  */
 export function isAscendingRun(values) {
   return values[1] === values[0] + 1 && values[2] === values[1] + 1;
@@ -103,6 +113,8 @@ export function isAscendingRun(values) {
 
 /**
  * Check if three values form a descending run (each -1).
+ * @param {number[]} values
+ * @returns {boolean}
  */
 export function isDescendingRun(values) {
   return values[1] === values[0] - 1 && values[2] === values[1] - 1;
@@ -110,7 +122,8 @@ export function isDescendingRun(values) {
 
 /**
  * Determine what type of completion a triad has, if any.
- * Returns: 'set' | 'ascending' | 'descending' | null
+ * @param {Triad} triad
+ * @returns {'set'|'ascending'|'descending'|null}
  */
 export function getCompletionType(triad) {
   if (triad.isDiscarded) return null;
@@ -131,7 +144,9 @@ export function getCompletionType(triad) {
 /**
  * Check if a KAPOW! card at a specific position could complete the triad
  * when assigned a particular value.
- * Returns the value needed, or null if no single value works.
+ * @param {Triad} triad
+ * @param {'top'|'middle'|'bottom'} kapowPosition
+ * @returns {number|null} The value needed, or null if no single value works
  */
 export function getKapowValueForCompletion(triad, kapowPosition) {
   const positions = ['top', 'middle', 'bottom'];

@@ -6,6 +6,12 @@
 
 ### 03-12-2026
 
+**v14 [Eric]** docs: add JSDoc types to core game modules
+- Added `@typedef` for `Card`, `Triad`, `Hand`, `Player`, `GameState`, `LastAction`, `Action` across deck.js, scoring.js, rules.js, gameState.js
+- Added `@param`/`@returns` to all exported functions in deck.js, hand.js, triad.js, scoring.js, rules.js, gameState.js
+- Type imports via `@typedef {import('./deck.js').Card} Card` pattern for cross-module references
+- Comments only — zero behavior changes, all 390 tests pass
+
 **v13 [Eric]** docs: update CLAUDE.md, README.md, CONTRIBUTING.md for ES module architecture
 - Replaced "Production vs. Modular Split" section with unified 16-module architecture table
 - Removed Common Mistake #2 (dual maintenance of kapow.js and modular files)

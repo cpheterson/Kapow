@@ -2,10 +2,39 @@
 // KAPOW! - Deck System
 // ========================================
 
+/**
+ * @typedef {Object} Card
+ * @property {string} id - Unique card identifier (e.g. "card_0")
+ * @property {'fixed'|'power'|'kapow'} type
+ * @property {number} faceValue
+ * @property {boolean} isRevealed
+ * @property {boolean} isFrozen
+ * @property {number|null} assignedValue - For KAPOW cards: the value chosen when used
+ * @property {number[]|null} modifiers - For power cards: [negative, positive] modifier pair
+ * @property {number|undefined} activeModifier - Which modifier is currently active in a powerset
+ */
+
+/**
+ * @typedef {Object} Triad
+ * @property {Card[][]} top - Cards at the top position (index 0 = face card, rest = powerset)
+ * @property {Card[][]} middle - Cards at the middle position
+ * @property {Card[][]} bottom - Cards at the bottom position
+ * @property {boolean} isDiscarded - Whether this triad has been completed and removed
+ */
+
+/**
+ * @typedef {Object} Hand
+ * @property {Triad[]} triads - Array of triads (typically 4)
+ */
+
 let nextCardId = 0;
 
 /**
  * Create a single card object.
+ * @param {'fixed'|'power'|'kapow'} type
+ * @param {number} faceValue
+ * @param {number[]|null} [modifiers=null]
+ * @returns {Card}
  */
 function createCard(type, faceValue, modifiers = null) {
   return {
@@ -31,6 +60,8 @@ function createCard(type, faceValue, modifiers = null) {
  *  - Power card (face 2, mods +/-2): 8 copies
  *  - KAPOW! wild cards: 6 copies
  *  Total: 8 + 4 + 4 + 80 + 8 + 8 + 6 = 118
+ *
+ * @returns {Card[]}
  */
 export function createDeck() {
   nextCardId = 0;
@@ -78,6 +109,8 @@ export function createDeck() {
 
 /**
  * Fisher-Yates shuffle.
+ * @param {Card[]} cards
+ * @returns {Card[]} New shuffled array (does not mutate input)
  */
 export function shuffle(cards) {
   const shuffled = [...cards];
@@ -90,7 +123,10 @@ export function shuffle(cards) {
 
 /**
  * Deal cards from the deck to players.
- * Returns { hands: [[Card, ...], ...], remainingDeck: [Card, ...] }
+ * @param {Card[]} deck
+ * @param {number} playerCount
+ * @param {number} [cardsPerPlayer=12]
+ * @returns {{hands: Card[][], remainingDeck: Card[]}}
  */
 export function deal(deck, playerCount, cardsPerPlayer = 12) {
   const hands = [];
@@ -105,7 +141,9 @@ export function deal(deck, playerCount, cardsPerPlayer = 12) {
 }
 
 /**
- * Draw the top card from a pile. Returns { card, pile } with the card removed.
+ * Draw the top card from a pile.
+ * @param {Card[]} pile
+ * @returns {{card: Card|null, pile: Card[]}} The drawn card and remaining pile
  */
 export function drawFromPile(pile) {
   if (pile.length === 0) return { card: null, pile };
@@ -116,7 +154,8 @@ export function drawFromPile(pile) {
 
 /**
  * Replenish draw pile from discard pile (keep top discard card).
- * Returns { drawPile, discardPile }
+ * @param {Card[]} discardPile
+ * @returns {{drawPile: Card[], discardPile: Card[]}}
  */
 export function replenishFromDiscard(discardPile) {
   if (discardPile.length <= 1) {

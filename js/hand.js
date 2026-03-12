@@ -2,6 +2,10 @@
 // KAPOW! - Hand Management
 // ========================================
 
+/** @typedef {import('./deck.js').Card} Card */
+/** @typedef {import('./deck.js').Triad} Triad */
+/** @typedef {import('./deck.js').Hand} Hand */
+
 /**
  * Initialize a hand from dealt cards.
  * Cards are arranged into triads (columns of 3).
@@ -9,6 +13,9 @@
  *
  * Each triad has positions: top, middle, bottom.
  * Each position holds an array of cards (for powersets).
+ *
+ * @param {Card[]} cards - Dealt cards (typically 12)
+ * @returns {Hand}
  */
 export function initializeHand(cards) {
   const triadCount = Math.floor(cards.length / 3);
@@ -28,6 +35,10 @@ export function initializeHand(cards) {
 
 /**
  * Reveal a card at the given position.
+ * @param {Hand} hand
+ * @param {number} triadIndex
+ * @param {'top'|'middle'|'bottom'} position
+ * @returns {Hand}
  */
 export function revealCard(hand, triadIndex, position) {
   const triad = hand.triads[triadIndex];
@@ -44,6 +55,11 @@ export function revealCard(hand, triadIndex, position) {
 /**
  * Replace the top card at a position with a new card.
  * Returns the replaced card(s) (the entire powerset at that position).
+ * @param {Hand} hand
+ * @param {number} triadIndex
+ * @param {'top'|'middle'|'bottom'} position
+ * @param {Card} newCard
+ * @returns {{hand: Hand, discarded: Card[]}}
  */
 export function replaceCard(hand, triadIndex, position, newCard) {
   const triad = hand.triads[triadIndex];
@@ -59,6 +75,11 @@ export function replaceCard(hand, triadIndex, position, newCard) {
 /**
  * Add a power card beneath the top card at a position (creating/extending a powerset).
  * The power card's modifier will affect the position's effective value.
+ * @param {Hand} hand
+ * @param {number} triadIndex
+ * @param {'top'|'middle'|'bottom'} position
+ * @param {Card} powerCard
+ * @returns {Hand}
  */
 export function addToPowerset(hand, triadIndex, position, powerCard) {
   const triad = hand.triads[triadIndex];
@@ -76,6 +97,12 @@ export function addToPowerset(hand, triadIndex, position, powerCard) {
 
 /**
  * Swap a free (unfrozen) KAPOW! card with a card at another position.
+ * @param {Hand} hand
+ * @param {number} fromTriad
+ * @param {'top'|'middle'|'bottom'} fromPos
+ * @param {number} toTriad
+ * @param {'top'|'middle'|'bottom'} toPos
+ * @returns {Hand}
  */
 export function swapKapowCard(hand, fromTriad, fromPos, toTriad, toPos) {
   const sourceCards = hand.triads[fromTriad][fromPos];
@@ -95,6 +122,8 @@ export function swapKapowCard(hand, fromTriad, fromPos, toTriad, toPos) {
 
 /**
  * Get the effective value of a position (top card + modifier stack).
+ * @param {Card[]} positionCards - Cards at a position (index 0 = face card, rest = powerset modifiers)
+ * @returns {number} Effective value (includes modifier adjustments, 25 for unfrozen KAPOW)
  */
 export function getPositionValue(positionCards) {
   if (positionCards.length === 0) return 0;
@@ -137,6 +166,8 @@ export function getPositionValue(positionCards) {
 
 /**
  * Get all position values for a triad as [top, middle, bottom].
+ * @param {Triad} triad
+ * @returns {[number, number, number]}
  */
 export function getTriadValues(triad) {
   return [
@@ -148,6 +179,8 @@ export function getTriadValues(triad) {
 
 /**
  * Count revealed cards in a hand.
+ * @param {Hand} hand
+ * @returns {number}
  */
 export function countRevealedCards(hand) {
   let count = 0;
@@ -164,6 +197,8 @@ export function countRevealedCards(hand) {
 
 /**
  * Get total number of active (non-discarded) positions in hand.
+ * @param {Hand} hand
+ * @returns {number}
  */
 export function getActivePositionCount(hand) {
   let count = 0;
@@ -175,6 +210,8 @@ export function getActivePositionCount(hand) {
 
 /**
  * Check if all cards in the hand are revealed.
+ * @param {Hand} hand
+ * @returns {boolean}
  */
 export function allCardsRevealed(hand) {
   for (const triad of hand.triads) {
