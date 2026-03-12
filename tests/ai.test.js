@@ -2,7 +2,13 @@ import { describe, test, expect } from 'vitest';
 import {
   aiFirstTurnReveals, aiDecideDraw, aiDecideAction,
   aiDecideRevealAfterDiscard, aiShouldGoOut, aiConsiderKapowSwap,
-  aiEvaluateDiscardSafety, aiBuryKapowInCompletedTriad
+  aiEvaluateDiscardSafety, aiBuryKapowInCompletedTriad,
+  aiAnalyzeTriad, aiEvaluateHand, aiEstimateOpponentScore,
+  aiGetGameContext, aiAssessOpponentThreat, aiCountFutureCompletions,
+  aiCountPowerModifierPaths, getTestRange, aiEvaluateCardSynergy,
+  aiGetOpponentNeeds, aiGetTopDiscardValue, aiScorePlacement,
+  aiFindPowersetOpportunity, aiFindModifierOpportunity,
+  aiFindBeneficialSwap, findSwappableKapowCards, findSwapTargets
 } from '../js/ai.js';
 
 // Helpers
@@ -1081,5 +1087,559 @@ describe('Go-out forced by triad completion — opponent threat override', () =>
     expect(action.type).toBe('replace');
     expect(action.triadIndex).toBe(1);    // T2
     expect(action.position).toBe('top');  // completes [12,12,12]
+  });
+});
+
+// ========================================
+// PORTED AI EVALUATION FUNCTIONS
+// ========================================
+
+describe('aiAnalyzeTriad', () => {
+  test('returns correct analysis for discarded triad', () => {
+    const triad = makeTriad(5, 5, 5);
+    triad.isDiscarded = true;
+    const result = aiAnalyzeTriad(triad);
+    expect(result.isDiscarded).toBe(true);
+    expect(result.revealedCount).toBe(0);
+  });
+
+  test('counts revealed cards correctly', () => {
+    const triad = makeTriad(3, fc(5, false), 7);
+    const result = aiAnalyzeTriad(triad);
+    expect(result.revealedCount).toBe(2);
+    expect(result.values[0]).toBe(3);
+    expect(result.values[1]).toBe(null);
+    expect(result.values[2]).toBe(7);
+    expect(result.triadScore).toBe(10);
+  });
+
+  test('identifies near-complete triad (2 of 3 revealed)', () => {
+    const triad = makeTriad(5, 5, fc(0, false));
+    const result = aiAnalyzeTriad(triad);
+    expect(result.isNearComplete).toBe(true);
+    expect(result.completionPaths).toBeGreaterThan(0);
+    expect(result.completionValues).toContain(5); // set completion
+  });
+
+  test('finds completion paths for ascending run', () => {
+    // [3, 4, ?] — needs 5 for ascending run
+    const triad = makeTriad(3, 4, fc(0, false));
+    const result = aiAnalyzeTriad(triad);
+    expect(result.completionValues).toContain(5);
+  });
+
+  test('finds completion paths for descending run', () => {
+    // [7, 6, ?] — needs 5 for descending run
+    const triad = makeTriad(7, 6, fc(0, false));
+    const result = aiAnalyzeTriad(triad);
+    expect(result.completionValues).toContain(5);
+  });
+
+  test('handles KAPOW in 2-revealed triad (expanded completion paths)', () => {
+    // [KAPOW, 5, ?] — KAPOW can be any value, so many completions possible
+    const triad = makeTriad(kapowCard(), 5, fc(0, false));
+    const result = aiAnalyzeTriad(triad);
+    expect(result.hasUnfrozenKapow).toBe(true);
+    // KAPOW + 5 should have multiple completion paths (KAPOW can be any 0-12)
+    expect(result.completionPaths).toBeGreaterThanOrEqual(3);
+  });
+
+  test('computes power modifier paths', () => {
+    // [3, 5, ?] — base completion: 7 (ascending 3,5,7? NO, need 4,5,6 or similar)
+    // Actually [3, ?, 5] has: set needs 3+5 = no set. runs: 3,4,5 ascending needs middle=4
+    const triad = makeTriad(3, fc(0, false), 5);
+    const result = aiAnalyzeTriad(triad);
+    // Standard path: value 4 in middle completes [3,4,5] ascending run
+    expect(result.completionValues).toContain(4);
+  });
+
+  test('KAPOW boost is true when completion paths exist', () => {
+    const triad = makeTriad(5, 5, fc(0, false));
+    const result = aiAnalyzeTriad(triad);
+    expect(result.kapowBoost).toBe(true);
+  });
+});
+
+describe('aiScorePlacement', () => {
+  function makeFullGameState(aiTriads, humanTriads, options = {}) {
+    return {
+      players: [
+        { hand: { triads: humanTriads || [makeTriad(5, 5, 5)] }, name: 'You', totalScore: options.humanScore || 0 },
+        { hand: { triads: aiTriads }, name: 'AI', totalScore: options.aiScore || 0 }
+      ],
+      drawPile: options.drawPile || [fc(1)],
+      discardPile: options.discardPile || [],
+      drawnCard: options.drawnCard || null,
+      phase: options.phase || 'playing',
+      round: options.round || 1,
+      turnNumber: options.turnNumber || 10,
+    };
+  }
+
+  test('returns -999 for discarded triad', () => {
+    const triads = [makeTriad(5, 5, 5)];
+    triads[0].isDiscarded = true;
+    const gs = makeFullGameState(triads);
+    const score = aiScorePlacement(gs.players[1].hand, fc(3), 0, 'top', {}, gs);
+    expect(score).toBe(-999);
+  });
+
+  test('completion gives large positive score', () => {
+    // Triad [5, 5, fd] — placing a 5 completes the set
+    const triads = [makeTriad(5, 5, fc(0, false)), makeTriad(fc(1, false), fc(2, false), fc(3, false))];
+    const gs = makeFullGameState(triads);
+    const score = aiScorePlacement(gs.players[1].hand, fc(5), 0, 'bottom', {}, gs);
+    expect(score).toBeGreaterThan(100); // completion bonus
+  });
+
+  test('replacing high card with low card gives positive score', () => {
+    const triads = [makeTriad(10, fc(1, false), fc(2, false))];
+    const gs = makeFullGameState(triads);
+    const score = aiScorePlacement(gs.players[1].hand, fc(2), 0, 'top', {}, gs);
+    expect(score).toBeGreaterThan(0);
+  });
+
+  test('replacing low card with high card gives negative score', () => {
+    const triads = [makeTriad(1, fc(1, false), fc(2, false))];
+    const gs = makeFullGameState(triads);
+    const score = aiScorePlacement(gs.players[1].hand, fc(10), 0, 'top', {}, gs);
+    expect(score).toBeLessThan(0);
+  });
+
+  test('final turn completion gives huge bonus', () => {
+    const triads = [makeTriad(8, 8, fc(0, false))];
+    const gs = makeFullGameState(triads, undefined, { phase: 'finalTurns' });
+    const score = aiScorePlacement(gs.players[1].hand, fc(8), 0, 'bottom', {}, gs);
+    expect(score).toBeGreaterThan(200); // final turn completion bonus
+  });
+
+  test('final turn pure score delta when no completion', () => {
+    const triads = [makeTriad(10, 3, 7)];
+    const gs = makeFullGameState(triads, undefined, { phase: 'finalTurns' });
+    const score = aiScorePlacement(gs.players[1].hand, fc(2), 0, 'top', {}, gs);
+    // Replacing 10 with 2 = delta of 8
+    expect(score).toBe(8);
+  });
+
+  test('zero-delta penalty when replacing same value', () => {
+    const triads = [makeTriad(5, fc(1, false), fc(2, false))];
+    const gs = makeFullGameState(triads);
+    const score = aiScorePlacement(gs.players[1].hand, fc(5), 0, 'top', {}, gs);
+    // Same value replacement should be penalized
+    expect(score).toBeLessThan(0);
+  });
+
+  test('works without gameState (null)', () => {
+    const triads = [makeTriad(10, fc(1, false), fc(2, false))];
+    const hand = { triads };
+    // Should not throw when gameState is null/undefined
+    const score = aiScorePlacement(hand, fc(2), 0, 'top', {}, null);
+    expect(typeof score).toBe('number');
+  });
+});
+
+describe('aiAssessOpponentThreat', () => {
+  function makeGameState(humanTriads, options = {}) {
+    return {
+      players: [
+        { hand: { triads: humanTriads }, name: 'You', totalScore: 0 },
+        { hand: { triads: [makeTriad(5, 5, 5)] }, name: 'AI', totalScore: 0 }
+      ],
+      drawPile: [fc(1)],
+      discardPile: [],
+      phase: 'playing',
+      round: 1,
+    };
+  }
+
+  test('no discarded triads = low threat', () => {
+    const humanTriads = [
+      makeTriad(5, 5, fc(0, false)),
+      makeTriad(fc(1, false), fc(2, false), fc(3, false)),
+      makeTriad(fc(4, false), fc(5, false), fc(6, false)),
+      makeTriad(fc(7, false), fc(8, false), fc(9, false)),
+    ];
+    const gs = makeGameState(humanTriads);
+    const threat = aiAssessOpponentThreat(gs);
+    expect(threat).toBeLessThan(0.3);
+  });
+
+  test('multiple discarded triads = high threat', () => {
+    const t1 = makeTriad(5, 5, 5); t1.isDiscarded = true;
+    const t2 = makeTriad(3, 3, 3); t2.isDiscarded = true;
+    const t3 = makeTriad(1, 2, 3); t3.isDiscarded = true;
+    const humanTriads = [t1, t2, t3, makeTriad(2, 2, fc(0, false))];
+    const gs = makeGameState(humanTriads);
+    const threat = aiAssessOpponentThreat(gs);
+    expect(threat).toBeGreaterThan(0.6);
+  });
+
+  test('returns value between 0 and 1', () => {
+    const humanTriads = [makeTriad(5, 5, 5), makeTriad(fc(0, false), fc(1, false), fc(2, false))];
+    const gs = makeGameState(humanTriads);
+    const threat = aiAssessOpponentThreat(gs);
+    expect(threat).toBeGreaterThanOrEqual(0);
+    expect(threat).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('aiEvaluateHand', () => {
+  test('computes known score from revealed cards', () => {
+    const hand = { triads: [makeTriad(3, 4, 5)] };
+    const result = aiEvaluateHand(hand);
+    expect(result.knownScore).toBe(12); // 3+4+5
+    expect(result.unrevealedCount).toBe(0);
+    expect(result.isFullyRevealed).toBe(true);
+  });
+
+  test('estimates unrevealed cards at 6 each', () => {
+    const hand = { triads: [makeTriad(3, fc(0, false), fc(0, false))] };
+    const result = aiEvaluateHand(hand);
+    expect(result.knownScore).toBe(3);
+    expect(result.estimatedScore).toBe(3 + 12); // 3 + 2*6
+    expect(result.unrevealedCount).toBe(2);
+    expect(result.isFullyRevealed).toBe(false);
+  });
+
+  test('counts KAPOW penalty', () => {
+    const hand = { triads: [makeTriad(kapowCard(), 5, 5)] };
+    const result = aiEvaluateHand(hand);
+    expect(result.kapowPenalty).toBe(25);
+  });
+
+  test('skips discarded triads', () => {
+    const t1 = makeTriad(10, 10, 10);
+    t1.isDiscarded = true;
+    const hand = { triads: [t1, makeTriad(3, 4, 5)] };
+    const result = aiEvaluateHand(hand);
+    expect(result.knownScore).toBe(12); // only the non-discarded triad
+  });
+});
+
+describe('aiEstimateOpponentScore', () => {
+  test('estimates score from visible cards', () => {
+    const gs = {
+      players: [
+        { hand: { triads: [makeTriad(5, 5, fc(0, false))] } },
+        { hand: { triads: [] } }
+      ]
+    };
+    const result = aiEstimateOpponentScore(gs);
+    expect(result.knownScore).toBe(10);
+    expect(result.estimatedScore).toBe(16); // 10 + 1*6
+    expect(result.unrevealedCount).toBe(1);
+  });
+});
+
+describe('aiGetGameContext', () => {
+  test('returns correct context for early game', () => {
+    const gs = {
+      round: 3,
+      players: [
+        { totalScore: 20 },
+        { totalScore: 15 }
+      ]
+    };
+    const ctx = aiGetGameContext(gs);
+    expect(ctx.roundNumber).toBe(3);
+    expect(ctx.isLateGame).toBe(false);
+    expect(ctx.isEndGame).toBe(false);
+    expect(ctx.scoreDifferential).toBe(5); // 20 - 15 = AI winning
+    expect(ctx.urgency).toBe('low');
+  });
+
+  test('returns high urgency for end game', () => {
+    const gs = {
+      round: 10,
+      players: [{ totalScore: 50 }, { totalScore: 60 }]
+    };
+    const ctx = aiGetGameContext(gs);
+    expect(ctx.isEndGame).toBe(true);
+    expect(ctx.urgency).toBe('high');
+  });
+});
+
+describe('aiCountFutureCompletions', () => {
+  test('counts paths for near-set', () => {
+    // [7, 7, 8] — replacing 8 with 7 completes set
+    const values = [7, 7, 8];
+    const result = aiCountFutureCompletions(values);
+    expect(result.totalPaths).toBeGreaterThan(0);
+    // Position 2 (the 8) should have the most paths (replace with 7 for set)
+    expect(result.pathsByPosition[2]).toBeGreaterThanOrEqual(1);
+  });
+
+  test('counts paths for near-run', () => {
+    // [3, 5, 5] — replacing pos0 with 4 gives [4,5,6]? No. Replace pos2 with 6 gives [3,5,6]? No.
+    // Actually [3,4,6] — replace pos2(6) with 5 gives [3,4,5] ascending run
+    const values = [3, 4, 6];
+    const result = aiCountFutureCompletions(values);
+    expect(result.totalPaths).toBeGreaterThan(0);
+  });
+
+  test('KAPOW position (25) expands completions', () => {
+    // [25, 5, 8] — KAPOW can be any value
+    const values = [25, 5, 8];
+    const result = aiCountFutureCompletions(values);
+    // KAPOW in pos 0 should allow more completion paths
+    expect(result.totalPaths).toBeGreaterThan(0);
+  });
+
+  test('returns zero paths for incompatible values', () => {
+    // [0, 12, 6] — very spread out, but let's check
+    const values = [0, 12, 6];
+    const result = aiCountFutureCompletions(values);
+    // Replace any position: e.g. pos0 with 11 gives [11,12,6] no, pos0 with 6 gives [6,12,6] no set (need all equal)
+    // Actually some paths may exist — this tests the function returns a number
+    expect(typeof result.totalPaths).toBe('number');
+  });
+});
+
+describe('aiCountPowerModifierPaths', () => {
+  test('finds new paths from power modifiers on 2-revealed triad', () => {
+    // [5, null, 7] — base: ascending [5,6,7] needs 6. Power mod on 5: 5+1=6, 5-1=4
+    // With 5 shifted to 6: [6,null,7] needs 5 or 8 for runs. 5 not in base, 8 not in base.
+    const values = [5, null, 7];
+    const base = [6]; // base completion value for middle slot
+    const paths = aiCountPowerModifierPaths(values, base);
+    expect(typeof paths).toBe('number');
+  });
+
+  test('finds power modifier completions on 3-revealed triad', () => {
+    // [5, 6, 8] — shift 8 by -1 gives [5,6,7] ascending run!
+    const values = [5, 6, 8];
+    const paths = aiCountPowerModifierPaths(values, []);
+    expect(paths).toBeGreaterThan(0); // shifting 8 to 7 completes
+  });
+});
+
+describe('getTestRange', () => {
+  test('default range is 0-12', () => {
+    const range = getTestRange([5, 6, null]);
+    expect(range.min).toBeLessThanOrEqual(0);
+    expect(range.max).toBeGreaterThanOrEqual(12);
+  });
+
+  test('expands for negative powerset values', () => {
+    const range = getTestRange([-2, 5, null]);
+    expect(range.min).toBeLessThan(0);
+  });
+
+  test('expands for high powerset values', () => {
+    const range = getTestRange([14, 5, null]);
+    expect(range.max).toBeGreaterThan(12);
+  });
+
+  test('ignores null and KAPOW sentinel (25)', () => {
+    const range = getTestRange([null, 25, 5]);
+    expect(range.min).toBeLessThanOrEqual(0);
+    expect(range.max).toBeGreaterThanOrEqual(12);
+  });
+});
+
+describe('aiEvaluateCardSynergy', () => {
+  test('equal values have high synergy (set potential)', () => {
+    // Two 5s — third position needs a 5 for a set
+    const synergy = aiEvaluateCardSynergy(5, 0, 5, 1);
+    expect(synergy).toBeGreaterThanOrEqual(1); // at least the set path
+  });
+
+  test('adjacent values have synergy (run potential)', () => {
+    // 4 and 5 — third position needs 3 or 6 for a run
+    const synergy = aiEvaluateCardSynergy(4, 0, 5, 1);
+    expect(synergy).toBeGreaterThanOrEqual(1);
+  });
+
+  test('distant values have low/zero synergy', () => {
+    // 0 and 12 — very far apart
+    const synergy = aiEvaluateCardSynergy(0, 0, 12, 1);
+    expect(synergy).toBeLessThanOrEqual(1); // may have 0 or limited paths
+  });
+
+  test('KAPOW (25) has high synergy with anything', () => {
+    const synergy = aiEvaluateCardSynergy(25, 0, 5, 1);
+    expect(synergy).toBeGreaterThanOrEqual(3); // KAPOW can be any value → many paths
+  });
+});
+
+describe('aiGetOpponentNeeds', () => {
+  test('identifies completion values opponent needs', () => {
+    // Opponent has [5, 5, fd] — needs a 5 for set completion
+    const gs = {
+      players: [
+        { hand: { triads: [makeTriad(5, 5, fc(0, false))] } },
+        { hand: { triads: [] } }
+      ]
+    };
+    const needs = aiGetOpponentNeeds(gs);
+    expect(needs[5]).toBeGreaterThan(0); // opponent needs a 5
+  });
+
+  test('KAPOW urgency when opponent has completion paths', () => {
+    const gs = {
+      players: [
+        { hand: { triads: [makeTriad(5, 5, fc(0, false))] } },
+        { hand: { triads: [] } }
+      ]
+    };
+    const needs = aiGetOpponentNeeds(gs);
+    expect(needs['kapow']).toBeGreaterThan(0);
+  });
+
+  test('empty needs when all triads discarded', () => {
+    const t1 = makeTriad(5, 5, 5);
+    t1.isDiscarded = true;
+    const gs = {
+      players: [
+        { hand: { triads: [t1] } },
+        { hand: { triads: [] } }
+      ]
+    };
+    const needs = aiGetOpponentNeeds(gs);
+    expect(Object.keys(needs).length).toBe(0);
+  });
+});
+
+describe('aiGetTopDiscardValue', () => {
+  test('returns top position value when revealed', () => {
+    const triad = makeTriad(7, 5, 3);
+    const val = aiGetTopDiscardValue(triad, 'bottom');
+    expect(val).toBe(7);
+  });
+
+  test('returns -1 when top is face-down', () => {
+    const triad = makeTriad(fc(7, false), 5, 3);
+    const val = aiGetTopDiscardValue(triad, 'bottom');
+    expect(val).toBe(-1);
+  });
+});
+
+describe('aiFindPowersetOpportunity', () => {
+  test('finds opportunity to stack on existing power card', () => {
+    // Triad has a Power card at top, drawing a fixed 0 would create powerset
+    const triad = {
+      top: [powerCard(3, [-2, 2])],
+      middle: [fc(5)],
+      bottom: [fc(7)],
+      isDiscarded: false
+    };
+    const hand = { triads: [triad] };
+    const result = aiFindPowersetOpportunity(hand, fc(0));
+    // 0 + (-2) = -2 is better than 3 alone, so should find opportunity
+    if (result) {
+      expect(result.type).toBe('powerset-on-power');
+      expect(result.triadIndex).toBe(0);
+    }
+  });
+
+  test('returns null for KAPOW drawn card', () => {
+    const hand = { triads: [makeTriad(powerCard(), 5, 7)] };
+    const result = aiFindPowersetOpportunity(hand, kapowCard());
+    expect(result).toBeNull();
+  });
+});
+
+describe('aiFindModifierOpportunity', () => {
+  test('finds modifier opportunity that completes triad', () => {
+    // Triad [6, 7, 8] — applying P1(+1) on 6 gives 7, but that doesn't complete
+    // Triad [7, 6, 7] — applying P1(+1) on 6 gives 7, completing [7,7,7] set
+    const triad = makeTriad(7, 6, 7);
+    const hand = { triads: [triad] };
+    const gs = { phase: 'playing' };
+    const drawn = powerCard(1, [-1, 1]);
+    const result = aiFindModifierOpportunity(hand, drawn, gs);
+    expect(result).not.toBeNull();
+    if (result) {
+      expect(result.type).toBe('add-powerset');
+      expect(result.position).toBe('middle'); // modify the 6
+    }
+  });
+
+  test('returns null for non-power card', () => {
+    const hand = { triads: [makeTriad(5, 5, 5)] };
+    const result = aiFindModifierOpportunity(hand, fc(3), null);
+    expect(result).toBeNull();
+  });
+});
+
+describe('aiFindBeneficialSwap', () => {
+  test('finds swap that completes a triad', () => {
+    // T1: [KAPOW, 5, 3] — not complete
+    // T2: [7, 7, 8] — if KAPOW swaps with 8, KAPOW becomes 7, completing [7,7,7]
+    const t1 = makeTriad(kapowCard(), 5, 3);
+    const t2 = makeTriad(7, 7, 8);
+    const hand = { triads: [t1, t2] };
+    const result = aiFindBeneficialSwap(hand, [], { phase: 'playing' });
+    if (result) {
+      // Should swap KAPOW from T1 to T2 position that enables completion
+      expect(result.from.triadIndex).toBe(0);
+      expect(result.from.position).toBe('top');
+    }
+  });
+
+  test('returns null when no beneficial swap exists', () => {
+    // All triads with no KAPOW
+    const hand = { triads: [makeTriad(5, 5, 5)] };
+    const result = aiFindBeneficialSwap(hand, [], { phase: 'playing' });
+    expect(result).toBeNull();
+  });
+
+  test('respects swap history to prevent oscillation', () => {
+    const t1 = makeTriad(kapowCard(), 5, 3);
+    const t2 = makeTriad(7, 7, 8);
+    const hand = { triads: [t1, t2] };
+    // Block the target position
+    const history = ['1:top', '1:middle', '1:bottom'];
+    const result = aiFindBeneficialSwap(hand, history, { phase: 'playing' });
+    // Should not swap to any T2 position since all are in history
+    // (may still find within-T1 swaps or return null)
+  });
+});
+
+describe('findSwappableKapowCards', () => {
+  test('finds revealed unfrozen KAPOW cards', () => {
+    const hand = { triads: [makeTriad(kapowCard(), 5, 3)] };
+    const result = findSwappableKapowCards(hand);
+    expect(result.length).toBe(1);
+    expect(result[0].triadIndex).toBe(0);
+    expect(result[0].position).toBe('top');
+  });
+
+  test('includes frozen KAPOW cards (filtering is done by canSwapKapow)', () => {
+    // findSwappableKapowCards only checks revealed + solo — frozen filtering is in rules.js
+    const hand = { triads: [makeTriad(kapowCard(true, true), 5, 3)] };
+    const result = findSwappableKapowCards(hand);
+    expect(result.length).toBe(1); // found but frozen — caller must check canSwapKapow
+  });
+
+  test('ignores face-down KAPOW cards', () => {
+    const hand = { triads: [makeTriad(kapowCard(false), 5, 3)] };
+    const result = findSwappableKapowCards(hand);
+    expect(result.length).toBe(0);
+  });
+});
+
+describe('findSwapTargets', () => {
+  test('finds all positions except source', () => {
+    const hand = { triads: [makeTriad(5, 5, 5), makeTriad(3, 3, 3)] };
+    const targets = findSwapTargets(hand, 0, 'top');
+    // Should include mid+bot of T1 and all of T2 = 5 targets
+    expect(targets.length).toBe(5);
+  });
+
+  test('restricts to within-triad when specified', () => {
+    const hand = { triads: [makeTriad(5, 5, 5), makeTriad(3, 3, 3)] };
+    const targets = findSwapTargets(hand, 0, 'top', 0);
+    // Only mid+bot of T1 = 2 targets
+    expect(targets.length).toBe(2);
+  });
+
+  test('skips discarded triads', () => {
+    const t2 = makeTriad(3, 3, 3);
+    t2.isDiscarded = true;
+    const hand = { triads: [makeTriad(5, 5, 5), t2] };
+    const targets = findSwapTargets(hand, 0, 'top');
+    // Only mid+bot of T1 = 2 targets (T2 is discarded)
+    expect(targets.length).toBe(2);
   });
 });

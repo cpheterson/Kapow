@@ -4,6 +4,15 @@
 
 ## Version History
 
+### 03-12-2026
+
+**v1 [Eric]** feat(ai): port evaluation functions from kapow.js to ES module
+- Ported 17 AI functions (~1800 lines) from IIFE to ES module with exports
+- Functions: aiScorePlacement, aiAnalyzeTriad, aiEvaluateHand, aiEstimateOpponentScore, aiGetGameContext, aiAssessOpponentThreat, aiCountFutureCompletions, aiCountPowerModifierPaths, getTestRange, aiEvaluateCardSynergy, aiGetOpponentNeeds, aiGetTopDiscardValue, aiFindPowersetOpportunity, aiFindModifierOpportunity, aiFindBeneficialSwap, findSwappableKapowCards, findSwapTargets
+- Replaced simpler aiEvaluateDiscardSafety with full kapow.js version (uses aiAnalyzeTriad)
+- Added gameState parameter to functions that used IIFE closure (aiScorePlacement, aiFindModifierOpportunity, aiFindBeneficialSwap)
+- 58 new tests covering all ported functions (227 total, 169 existing preserved)
+
 ### 03-11-2026
 
 **v1 [Chuck]** AI: fix final-turn KAPOW preferring low-value completion over high-value (R2T35).
