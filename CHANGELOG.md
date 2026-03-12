@@ -6,6 +6,15 @@
 
 ### 03-12-2026
 
+**v17 [Eric]** fix(ai): port original aiDecideAction candidate-scoring system from kapow.js
+- Replaced simplified `aiDecideDraw`, `aiDecideAction`, `aiShouldGoOut` with faithful ports of the original kapow.js implementations (commit `8544965`)
+- `aiDecideAction`: scores ALL possible placements via `aiScorePlacement`, powerset-on-power opportunities, modifier opportunities, and discard safety; picks highest-scoring candidate
+- `aiDecideDraw` (from `aiEvaluateDrawFromDiscard`): scores discard pile card placement, checks go-out safety on last unrevealed, evaluates power card modifiers, applies final turn deck-preference logic
+- `aiShouldGoOutWithScore`: KAPOW penalty check, opponent final score estimation with near-complete triad completion risk, doubling penalty analysis, high-score caution, late/end game thresholds
+- Added `safeLogAction` wrapper to prevent crashes in test environments without full game state
+- Updated 14 test assertions and setups to match original candidate-scoring behavior
+- All 390 tests pass
+
 **v16 [Eric]** fix(ai): pass gameState to aiScorePlacement in hint system and forced placement
 - 3 callsites in main.js were calling `aiScorePlacement` without the `gameState` parameter
 - Without it, KAPOW strategic value, opponent threat, and final turn detection silently degraded

@@ -6,6 +6,14 @@ import { getPositionValue, countRevealedCards } from './hand.js';
 import { isTriadComplete, getEffectiveValues, getKapowValueForCompletion, isSet, isAscendingRun, isDescendingRun } from './triad.js';
 import { canSwapKapow } from './rules.js';
 import { scoreHand } from './scoring.js';
+import { logAction as _logAction } from './logging.js';
+
+// Safe wrapper for logAction — guards against incomplete state objects in tests
+function safeLogAction(state, playerIndex, text) {
+  if (state && state.actionLog && state.round !== undefined && state.turnNumber !== undefined) {
+    _logAction(state, playerIndex, text);
+  }
+}
 
 /**
  * AI decides which 2 cards to reveal on the first turn.
@@ -35,75 +43,97 @@ export function aiFirstTurnReveals(hand) {
 
 /**
  * AI decides whether to draw from deck or discard pile.
- * Strategy: Take discard if it would help complete a triad or is low value.
+ * Ported faithfully from kapow.js aiEvaluateDrawFromDiscard().
+ * Returns 'deck' or 'discard' string for backward compatibility.
  */
 export function aiDecideDraw(gameState) {
-  const aiHand = gameState.players[1].hand;
-  const discardTop = gameState.discardPile.length > 0
-    ? gameState.discardPile[gameState.discardPile.length - 1]
-    : null;
-
+  var discardTop = gameState.discardPile.length > 0
+    ? gameState.discardPile[gameState.discardPile.length - 1] : null;
   if (!discardTop) return 'deck';
 
-  // If discard card could complete a triad, take it
+  var aiHand = gameState.players[1].hand;
+
+  // Check if it completes a triad — always draw
   if (wouldHelpCompleteTriad(aiHand, discardTop)) {
     return 'discard';
   }
 
-  // If discard card is low value (0-3), consider taking it
-  if (discardTop.type === 'fixed' && discardTop.faceValue <= 3) {
-    // Take it if we have a high-value revealed card to replace
-    const highPos = findHighestValuePosition(aiHand);
-    if (highPos && highPos.value > 5) {
-      return 'discard';
+  // Score the best placement for this specific card
+  var bestPlacementScore = -999;
+  var bestPos = null;
+  for (var t = 0; t < aiHand.triads.length; t++) {
+    var triad = aiHand.triads[t];
+    if (triad.isDiscarded) continue;
+    var positions = ['top', 'middle', 'bottom'];
+    for (var p = 0; p < positions.length; p++) {
+      var ps = aiScorePlacement(aiHand, discardTop, t, positions[p], { excludeSafetySwapBonus: true }, gameState);
+      if (ps > bestPlacementScore) {
+        bestPlacementScore = ps;
+        bestPos = { triadIndex: t, position: positions[p] };
+      }
     }
   }
 
-  // On final turns, any guaranteed improvement is worth drawing from discard.
-  // Evaluate both position replacement and power card modifier opportunities.
-  if (gameState.phase === 'finalTurns') {
-    let bestImprovement = 0;
+  // Before drawing from discard, check if drawing this card would FORCE going out
+  // with a bad score. This happens when the AI has only one face-down card left and
+  // any placement would leave the hand fully revealed. Drawing from the discard pile
+  // is especially dangerous because it removes the ability to discard (can't discard
+  // a card drawn from the discard pile). If placing this card would force going out
+  // and going out is inadvisable, prefer the draw pile instead.
+  var handEvalDraw = aiEvaluateHand(aiHand);
+  if (handEvalDraw.unrevealedCount === 1) {
+    // Only one face-down card — any placement reveals it and triggers going out.
+    // Simulate score: known revealed cards + drawn card value.
+    var drawnCardValue = discardTop.type === 'kapow' ? 25 : discardTop.faceValue;
+    var simulatedGoOutScore = handEvalDraw.knownScore + drawnCardValue;
+    var goOutCheck = aiShouldGoOutWithScore(gameState, simulatedGoOutScore);
+    if (!goOutCheck.shouldGoOut) {
+      return 'deck';
+    }
+  }
 
-    // Check position replacements
-    for (let t = 0; t < aiHand.triads.length; t++) {
-      const triad = aiHand.triads[t];
-      if (triad.isDiscarded) continue;
-      for (const pos of ['top', 'middle', 'bottom']) {
-        if (triad[pos].length > 0 && triad[pos][0].isRevealed) {
-          const currentValue = getPositionValue(triad[pos]);
-          const newValue = discardTop.type === 'kapow' ? 25 : discardTop.faceValue;
-          const improvement = currentValue - newValue;
-          if (improvement > bestImprovement) bestImprovement = improvement;
+  // Also evaluate power card modifier opportunities (stacking beneath face cards)
+  if (discardTop.type === 'power') {
+    for (var mt = 0; mt < aiHand.triads.length; mt++) {
+      var mTriad = aiHand.triads[mt];
+      if (mTriad.isDiscarded) continue;
+      var mPositions = ['top', 'middle', 'bottom'];
+      for (var mp = 0; mp < mPositions.length; mp++) {
+        var mPosCards = mTriad[mPositions[mp]];
+        if (mPosCards.length === 0 || !mPosCards[0].isRevealed) continue;
+        if (mPosCards[0].type === 'kapow') continue;
+        if (mPosCards.length > 1) continue; // already has a modifier
+        var mCurrentValue = getPositionValue(mPosCards);
+        for (var mmi = 0; mmi < discardTop.modifiers.length; mmi++) {
+          var modImprovement = -discardTop.modifiers[mmi]; // negative modifier = positive improvement
+          if (modImprovement > bestPlacementScore) bestPlacementScore = modImprovement;
         }
       }
     }
+  }
 
-    // Check power card modifier opportunities
-    if (discardTop.type === 'power') {
-      for (let t = 0; t < aiHand.triads.length; t++) {
-        const triad = aiHand.triads[t];
-        if (triad.isDiscarded) continue;
-        for (const pos of ['top', 'middle', 'bottom']) {
-          const posCards = triad[pos];
-          if (posCards.length === 0 || !posCards[0].isRevealed) continue;
-          if (posCards[0].type === 'kapow') continue;
-          if (posCards.length > 1) continue; // already has a modifier
-          for (const mod of discardTop.modifiers) {
-            const modImprovement = -mod; // negative modifier = positive improvement
-            if (modImprovement > bestImprovement) bestImprovement = modImprovement;
-          }
-        }
-      }
+  // On final turns, only draw from discard if the card value is at or below the
+  // average deck card value (~6). Above that, the deck statistically offers better
+  // savings — and bad deck draws can always be discarded with no downside.
+  // E.g., discard 10 replacing KAPOW(25) saves 15, but avg deck draw saves ~19.
+  var isFinalTurnDraw = gameState && gameState.phase === 'finalTurns';
+  if (isFinalTurnDraw && bestPlacementScore > 0) {
+    var discardPlacementValue = discardTop.type === 'kapow' ? 25 :
+      discardTop.type === 'power' ? 0 : discardTop.faceValue;
+    if (discardPlacementValue <= 6) {
+      return 'discard';
     }
+    // Discard value > 6: deck likely offers better improvement
+  }
 
-    if (bestImprovement > 0) {
-      // Only draw from discard if the card value is at or below the average
-      // deck card value (~6). Above that, the deck statistically offers better
-      // savings — and bad deck draws can always be discarded with no downside.
-      var discardPlacementValue = discardTop.type === 'kapow' ? 25 :
-        discardTop.type === 'power' ? 0 : discardTop.faceValue;
-      if (discardPlacementValue <= 6) return 'discard';
-    }
+  // Draw if the best placement gives meaningful improvement (> threshold)
+  if (bestPlacementScore >= 8) {
+    return 'discard';
+  }
+
+  // Draw low-value cards that build toward runs/sets
+  if (discardTop.type === 'fixed' && discardTop.faceValue <= 3 && bestPlacementScore >= 3) {
+    return 'discard';
   }
 
   return 'deck';
@@ -111,284 +141,233 @@ export function aiDecideDraw(gameState) {
 
 /**
  * AI decides what to do with a drawn card.
- * Returns an action object.
+ * Ported faithfully from kapow.js aiDecideAction() — candidate-scoring system.
+ * Scores ALL possible placements via aiScorePlacement, powerset opportunities,
+ * modifier opportunities, and the discard option, then picks the highest score.
  */
 export function aiDecideAction(gameState, drawnCard) {
-  const aiHand = gameState.players[1].hand;
-  const isFinalTurn = gameState.phase === 'finalTurns';
+  var aiHand = gameState.players[1].hand;
+  var drewFromDiscard = gameState.drawnFromDiscard;
+  var candidates = [];  // { action, score, reason }
 
-  // Final turn: pure score shedding — compare all options by actual points saved.
-  if (isFinalTurn) {
-    const cardValue = drawnCard.type === 'kapow' ? 25 : drawnCard.faceValue;
+  // Score all possible placements
+  for (var t = 0; t < aiHand.triads.length; t++) {
+    var triad = aiHand.triads[t];
+    if (triad.isDiscarded) continue;
+    var positions = ['top', 'middle', 'bottom'];
+    for (var p = 0; p < positions.length; p++) {
+      var ps = aiScorePlacement(aiHand, drawnCard, t, positions[p], {}, gameState);
 
-    // Check if drawn card completes a triad — find the BEST completion (highest points saved).
-    // findTriadCompletionSpot returns only the first match; on final turn we must compare all.
-    let completionSpot = null;
-    let completionSavings = 0;
-    for (let t = 0; t < aiHand.triads.length; t++) {
-      const cTriad = aiHand.triads[t];
-      if (cTriad.isDiscarded) continue;
-      for (const pos of ['top', 'middle', 'bottom']) {
-        const origCards = cTriad[pos];
-        cTriad[pos] = [{ ...drawnCard, isRevealed: true }];
-        const completes = isTriadComplete(cTriad);
-        cTriad[pos] = origCards;
-        if (completes) {
-          let savings = 0;
-          for (const p of ['top', 'middle', 'bottom']) {
-            if (cTriad[p].length > 0) savings += getPositionValue(cTriad[p]);
+      // Check if this placement would leave the AI fully revealed (going out).
+      // Two paths to going out:
+      // (A) Placing into a face-down slot — reveals the last unrevealed card.
+      // (B) Placing a card that completes a triad — the triad gets discarded, and
+      //     if the remaining triads are all revealed/discarded, the AI goes out.
+      //     This path was previously undetected, causing the AI to go out with a
+      //     high-value triad still in hand (e.g., completing [3,2,1] while holding
+      //     [12,12,11], resulting in a doubled score of 70+).
+      var posCards = triad[positions[p]];
+      var isUnrevealed = posCards.length > 0 && !posCards[0].isRevealed;
+
+      // Simulate placement to detect triad completion
+      var origSimCards = triad[positions[p]];
+      triad[positions[p]] = [{ id: drawnCard.id, type: drawnCard.type,
+        faceValue: drawnCard.faceValue, modifiers: drawnCard.modifiers,
+        isRevealed: true,  }];
+      var wouldComplete = isTriadComplete(triad);
+      triad[positions[p]] = origSimCards; // restore
+
+      if (wouldComplete) {
+        // Placement completes this triad — it would be discarded.
+        // Check if remaining triads are all revealed/discarded → AI goes out.
+        var remainingFullyRevealed = true;
+        var remainingScore = 0;
+        for (var rt = 0; rt < aiHand.triads.length; rt++) {
+          if (rt === t) continue; // this triad will be discarded
+          var rTriad = aiHand.triads[rt];
+          if (rTriad.isDiscarded) continue;
+          var rPositions = ['top', 'middle', 'bottom'];
+          for (var rp = 0; rp < 3; rp++) {
+            var rCards = rTriad[rPositions[rp]];
+            if (rCards.length === 0 || !rCards[0].isRevealed) {
+              remainingFullyRevealed = false;
+              break;
+            }
+            remainingScore += getPositionValue(rCards);
           }
-          if (savings > completionSavings) {
-            completionSavings = savings;
-            completionSpot = { triadIndex: t, position: pos };
+          if (!remainingFullyRevealed) break;
+        }
+        if (remainingFullyRevealed && gameState.phase !== 'finalTurns') {
+          // Completing this triad would trigger going out with remainingScore pts
+          // (Skip this check on final turns — the round ends regardless, and completing
+          // a high-value triad is always good. The -200 penalty was incorrectly blocking
+          // e.g. completing T4[P1,6,7]=14pt in favor of T2[0,0,P1]=1pt on final turn.)
+          var goOutDecisionC = aiShouldGoOutWithScore(gameState, remainingScore);
+          if (goOutDecisionC.shouldGoOut) {
+            ps += 50;  // boost — go out!
+          } else {
+            // Dangerous: completing this triad forces going out with a bad score.
+            // BUT: compare going out doubled vs. getting stuck with all remaining
+            // points when the opponent goes out first. When opponent is close to going
+            // out (high threat), holding high-value cards is often worse than going out
+            // doubled. E.g., going out doubled (10→20) beats holding 34+ points.
+            var opThreat = aiAssessOpponentThreat(gameState);
+            if (opThreat >= 0.5) {
+              // Opponent is threatening — estimate cost of NOT going out.
+              // If opponent goes out, AI is stuck with ALL remaining hand points
+              // (including the triad we'd complete AND the remaining triads).
+              var stuckScore = remainingScore;
+              // Add points from the triad we'd be completing (since we won't complete it)
+              var completingTriadPts = 0;
+              var ctPositions = ['top', 'middle', 'bottom'];
+              for (var ctp = 0; ctp < 3; ctp++) {
+                var ctCards = triad[ctPositions[ctp]];
+                if (ctCards.length > 0 && ctCards[0].isRevealed) {
+                  completingTriadPts += getPositionValue(ctCards);
+                } else {
+                  completingTriadPts += 6; // estimated face-down
+                }
+              }
+              stuckScore += completingTriadPts;
+              var doubledGoOut = remainingScore * 2;
+              if (doubledGoOut < stuckScore) {
+                // Going out doubled is STILL better than getting stuck — allow it.
+                // Small penalty instead of -200 to slightly prefer non-forced alternatives.
+                ps -= 10;
+              } else {
+                // Going out doubled is worse than getting stuck — full block.
+                ps -= 200;
+              }
+            } else {
+              // Low threat — opponent not close to going out. Full block is fine.
+              ps -= 200;
+            }
+          }
+        }
+      } else if (isUnrevealed) {
+        // Placing into a face-down slot — check if it's the last unrevealed
+        var handEval = aiEvaluateHand(aiHand);
+        if (handEval.unrevealedCount === 1) {
+          // This would trigger going out — simulate the ACTUAL score after placement
+          var simulatedScore = handEval.knownScore + (drawnCard.type === 'kapow' ? 25 : drawnCard.faceValue);
+          var goOutDecision = aiShouldGoOutWithScore(gameState, simulatedScore);
+          if (goOutDecision.shouldGoOut) {
+            ps += 50;  // boost — go out!
+          } else {
+            ps -= 50;  // penalize — don't go out yet
           }
         }
       }
-    }
 
-    // Check best replacement — highest value card replaced by drawn card
-    const highPos = findHighestValuePosition(aiHand);
-    const replacementSavings = (highPos && highPos.value > cardValue) ?
-      highPos.value - cardValue : 0;
+      var reason = 'places in Triad ' + (t + 1);
+      if (ps >= 80) reason = 'completes Triad ' + (t + 1);
+      else if (ps >= 15) reason = 'builds toward completing Triad ' + (t + 1);
+      else if (ps > 0) reason = 'reduces score in Triad ' + (t + 1);
 
-    // Pick whichever saves more points
-    if (completionSavings > 0 && completionSavings >= replacementSavings) {
-      return { type: 'replace', ...completionSpot };
+      candidates.push({
+        action: { type: 'replace', triadIndex: t, position: positions[p] },
+        score: ps,
+        reason: reason
+      });
+
+      // DEBUG: Log each placement candidate for analysis
+      var drawnCardDesc = drawnCard.type === 'power' ? 'P' + drawnCard.faceValue :
+                          (drawnCard.type === 'kapow' ? 'KAPOW' : drawnCard.faceValue);
+      var posCard0 = triad[positions[p]].length > 0 ? triad[positions[p]][0] : null;
+      var posCardsDesc = !posCard0 ? 'empty' :
+                         !posCard0.isRevealed ? 'fd' :
+                         posCard0.type === 'power' ? 'P' + posCard0.faceValue :
+                         posCard0.type === 'kapow' ? 'KAPOW' :
+                         posCard0.faceValue;
+      safeLogAction(gameState, 1, 'DEBUG: T' + (t+1) + ' ' + positions[p] + ' (' + posCardsDesc + '\u2192' + drawnCardDesc + ') score=' + ps);
     }
-    if (replacementSavings > 0) {
-      return { type: 'replace', triadIndex: highPos.triadIndex, position: highPos.position };
+  }
+
+  // Score powerset-on-power opportunities
+  var isFinalTurnPSP = gameState && gameState.phase === 'finalTurns';
+  if (drawnCard.type === 'fixed' || drawnCard.type === 'power') {
+    var powersetSpot = aiFindPowersetOpportunity(aiHand, drawnCard);
+    if (powersetSpot) {
+      // Score it comparably: use the triad score improvement
+      var existingValue = getPositionValue(aiHand.triads[powersetSpot.triadIndex][powersetSpot.position]);
+      var modCard = aiHand.triads[powersetSpot.triadIndex][powersetSpot.position][0];
+      var modValue = powersetSpot.usePositive ? modCard.modifiers[1] : modCard.modifiers[0];
+      var pspNewValue = (drawnCard.type === 'fixed' ? drawnCard.faceValue : drawnCard.faceValue) + modValue;
+      var improvement = existingValue - pspNewValue;
+      // On final turns, no bonus — pure score shedding only
+      var pspBonus = isFinalTurnPSP ? 0 : 10;
+      candidates.push({
+        action: powersetSpot,
+        score: improvement + pspBonus,
+        reason: 'creates powerset in Triad ' + (powersetSpot.triadIndex + 1)
+      });
     }
+  }
+
+  // Score modifier opportunity (drawn Power card as modifier)
+  var modOpp = aiFindModifierOpportunity(aiHand, drawnCard, gameState);
+  if (modOpp) {
+    candidates.push({
+      action: modOpp,
+      score: modOpp.score,
+      reason: 'uses Power as modifier in Triad ' + (modOpp.triadIndex + 1)
+    });
+  }
+
+  // Score discard option (only if drew from deck, not discard)
+  // Scoring logic (two-segment formula):
+  //   safety >= 50: mild positive slope — safe discards are acceptable alternatives.
+  //     score = (safety - 50) * 0.15 - 2  → -2 at s=50, up to ~+5 at s=100
+  //   safety < 50: steep negative slope — dangerous discards lose badly to placements.
+  //     score = -(50 - safety) * 0.4 - 2  → -2 at s=50, -22 at s=0
+  //   Extra below 40: -(40 - safety) * 0.4 → extra steepness for triad-completing discards
+  //     e.g., safety=39: -6.4 - 0.4 = -6.8 (beats marginal placements at -4.x)
+  //          safety=25: -12 - 6 = -18   safety=15: -16 - 10 = -26
+  // This ensures even a marginal placement (-4.x) beats a mildly dangerous discard (-6.8+).
+  if (!drewFromDiscard) {
+    var discardSafety = aiEvaluateDiscardSafety(drawnCard, gameState);
+    var discardScore;
+    if (discardSafety >= 50) {
+      discardScore = (discardSafety - 50) * 0.15 - 2;
+    } else {
+      discardScore = -(50 - discardSafety) * 0.4 - 2;
+      if (discardSafety < 40) {
+        discardScore -= (40 - discardSafety) * 0.4; // extra steepness below 40
+      }
+    }
+    candidates.push({
+      action: { type: 'discard' },
+      score: discardScore,
+      reason: 'discards (safety=' + discardSafety + ')'
+    });
+  }
+
+  // Pick the highest-scoring candidate
+  var bestCandidate = null;
+  for (var i = 0; i < candidates.length; i++) {
+    if (!bestCandidate || candidates[i].score > bestCandidate.score) {
+      bestCandidate = candidates[i];
+    }
+  }
+
+  if (!bestCandidate) {
     return { type: 'discard' };
   }
 
-  // Strategy 1: If drawn card completes a triad, place it
-  const completionSpot = findTriadCompletionSpot(aiHand, drawnCard);
-  if (completionSpot) {
-    // KAPOW opportunity cost: during playing phase, check whether KAPOW is worth
-    // more as a flexible wild card than completing this low-value triad.
-    let skipCompletion = false;
-    if (drawnCard.type === 'kapow' && gameState.phase === 'playing') {
-      const cTriad = aiHand.triads[completionSpot.triadIndex];
-      let totalTriadPoints = 0;
-      for (const pos of ['top', 'middle', 'bottom']) {
-        const posCards = cTriad[pos];
-        if (posCards.length > 0 && posCards[0].isRevealed) {
-          totalTriadPoints += getPositionValue(posCards);
-        } else {
-          totalTriadPoints += 6;
-        }
-      }
-      let fdCount = 0;
-      for (let t = 0; t < aiHand.triads.length; t++) {
-        if (t === completionSpot.triadIndex) continue;
-        const triad = aiHand.triads[t];
-        if (triad.isDiscarded) continue;
-        for (const pos of ['top', 'middle', 'bottom']) {
-          if (triad[pos].length > 0 && !triad[pos][0].isRevealed) {
-            fdCount++;
-          }
-        }
-      }
-      if (totalTriadPoints < fdCount * 3) {
-        skipCompletion = true;
-      }
-    }
-    // Completion feeds opponent go-out: when the opponent has just 1 triad left,
-    // check if any revealed card in our completing triad is what they need to
-    // complete it. If so, they go out and we're stuck with all remaining cards.
-    if (!skipCompletion) {
-      const oppHand = gameState.players[0].hand;
-      let oppRemaining = 0;
-      let oppLastTriad = null;
-      for (let t = 0; t < oppHand.triads.length; t++) {
-        if (!oppHand.triads[t].isDiscarded) {
-          oppRemaining++;
-          oppLastTriad = oppHand.triads[t];
-        }
-      }
-      if (oppRemaining === 1 && oppLastTriad) {
-        // Find opponent's completion values (2-revealed triads only)
-        const positions = ['top', 'middle', 'bottom'];
-        let oppRevealed = 0;
-        const oppValues = [null, null, null];
-        for (let i = 0; i < 3; i++) {
-          const pc = oppLastTriad[positions[i]];
-          if (pc.length > 0 && pc[0].isRevealed) {
-            oppRevealed++;
-            oppValues[i] = getPositionValue(pc);
-          }
-        }
-        if (oppRevealed === 2) {
-          let emptyIdx = -1;
-          for (let i = 0; i < 3; i++) { if (oppValues[i] === null) { emptyIdx = i; break; } }
-          if (emptyIdx >= 0) {
-            const oppCompVals = [];
-            for (let v = 0; v <= 12; v++) {
-              const tv = oppValues.slice();
-              tv[emptyIdx] = v;
-              if (isSet(tv) || isAscendingRun(tv) || isDescendingRun(tv)) {
-                oppCompVals.push(v);
-              }
-            }
-            // Check if any revealed card in our completing triad feeds this
-            const cTriad = aiHand.triads[completionSpot.triadIndex];
-            for (const pos of positions) {
-              if (pos === completionSpot.position) continue;
-              const pc = cTriad[pos];
-              if (pc.length === 0 || !pc[0].isRevealed || pc[0].type !== 'fixed') continue;
-              if (oppCompVals.includes(pc[0].faceValue)) {
-                skipCompletion = true;
-                break;
-              }
-            }
-          }
-        }
-      }
-    }
-    if (!skipCompletion) {
-      return { type: 'replace', ...completionSpot };
-    }
-
-    // KAPOW flexibility: place in a partially-revealed triad (has at least one
-    // revealed card for context) at a face-down position. KAPOW adapts to
-    // whatever neighbors get revealed later.
-    // Skip the completing triad if completion was blocked due to feeding
-    // opponent go-out — placing KAPOW there would still complete it.
-    let bestFlexSpot = null;
-    let bestFdNeighbors = 0;
-    for (let t = 0; t < aiHand.triads.length; t++) {
-      if (t === completionSpot.triadIndex) continue;
-      const triad = aiHand.triads[t];
-      if (triad.isDiscarded) continue;
-      let hasRevealed = false;
-      const fdPositions = [];
-      for (const pos of ['top', 'middle', 'bottom']) {
-        if (triad[pos].length > 0) {
-          if (triad[pos][0].isRevealed) hasRevealed = true;
-          else fdPositions.push({ triadIndex: t, position: pos });
-        }
-      }
-      if (hasRevealed && fdPositions.length > bestFdNeighbors) {
-        bestFdNeighbors = fdPositions.length;
-        bestFlexSpot = fdPositions[0];
-      }
-    }
-    if (bestFlexSpot) {
-      return { type: 'replace', ...bestFlexSpot };
-    }
+  // DEBUG: Log all candidates with scores for analysis
+  var debugMsg = 'CANDIDATES: ';
+  for (var ci = 0; ci < candidates.length; ci++) {
+    debugMsg += candidates[ci].action.type === 'replace' ?
+      ('T' + (candidates[ci].action.triadIndex+1) + '-' + candidates[ci].action.position + ':' + candidates[ci].score) :
+      (candidates[ci].action.type + ':' + candidates[ci].score);
+    if (ci < candidates.length - 1) debugMsg += ' | ';
   }
+  debugMsg += ' \u2192 CHOSEN: ' + (bestCandidate.action.type === 'replace' ?
+    ('T' + (bestCandidate.action.triadIndex+1) + '-' + bestCandidate.action.position) :
+    bestCandidate.action.type);
+  safeLogAction(gameState, 1, debugMsg);
 
-  // Strategy 2: If power card, consider building powerset
-  if (drawnCard.type === 'power') {
-    const powersetSpot = findBestPowersetSpot(aiHand, drawnCard);
-    if (powersetSpot) {
-      return { type: 'powerset', ...powersetSpot };
-    }
-  }
-
-  // Strategy 3: If low value card (0-4), prefer untouched triads then replace highest
-  if (drawnCard.type === 'fixed' && drawnCard.faceValue <= 4) {
-    // Low-value starter: when 2+ untouched triads exist, seed one instead of
-    // making marginal improvements to developed triads
-    let untouchedCount = 0;
-    let firstUntouched = null;
-    for (let t = 0; t < aiHand.triads.length; t++) {
-      const triad = aiHand.triads[t];
-      if (triad.isDiscarded) continue;
-      let hasRevealed = false;
-      for (const pos of ['top', 'middle', 'bottom']) {
-        if (triad[pos].length > 0 && triad[pos][0].isRevealed) { hasRevealed = true; break; }
-      }
-      if (!hasRevealed) {
-        untouchedCount++;
-        if (!firstUntouched) firstUntouched = { triadIndex: t, position: 'middle' };
-      }
-    }
-    if (untouchedCount >= 2 && firstUntouched) {
-      return { type: 'replace', ...firstUntouched };
-    }
-
-    const highPos = findHighestValuePosition(aiHand);
-    if (highPos && highPos.value > drawnCard.faceValue + 2) {
-      return { type: 'replace', triadIndex: highPos.triadIndex, position: highPos.position };
-    }
-  }
-
-  // Strategy 4: If KAPOW! card, prefer seeding face-down slots, then replace highest
-  if (drawnCard.type === 'kapow') {
-    // Prefer face-down position in a triad that already has revealed cards.
-    // KAPOW adapts to whatever neighbors get revealed later.
-    let bestSeedSpot = null;
-    let bestFdCount = 0;
-    for (let t = 0; t < aiHand.triads.length; t++) {
-      const triad = aiHand.triads[t];
-      if (triad.isDiscarded) continue;
-      let hasRevealed = false;
-      const fdPositions = [];
-      for (const pos of ['top', 'middle', 'bottom']) {
-        if (triad[pos].length > 0) {
-          if (triad[pos][0].isRevealed) hasRevealed = true;
-          else fdPositions.push({ triadIndex: t, position: pos });
-        }
-      }
-      if (hasRevealed && fdPositions.length > bestFdCount) {
-        // Skip triads where KAPOW would immediately complete (only 1 fd = 2 revealed).
-        // KAPOW completions are handled by Strategy 1 with go-out safety checks.
-        if (fdPositions.length === 1) continue;
-        bestFdCount = fdPositions.length;
-        bestSeedSpot = fdPositions[0];
-      }
-    }
-    if (bestSeedSpot) {
-      return { type: 'replace', ...bestSeedSpot };
-    }
-    // Fallback: replace highest value revealed position
-    const highPos = findHighestValuePosition(aiHand);
-    if (highPos && highPos.value >= 8) {
-      return { type: 'replace', triadIndex: highPos.triadIndex, position: highPos.position };
-    }
-  }
-
-  // Strategy 5: Replace an unrevealed card if drawn card is decent (< 6)
-  if (drawnCard.type === 'fixed' && drawnCard.faceValue < 6) {
-    const unrevealedPos = findUnrevealedPosition(aiHand);
-    if (unrevealedPos) {
-      return { type: 'replace', ...unrevealedPos };
-    }
-  }
-
-  // Strategy 6: Discard safety — avoid discarding cards that help opponent.
-  // When the drawn card is dangerous to discard (safety < 40), find a low-cost
-  // swap where the replaced card is significantly safer to discard.
-  if (drawnCard.type === 'fixed') {
-    const drawnSafety = aiEvaluateDiscardSafety(drawnCard, gameState);
-    if (drawnSafety < 40) {
-      let safestSwap = null;
-      let bestSafetyGain = 15; // minimum threshold
-      for (let t = 0; t < aiHand.triads.length; t++) {
-        const triad = aiHand.triads[t];
-        if (triad.isDiscarded) continue;
-        for (const pos of ['top', 'middle', 'bottom']) {
-          if (triad[pos].length === 0 || !triad[pos][0].isRevealed) continue;
-          const currentVal = getPositionValue(triad[pos]);
-          const valueCost = drawnCard.faceValue - currentVal;
-          if (valueCost > 3) continue; // too expensive
-          const replacedSafety = aiEvaluateDiscardSafety(triad[pos][0], gameState);
-          const safetyGain = replacedSafety - drawnSafety;
-          if (safetyGain > bestSafetyGain) {
-            bestSafetyGain = safetyGain;
-            safestSwap = { triadIndex: t, position: pos };
-          }
-        }
-      }
-      if (safestSwap) {
-        return { type: 'replace', ...safestSwap };
-      }
-    }
-  }
-
-  // Default: discard
-  return { type: 'discard' };
+  return bestCandidate.action;
 }
 
 /**
@@ -410,29 +389,140 @@ export function aiDecideRevealAfterDiscard(hand) {
 
 /**
  * AI decides whether to go out.
- * Strategy: Go out when hand value is low enough.
+ * Ported faithfully from kapow.js. Wrapper around aiShouldGoOutWithScore.
+ * Returns boolean for backward compatibility with callers/tests.
  */
 export function aiShouldGoOut(gameState) {
-  const aiHand = gameState.players[1].hand;
-  let handValue = 0;
-  let unrevealed = 0;
+  var aiHandEval = aiEvaluateHand(gameState.players[1].hand);
+  return aiShouldGoOutWithScore(gameState, aiHandEval.knownScore).shouldGoOut;
+}
 
-  for (const triad of aiHand.triads) {
-    if (triad.isDiscarded) continue;
-    for (const pos of ['top', 'middle', 'bottom']) {
-      if (triad[pos].length > 0) {
-        if (!triad[pos][0].isRevealed) {
-          unrevealed++;
-          handValue += 6; // Assume average value for hidden cards
+/**
+ * Core going-out decision using the actual/simulated AI score after placement.
+ * Ported faithfully from kapow.js aiShouldGoOutWithScore().
+ * This ensures the AI accounts for the card it's about to place, not just
+ * what's currently revealed.
+ */
+export function aiShouldGoOutWithScore(gameState, aiScore) {
+  var aiHandEval = aiEvaluateHand(gameState.players[1].hand);
+  var opponentEval = aiEstimateOpponentScore(gameState);
+  var context = aiGetGameContext(gameState);
+
+  // Never go out with unfrozen KAPOWs (25 pts each)
+  if (aiHandEval.kapowPenalty > 0) {
+    return { shouldGoOut: false, reason: 'holding KAPOW penalties' };
+  }
+
+  // Always go out if score is 0 or negative
+  if (aiScore <= 0) {
+    return { shouldGoOut: true, reason: 'zero or negative score' };
+  }
+
+  // Estimate opponent's FINAL score. The opponent gets one more turn after
+  // AI goes out, so they may improve. The key risk is triad completion — the opponent
+  // could complete a near-complete triad on their last turn, shedding 20+ points instantly.
+  // A flat "-3" estimate is dangerously naive when the opponent has near-complete triads.
+  var opponentFinalEst = opponentEval.estimatedScore;
+  if (opponentEval.unrevealedCount > 0) {
+    opponentFinalEst = Math.max(0, opponentFinalEst - 5);
+  }
+  // Scan opponent's triads for near-complete ones (2 revealed with completion paths).
+  // Each near-complete triad represents a realistic chance of the opponent shedding
+  // its full value on their final turn. Factor this into the estimate.
+  var opponentHand = gameState.players[0].hand;
+  var opponentCompletionRisk = 0;
+  for (var ot = 0; ot < opponentHand.triads.length; ot++) {
+    var oTriad = opponentHand.triads[ot];
+    if (oTriad.isDiscarded) continue;
+    var oAnalysis = aiAnalyzeTriad(oTriad);
+    if (oAnalysis.isNearComplete && oAnalysis.completionPaths > 0) {
+      // Opponent has a near-complete triad — they could complete it with one card.
+      // More completion paths = higher probability. Estimate the points that would
+      // be shed: all revealed values in the triad + estimated unrevealed (~6).
+      var triadPoints = 0;
+      var oPositions = ['top', 'middle', 'bottom'];
+      for (var op = 0; op < 3; op++) {
+        var oPosCards = oTriad[oPositions[op]];
+        if (oPosCards.length > 0 && oPosCards[0].isRevealed) {
+          triadPoints += getPositionValue(oPosCards);
         } else {
-          handValue += getPositionValue(triad[pos]);
+          triadPoints += 6;
         }
+      }
+      // Scale by path count: more paths = more likely to complete.
+      // With 1 path: ~8% chance per draw (1/13). With 3 paths: ~23%.
+      // But also consider Power modifiers and KAPOW cards in deck.
+      // Use a conservative estimate: min(completionPaths * 0.08, 0.4) probability.
+      var completionProb = Math.min(oAnalysis.completionPaths * 0.08, 0.4);
+      opponentCompletionRisk += Math.round(triadPoints * completionProb);
+    }
+    // 3-revealed non-complete triads can also be completed via single replacement
+    if (oAnalysis.revealedCount === 3 && !isTriadComplete(oTriad)) {
+      var futureOpp = aiCountFutureCompletions(oAnalysis.values.slice());
+      if (futureOpp.totalPaths > 0) {
+        var oTriadScore = 0;
+        for (var op2 = 0; op2 < 3; op2++) {
+          oTriadScore += oAnalysis.values[op2] || 0;
+        }
+        var replaceProb = Math.min(futureOpp.totalPaths * 0.08, 0.4);
+        opponentCompletionRisk += Math.round(oTriadScore * replaceProb);
       }
     }
   }
+  // Reduce the opponent's estimated final score by the completion risk
+  opponentFinalEst = Math.max(0, opponentFinalEst - opponentCompletionRisk);
 
-  // Go out if hand value is low and most cards are revealed
-  return handValue <= 15 && unrevealed <= 2;
+  // Would we be doubled? First-out player's score is doubled if it's NOT the STRICTLY
+  // lowest. A tie means BOTH players get doubled — so AI must be strictly lower to avoid it.
+  var wouldBeDoubled = aiScore >= opponentFinalEst;
+
+  if (wouldBeDoubled) {
+    var doubledScore = aiScore * 2;
+
+    // Check cumulative impact: would doubling put us behind?
+    var cumulativeAfterDoubled = context.aiCumulativeScore + doubledScore;
+    var opponentCumulativeEst = context.humanCumulativeScore + opponentFinalEst;
+
+    // Never go out if doubling puts us more than 10 behind cumulatively
+    if (cumulativeAfterDoubled > opponentCumulativeEst + 10) {
+      return { shouldGoOut: false, reason: 'would be doubled and fall behind' };
+    }
+
+    // Even if cumulative is close, don't go out if round score doubles to a lot
+    if (doubledScore > 20) {
+      return { shouldGoOut: false, reason: 'doubled score too high (' + doubledScore + ')' };
+    }
+  }
+
+  // HIGH SCORE CAUTION: Even if estimates say we're winning, going out with a high
+  // score is risky when the margin is thin. Doubling 12+ points is painful
+  // if the estimate is wrong. Only block if the margin is slim (within 10 points of
+  // estimated opponent score) AND opponent still has unknowns that could swing things.
+  if (aiScore >= 12 && opponentEval.unrevealedCount > 0 &&
+      aiScore >= opponentFinalEst - 10) {
+    return { shouldGoOut: false, reason: 'score too high with uncertain margin (' + aiScore + ' vs est. ' + opponentFinalEst + ')' };
+  }
+
+  // Safe to go out: AI score is STRICTLY lower than opponent's estimated final score.
+  // A tie means doubling — only go out with a clear advantage.
+  if (aiScore < opponentFinalEst) {
+    return { shouldGoOut: true, reason: 'score advantage, going out' };
+  }
+
+  // In late/end game, be more aggressive about going out with low scores.
+  // In early/mid game, only go out if strictly ahead of opponent estimate.
+  var threshold = context.isEndGame ? 25 : (context.isLateGame ? 18 : 10);
+  var margin = context.isEndGame ? 5 : (context.isLateGame ? 3 : 0);
+  if (aiScore <= threshold && aiScore <= opponentFinalEst + margin) {
+    return { shouldGoOut: true, reason: 'low score, acceptable risk' };
+  }
+
+  // End game desperation — go out if even close
+  if (context.isEndGame && aiScore <= opponentFinalEst + 8) {
+    return { shouldGoOut: true, reason: 'end game urgency' };
+  }
+
+  return { shouldGoOut: false, reason: 'better to keep playing' };
 }
 
 /**
