@@ -6,6 +6,11 @@
 
 ### 03-12-2026
 
+**v12 [Eric]** chore: remove kapow.js IIFE (fully replaced by ES modules)
+- Deleted `js/kapow.js` (~5,400 lines) — no longer loaded by index.html since v11
+- All game logic now lives in 16 ES modules loaded via `js/main.js`
+- All 390 tests pass
+
 **v11 [Eric]** refactor(html): extract inline JS to shell.js module
 - Created `js/shell.js` ES module with all 20 functions extracted from 3 inline `<script>` blocks in index.html
 - Extracted: `trackEvent`, `showHelpTab`, `showBuyModal`, `hideBuyModal`, `showLeaderboard`, `hideLeaderboard`, `hideLeaderboardSubmit`, `fetchLeaderboard`, `renderLeaderboardRows`, `escapeHtml`, `promptLeaderboardSubmit`, `confirmLeaderboardSubmit`, `addGameNote`, `saveNote`, `renderGameNotes`, `shareGameResults`, `fallbackCopy`, `showToast`, `togglePrivacy`, `closeSidebar`
