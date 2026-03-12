@@ -51,9 +51,16 @@ import { animateNewlyDiscardedTriads, runWithTriadAnimation } from './animation.
 import { logAction, logSystem, logHandState, exportLog, saveGameToHistory } from './logging.js';
 import { showModal } from './modals.js';
 import { KapowSounds } from './sound.js';
+import { KapowTelemetry, prepareFeedback, showFeedbackModal, hideFeedbackModal } from './telemetry.js';
 
 // Expose KapowSounds globally for HTML onclick handlers
 window.KapowSounds = KapowSounds;
+
+// Expose telemetry globals for HTML onclick/onsubmit handlers
+window.KapowTelemetry = KapowTelemetry;
+window.prepareFeedback = prepareFeedback;
+window.showFeedbackModal = showFeedbackModal;
+window.hideFeedbackModal = hideFeedbackModal;
 
 // ---- Module-level state (were IIFE closure variables) ----
 var gameState = null;

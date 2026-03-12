@@ -6,6 +6,13 @@
 
 ### 03-12-2026
 
+**v10 [Eric]** refactor(telemetry): convert IIFE to ES module
+- Converted `js/telemetry.js` from `var KapowTelemetry = (function() { ... })();` IIFE to ES module with named exports
+- Exported 3 standalone functions (`prepareFeedback`, `showFeedbackModal`, `hideFeedbackModal`)
+- Added imports and `window.*` assignments in main.js for HTML onclick/onsubmit handlers
+- Zero internal logic changes — same API surface, same behavior
+- All 390 tests pass
+
 **v9 [Eric]** refactor(sound): convert IIFE to ES module
 - Converted `js/sound.js` from `var KapowSounds = (function() { ... })();` IIFE to ES module with `export const KapowSounds`
 - Added import in `js/main.js` and `window.KapowSounds` assignment for HTML onclick handlers
