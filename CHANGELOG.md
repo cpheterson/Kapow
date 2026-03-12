@@ -6,6 +6,11 @@
 
 ### 03-12-2026
 
+**v16 [Eric]** fix(ai): pass gameState to aiScorePlacement in hint system and forced placement
+- 3 callsites in main.js were calling `aiScorePlacement` without the `gameState` parameter
+- Without it, KAPOW strategic value, opponent threat, and final turn detection silently degraded
+- Removed unused `aiShouldGoOut` import
+
 **v15 [Eric]** fix(gameState): add missing state properties to createGameState
 - Added 10 missing properties: `actionLog`, `turnNumber`, `aiCommentary`, `lastDiscardKnown`, `drawnFromDiscard`, `aiHighlight`, `awaitingKapowSwap`, `selectedKapow`, `swappingWithinCompletedTriad`, `completedTriadIndex`
 - Fixed `dealerIndex` default (was 0, should be 1 per kapow.js)

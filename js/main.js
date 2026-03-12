@@ -37,7 +37,6 @@ import {
   aiDecideDraw,
   aiDecideAction,
   aiDecideRevealAfterDiscard,
-  aiShouldGoOut,
   aiConsiderKapowSwap,
   aiScorePlacement,
   aiAnalyzeTriad,
@@ -969,7 +968,7 @@ function generateHint() {
         if (hand.triads[t].isDiscarded) continue;
         var positions = ['top', 'middle', 'bottom'];
         for (var p = 0; p < positions.length; p++) {
-          var ps = aiScorePlacement(hand, topDiscard, t, positions[p]);
+          var ps = aiScorePlacement(hand, topDiscard, t, positions[p], {}, gameState);
           if (ps > bestDiscardScore) bestDiscardScore = ps;
         }
       }
@@ -992,7 +991,7 @@ function generateHint() {
       if (hand.triads[t].isDiscarded) continue;
       var positions = ['top', 'middle', 'bottom'];
       for (var p = 0; p < positions.length; p++) {
-        var ps = aiScorePlacement(hand, drawnCard, t, positions[p]);
+        var ps = aiScorePlacement(hand, drawnCard, t, positions[p], {}, gameState);
         if (ps > bestScore) {
           bestScore = ps;
           bestAction = { triadIndex: t, position: positions[p], score: ps };
@@ -1937,7 +1936,7 @@ function aiStepPlace(action, drewFromDiscard, drawnDesc) {
       if (triad.isDiscarded) continue;
       var positions = ['top', 'middle', 'bottom'];
       for (var p = 0; p < positions.length; p++) {
-        var ps = aiScorePlacement(aiHand, gameState.drawnCard || { type: 'fixed', faceValue: 6, id: 'temp' }, t, positions[p]);
+        var ps = aiScorePlacement(aiHand, gameState.drawnCard || { type: 'fixed', faceValue: 6, id: 'temp' }, t, positions[p], {}, gameState);
         if (ps > bestS) { bestS = ps; bestT = t; bestP = positions[p]; }
       }
     }
