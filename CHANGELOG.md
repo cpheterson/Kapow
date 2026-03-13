@@ -10,10 +10,14 @@
 - New `controller.js` — single source of truth for all mutable controller flags
 - Eliminates primitive-by-value copy bug class (the root cause of T18 lockup)
 - `triadAnimationInProgress` no longer needs `{value: bool}` wrapper — plain boolean on shared object
-- `runWithTriadAnimation` no longer takes animation flag parameter (imports controller directly)
+- `runWithTriadAnimation` signature: 4 args now, not 5 (removed `triadAnimationInProgress` param)
 - Moved: `aiTurnInProgress`, `triadAnimationInProgress`, `roundEndAcknowledged`, `aiMoveExplanation`, `aiSwapHistory`, `aiDelay`, `isReplayGame` from scattered `var` declarations to `controller.js`
+- Renamed: `AI_DELAY` -> `aiDelay`, `_originalAIDelay` -> `_originalAiDelay` (camelCase consistency)
 - `onNewGame()` calls `resetController()` — fixes replay-to-new-game bug (stale `isReplayGame` and `aiDelay`)
-- All 392 tests pass, zero behavioral change
+- DEFAULTS pattern: add new flags in one place, `resetController()` picks them up automatically
+- Docs: CLAUDE.md, CONTRIBUTING.md, README.md updated with controller pattern, migration notes, gotchas
+- 5 new controller tests (defaults, mutations, reset completeness, array isolation)
+- All 397 tests pass, zero behavioral change
 
 ### 03-12-2026
 

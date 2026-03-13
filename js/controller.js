@@ -8,8 +8,11 @@
 // Writing `controller.someFlag = true` is immediately visible everywhere.
 // This eliminates the primitive-by-value copy bug class entirely —
 // there is no way to accidentally snapshot a boolean into a disconnected copy.
+//
+// To add a new flag: add it to DEFAULTS below. resetController() picks it up
+// automatically — there is no second place to update.
 
-export const controller = {
+const DEFAULTS = {
   // AI turn sequencing
   aiTurnInProgress: false,
 
@@ -35,16 +38,14 @@ export const controller = {
   _originalAiDelay: 1500
 };
 
+export const controller = { ...DEFAULTS };
+
 /**
  * Reset controller to initial state. Used between games and in tests.
+ * Automatically covers every key in DEFAULTS — no manual sync needed.
  */
 export function resetController() {
-  controller.aiTurnInProgress = false;
-  controller.triadAnimationInProgress = false;
-  controller.roundEndAcknowledged = false;
-  controller.aiMoveExplanation = '';
+  Object.assign(controller, DEFAULTS);
+  // Array values must be fresh instances (Object.assign copies references)
   controller.aiSwapHistory = [];
-  controller.aiDelay = 1500;
-  controller.isReplayGame = false;
-  controller._originalAiDelay = 1500;
 }
