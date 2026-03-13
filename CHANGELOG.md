@@ -6,13 +6,13 @@
 
 ### 03-13-2026
 
-**v4 [Eric]** refactor: centralized controller state
+**v6 [Eric]** refactor: centralized controller state
 - New `controller.js` — single source of truth for all mutable controller flags
 - Eliminates primitive-by-value copy bug class (the root cause of T18 lockup)
 - `triadAnimationInProgress` no longer needs `{value: bool}` wrapper — plain boolean on shared object
 - `runWithTriadAnimation` no longer takes animation flag parameter (imports controller directly)
 - Moved: `aiTurnInProgress`, `triadAnimationInProgress`, `roundEndAcknowledged`, `aiMoveExplanation`, `aiSwapHistory`, `aiDelay`, `isReplayGame` from scattered `var` declarations to `controller.js`
-- Added `resetController()` for clean state between games and tests
+- `onNewGame()` calls `resetController()` — fixes replay-to-new-game bug (stale `isReplayGame` and `aiDelay`)
 - All 392 tests pass, zero behavioral change
 
 ### 03-12-2026

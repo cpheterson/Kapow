@@ -1353,8 +1353,7 @@ function onNextRound() {
 
 function onNewGame() {
   document.getElementById('game-over-screen').classList.add('hidden');
-  c.aiTurnInProgress = false;
-  c.aiMoveExplanation = '';
+  resetController();
   var explainModal = document.getElementById('explain-modal');
   if (explainModal) explainModal.classList.add('hidden');
 

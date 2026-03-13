@@ -29,11 +29,11 @@ export const controller = {
   aiDelay: 1500,
 
   // Replay mode — blocks leaderboard/history saves
-  isReplayGame: false
-};
+  isReplayGame: false,
 
-// Snapshot of aiDelay before replay modifies it
-controller._originalAiDelay = controller.aiDelay;
+  // Snapshot of aiDelay before replay modifies it
+  _originalAiDelay: 1500
+};
 
 /**
  * Reset controller to initial state. Used between games and in tests.
