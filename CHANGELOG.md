@@ -6,6 +6,13 @@
 
 ### 03-12-2026
 
+**v22 [Eric]** fix: triadAnimationInProgress ref leak causing AI turn lockup
+- Module-level `triadAnimationInProgress` was a primitive boolean, but `runWithTriadAnimation` expected a mutable ref object `{value: bool}`
+- Each call site created a disposable local ref copy — the async animation callback cleared `ref.value` but the module-level primitive was never updated
+- After any human triad completion, the flag stuck at `true` forever and the AI turn guard never fired → game hangs at "AI's turn. Draw a card."
+- Fix: make `triadAnimationInProgress` itself a shared ref object; remove all local ref-copy + read-back patterns
+- Pre-existing bug in original IIFE code (not an ES module regression) — confirmed via Playwright testing against both versions
+
 **v1 [Chuck]** AI: fix draw decision missing power card modifier opportunities when 1 fd card remains (R5T29).
 - AI had T3[fd,-2,P2(2)], discard was P2. Modifier on T3-bottom saves 2pts without touching fd.
 - Bug 1 (kapow.js): go-out check fired before modifier evaluation, assuming any placement reveals fd — false for modifier placements on already-revealed positions.
