@@ -232,17 +232,14 @@ export function shareGameResults() {
   var winner = p.totalScore < k.totalScore ? p.name : 'Kai';
   var status = isOver ? (winner + ' wins!') : ('Round ' + gameState.round);
   var text = 'KAPOW! ' + status + '\n' +
-    p.name + ': ' + p.totalScore + ' · Kai: ' + k.totalScore + '\n';
-  if (isOver) {
-    text += 'Rounds: ' + gameState.round + '\n';
-  }
-  text += 'https://epheterson.github.io/Kapow/';
+    p.name + ': ' + p.totalScore + ' · Kai: ' + k.totalScore + '\n' +
+    'Play against Kai at playkapow.com';
 
   if (navigator.share) {
     navigator.share({ title: 'KAPOW! Card Game', text: text }).catch(function() {});
   } else if (navigator.clipboard) {
     navigator.clipboard.writeText(text).then(function() {
-      showToast('Results copied to clipboard!');
+      showToast('Copied!');
     }).catch(function() {
       fallbackCopy(text);
     });
@@ -260,7 +257,7 @@ export function fallbackCopy(text) {
   ta.select();
   document.execCommand('copy');
   document.body.removeChild(ta);
-  showToast('Results copied to clipboard!');
+  showToast('Copied!');
 }
 
 export function showToast(msg) {
